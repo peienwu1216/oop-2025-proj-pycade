@@ -3,6 +3,7 @@
 import pygame
 from .game_object import GameObject # 從同一個 sprites 套件中匯入 GameObject
 import settings
+from .explosion import Explosion
 
 class Bomb(GameObject):
     """
