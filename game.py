@@ -162,9 +162,32 @@ class Game:
         self.all_sprites.draw(self.screen) # 繪製所有遊戲物件
 
         if self.game_state == "PLAYING":
+            if self.player1: # 確保 player1 存在
+                if not hasattr(self, 'hud_font'): # 第一次初始化 HUD 字型
+                    try:
+                        self.hud_font = pygame.font.Font(None, 28)
+                    except Exception as e: # 捕獲更通用的異常並打印
+                        print(f"Error initializing HUD font: {e}")
+                        self.hud_font = pygame.font.SysFont("arial", 28) # Fallback
+                
+                # 準備 HUD 文本
+                hud_texts = [
+                    f"Lives: {self.player1.lives}",
+                    f"Bombs: {self.player1.max_bombs - self.player1.bombs_placed_count}/{self.player1.max_bombs}",
+                    f"Range: {self.player1.bomb_range}",
+                    f"Score: {self.player1.score}"
+                ]
+                
+                # 逐行繪製 HUD
+                for i, text_line in enumerate(hud_texts):
+                    # 確保 self.hud_font 真的被成功創建了
+                    if hasattr(self, 'hud_font') and self.hud_font is not None:
+                        text_surface = self.hud_font.render(text_line, True, settings.BLACK) # 文本顏色是黑色
+                        self.screen.blit(text_surface, (10, 10 + i * 25)) # 每行向下偏移 25 像素
+                    else:
+                        print("[DEBUG] HUD font not available for rendering.") # 調試信息
             # 在遊戲進行中，可能需要繪製 HUD (生命、分數等)
             # self.ui_manager.draw_hud() # 假設 UIManager 負責
-            pass
         elif self.game_state == "GAME_OVER":
             # 繪製遊戲結束畫面
             # self.ui_manager.draw_game_over_screen()
@@ -183,7 +206,7 @@ class Game:
             text_rect = game_over_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 50))
             self.screen.blit(game_over_text, text_rect)
 
-            restart_text = self.restart_font.render("Press 'R' to Restart", True, settings.WHITE)
+            restart_text = self.restart_font.render("Press 'R' to Restart", True, settings.BLACK)
             restart_rect = restart_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 + 20))
             self.screen.blit(restart_text, restart_rect)
 
