@@ -1,6 +1,7 @@
 # oop-2025-proj-pycade/sprites/game_object.py
 
 import pygame
+import settings
 
 class GameObject(pygame.sprite.Sprite):
     """
@@ -8,39 +9,34 @@ class GameObject(pygame.sprite.Sprite):
     Inherits from pygame.sprite.Sprite.
     """
     def __init__(self, x, y, width, height, color=None, image_path=None):
-        """
-        Initializes a GameObject.
+        super().__init__()
 
-        Args:
-            x (int): The x-coordinate of the top-left corner.
-            y (int): The y-coordinate of the top-left corner.
-            width (int): The width of the object.
-            height (int): The height of the object.
-            color (tuple, optional): RGB color tuple if creating a colored surface. Defaults to None.
-            image_path (str, optional): Path to an image file. Defaults to None.
-        """
-        super().__init__() # Call the parent class (Sprite) constructor
-
+        loaded_image = None
         if image_path:
             try:
-                self.original_image = pygame.image.load(image_path).convert_alpha()
-                # convert_alpha() is good for images with transparency
+                raw_image = pygame.image.load(image_path)
+                loaded_image = raw_image.convert_alpha() # 使用 convert_alpha() 處理透明度
             except pygame.error as e:
                 print(f"Error loading image {image_path}: {e}")
                 # Fallback to a colored surface if image loading fails
-                self.original_image = pygame.Surface([width, height])
-                self.original_image.fill(color if color else (255, 0, 255)) # Magenta for error
+        
+        if loaded_image:
+            self.original_image = loaded_image # 保存原始載入的圖像
+            self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
         elif color:
             self.original_image = pygame.Surface([width, height])
             self.original_image.fill(color)
+            self.original_image.set_colorkey(settings.BLACK) # 如果顏色背景是純色且想透明化某顏色
+            self.image = self.original_image.copy()
         else:
             # Default to a magenta square if neither color nor image is provided
             self.original_image = pygame.Surface([width, height])
-            self.original_image.fill((255, 0, 255)) # Magenta indicates missing asset or config
+            self.original_image.fill((255, 0, 255)) # Magenta
+            self.image = self.original_image.copy()
 
-        self.image = self.original_image # This is the image that will be drawn
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
+
 
     def update(self, *args, **kwargs):
         """

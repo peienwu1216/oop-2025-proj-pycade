@@ -15,10 +15,38 @@ class Player(GameObject):
             image_path=player_image_path
         )
         self.game = game
-        # --- 新增 is_ai 和 ai_controller 屬性 ---
         self.is_ai = is_ai
         self.ai_controller = ai_controller # 如果是 AI，則持有對其控制器的引用
-        # --- 新增結束 ---
+        
+        # 我們在 GameObject 基類中假設 self.original_image 被儲存了原始圖像
+        # 如果沒有，直接操作 self.image
+        
+        # 設定縮放比例，例如 80% 或 90%。你可以調整這個值直到滿意為止。
+        # 0.9 意味著新的寬高是原來的 90%，這樣玩家就會比格子稍微小一點。
+        scale_factor = 0.8  # !!! 嘗試 0.8 或 0.9 !!!
+
+        if hasattr(self, 'original_image') and self.original_image is not None:
+            base_image_to_scale = self.original_image
+        else:
+            # 如果 GameObject 沒有存 original_image，就用當前的 self.image
+            # 這要求 GameObject 在 __init__ 中將載入的圖像賦給 self.image 和 self.original_image
+            print("[PLAYER INIT WARNING] original_image not found, scaling current self.image. Ensure GameObject saves original_image.")
+            base_image_to_scale = self.image # Fallback
+
+        original_width = base_image_to_scale.get_width()
+        original_height = base_image_to_scale.get_height()
+
+        # 計算新的縮放後尺寸
+        new_width = int(original_width * scale_factor)
+        new_height = int(original_height * scale_factor)
+
+        # 進行縮放 (smoothscale 品質較好)
+        self.image = pygame.transform.smoothscale(base_image_to_scale, (new_width, new_height))
+        
+        # 關鍵：更新 self.rect 以匹配新的縮小後圖像尺寸，並保持中心點不變
+        old_center = self.rect.center # 記錄縮放前 rect 的中心點
+        self.rect = self.image.get_rect() # 獲取基於新 self.image 的 rect
+        self.rect.center = old_center # 將新 rect 的中心點設置回原來的位置
 
         # 根據是否為 AI 調整速度 (可選)
         if self.is_ai and hasattr(settings, 'AI_PLAYER_SPEED_FACTOR'):
@@ -123,22 +151,24 @@ class Player(GameObject):
             # Player.update 自身不需要再為 AI 設定 vx, vy，它只負責應用這些速度。
             pass
 
-        # 2. 應用 X 軸移動並處理碰撞
+        # 2. X 軸移動和碰撞
         self.rect.x += self.vx
+        # 檢測與所有固態障礙物的碰撞
         hit_list_x = pygame.sprite.spritecollide(self, solid_obstacles_group, False)
         for obstacle in hit_list_x:
-            if self.vx > 0:  # 向右移動撞到
+            if self.vx > 0:  # 向右移動撞到障礙物的左邊
                 self.rect.right = obstacle.rect.left
-            elif self.vx < 0:  # 向左移動撞到
+            elif self.vx < 0:  # 向左移動撞到障礙物的右邊
                 self.rect.left = obstacle.rect.right
         
-        # 3. 應用 Y 軸移動並處理碰撞
+        # 3. Y 軸移動和碰撞 
         self.rect.y += self.vy
+        # 檢測與所有固態障礙物的碰撞
         hit_list_y = pygame.sprite.spritecollide(self, solid_obstacles_group, False)
         for obstacle in hit_list_y:
-            if self.vy > 0:  # 向下移動撞到
+            if self.vy > 0:  # 向下移動撞到障礙物的上邊
                 self.rect.bottom = obstacle.rect.top
-            elif self.vy < 0:  # 向上移動撞到
+            elif self.vy < 0:  # 向上移動撞到障礙物的下邊
                 self.rect.top = obstacle.rect.bottom
 
         # 4. 地圖邊界限制 (對人類和 AI 都適用)
