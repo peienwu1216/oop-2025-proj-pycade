@@ -29,11 +29,9 @@ class Game:
         self.setup_initial_state() # 調用以設定初始狀態
 
     def setup_initial_state(self):
-        """Sets up the initial game state, map, and players for a new game or restart."""
-        print("[DEBUG] Game.setup_initial_state() called.") # <--- 新增
-
-        # 1. 清理所有遊戲物件組
-        print("[DEBUG] Emptying sprite groups...") # <--- 新增
+        # ... (清空 sprite groups 的邏輯保持不變) ...
+        print("[DEBUG] Game.setup_initial_state() called.")
+        print("[DEBUG] Emptying sprite groups...")
         self.all_sprites.empty()
         self.players_group.empty()
         self.bombs_group.empty()
@@ -41,57 +39,72 @@ class Game:
         if hasattr(self, 'items_group'): self.items_group.empty()
         if hasattr(self, 'solid_obstacles_group'): self.solid_obstacles_group.empty()
 
-        # 2. 重新加載/創建地圖物件 (MapManager 的 load_map_from_data 會將牆壁加入 all_sprites)
-        print("[DEBUG] Reloading map data...") # <--- 新增
+
+        print("[DEBUG] Reloading map data...")
         self.map_manager.load_map_from_data(self.map_manager.get_simple_test_map())
-        print(f"[DEBUG] Map reloaded. Number of walls in map_manager.walls_group: {len(self.map_manager.walls_group)}")
-        print(f"[DEBUG] Number of d_walls in map_manager.destructible_walls_group: {len(self.map_manager.destructible_walls_group)}")
+        # ... (print map reloaded stats) ...
+        print(f"[DEBUG] Map reloaded. Walls: {len(self.map_manager.walls_group)}, D_Walls: {len(self.map_manager.destructible_walls_group)}, Solid: {len(self.solid_obstacles_group)}")
 
 
-        # 3. 重新創建玩家物件
-        print("[DEBUG] Recreating player...")
-        start_tile_x, start_tile_y = 1, 1
-        if self.map_manager.is_walkable(start_tile_x, start_tile_y):
-            self.player1 = Player(self, start_tile_x, start_tile_y)
+        # --- 創建玩家1 (人類) ---
+        print("[DEBUG] Recreating player 1 (Human)...")
+        p1_start_x, p1_start_y = 1, 1
+        # ！！！修改：準備 sprite_config 並傳遞給 Player！！！
+        player1_sprite_config = {
+            "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP,
+            "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES
+        }
+        if self.map_manager.is_walkable(p1_start_x, p1_start_y):
+            self.player1 = Player(self, p1_start_x, p1_start_y,
+                                  spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH,
+                                  sprite_config=player1_sprite_config,
+                                  is_ai=False)
         else:
-            print(f"Warning: Default start position ({start_tile_x},{start_tile_y}) not walkable. Trying (2,1).")
-            self.player1 = Player(self, 2, 1)
-        
+            self.player1 = Player(self, 2, 1,
+                                  spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH,
+                                  sprite_config=player1_sprite_config,
+                                  is_ai=False)
         self.all_sprites.add(self.player1)
         self.players_group.add(self.player1)
-        print(f"[DEBUG] Player 1 recreated. is_alive: {self.player1.is_alive}, Lives: {self.player1.lives}")
+        print(f"[DEBUG] Player 1 created. Lives: {self.player1.lives}")
+
+        # --- 創建 AI 玩家 (Player 2) ---
         print("[DEBUG] Recreating player 2 (AI)...")
-        # 為 AI 玩家選擇一個不同的起始位置，例如右下角
-        # 地圖大小是 15x11 (tile_width x tile_height from simple_test_map)
-        # 所以右下角附近的空格可能是 (13, 9) 或 (map_width-2, map_height-2)
         p2_start_x = self.map_manager.tile_width - 2
         p2_start_y = self.map_manager.tile_height - 2
-        
-        # 確保 AI 起始位置可通行
         if not self.map_manager.is_walkable(p2_start_x, p2_start_y):
-            print(f"Warning: AI start position ({p2_start_x},{p2_start_y}) not walkable. Trying another.")
-            # 可以嘗試尋找另一個可通行的點，或簡化處理
-            p2_start_x, p2_start_y = self.map_manager.tile_width - 3, self.map_manager.tile_height - 2 # 備用
+            p2_start_x, p2_start_y = self.map_manager.tile_width - 3, self.map_manager.tile_height - 2
 
-        # 可以為 AI 玩家使用不同的圖片 (如果準備了 settings.PLAYER2_AI_IMG)
-        player2_image = settings.PLAYER_IMG # 暫時用和 P1 一樣的圖片，但可以改成紅色或其他
-        self.player2_ai = Player(self, p2_start_x, p2_start_y, player_image_path=player2_image, is_ai=True)
+        # ！！！修改：為 AI 玩家準備 sprite_config 並傳遞！！！
+        # 假設 AI 使用不同的 spritesheet 和可能的配置
+        # 如果 AI 使用與 P1 相同的動畫幀數和行映射，則 sprite_config 可以相同
+        ai_spritesheet_path = settings.PLAYER2_AI_SPRITESHEET_PATH \
+            if hasattr(settings, 'PLAYER2_AI_SPRITESHEET_PATH') and settings.PLAYER2_AI_SPRITESHEET_PATH \
+            else settings.PLAYER1_SPRITESHEET_PATH # Fallback to P1 sheet if P2 not defined
+
+        # 假設 AI 的 sprite sheet 佈局與 P1 相同
+        # 如果不同，你需要在 settings.py 中為 PLAYER2_AI 定義類似的 ROW_MAP 和 NUM_FRAMES
+        ai_sprite_config = {
+            "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP, # 或者 settings.PLAYER2_AI_ROW_MAP
+            "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES   # 或者 settings.PLAYER2_AI_NUM_FRAMES
+        }
+        self.player2_ai = Player(self, p2_start_x, p2_start_y,
+                                 spritesheet_path=ai_spritesheet_path,
+                                 sprite_config=ai_sprite_config,
+                                 is_ai=True)
         
-        self.ai_controller_p2 = AIController(self.player2_ai, self) # 創建 AI 控制器
-        self.player2_ai.ai_controller = self.ai_controller_p2 # 讓 AI Player 持有對其控制器的引用
+        self.ai_controller_p2 = AIController(self.player2_ai, self)
+        self.player2_ai.ai_controller = self.ai_controller_p2
 
         self.all_sprites.add(self.player2_ai)
-        self.players_group.add(self.player2_ai) # AI 也是玩家，加入玩家組
+        self.players_group.add(self.player2_ai)
         print(f"[DEBUG] Player 2 (AI) created at tile ({p2_start_x}, {p2_start_y}). Lives: {self.player2_ai.lives}")
         if self.ai_controller_p2:
-            self.ai_controller_p2.target_player = self.player1 # AI 的目標是 P1
-            
-        # 4. 確保遊戲狀態是 PLAYING
-        print(f"[DEBUG] Setting game_state to PLAYING. Previous state was: {self.game_state}") # <--- 新增
-        self.game_state = "PLAYING"
+            self.ai_controller_p2.target_player = self.player1
         
+        self.game_state = "PLAYING"
         print(f"[DEBUG] Total sprites in all_sprites after setup: {len(self.all_sprites)}")
-        print("[DEBUG] Game.setup_initial_state() finished.") # <--- 新增
+        print("[DEBUG] Game.setup_initial_state() finished.")
 
     # ... (run method) ...
     def run(self):
@@ -125,61 +138,56 @@ class Game:
         Handles sprite updates, collisions, and game logic.
         """
         if self.game_state == "PLAYING":
-            self.all_sprites.update(self.dt, self.solid_obstacles_group) # 傳遞包含所有牆的組
-            self.all_sprites.update(self.dt, self.map_manager.walls_group)
-            if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
-                self.ai_controller_p2.update()
-            # 1. 更新所有 Sprites
-            #    - Player.update 會處理輸入、移動、與牆壁碰撞
-            #    - Bomb.update 會處理倒數計時、視覺更新、時間到了調用 explode()
-            #    - Explosion.update 會處理持續時間，時間到了 self.kill()
-            #    - Wall.update (目前是 pass)
+            # ！！！修改開始：確保只調用一次 all_sprites.update，並傳遞正確的碰撞組！！！
+            # Player.update 方法期望的第二個參數是包含所有固態障礙物的組
+            self.all_sprites.update(self.dt, self.solid_obstacles_group)
+            # ！！！修改結束！！！
 
+            # AI Controller 的更新應該在所有 Sprite 的基礎 update 完成之後，
+            # 或者在其自己的邏輯中處理與 Player Sprite 的交互。
+            # 我們的 AIController.update() 內部會決定 AI 的 vx, vy，
+            # 然後 Player.update() 會應用這些 vx, vy。
+            if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
+                self.ai_controller_p2.update() # AIController 決定 AI 玩家的 vx, vy
+
+            # --- 後續的碰撞邏輯保持不變 ---
             # 2. 處理爆炸對玩家的傷害
-            #    迭代 players_group 中的每個活著的玩家
-            for player in list(self.players_group): # 使用 list() 複製以允許在迭代中移除 player
+            for player in list(self.players_group):
                 if player.is_alive:
-                    # 檢測此玩家是否與 explosions_group 中的任何爆炸 Sprite 碰撞
-                    hit_explosions = pygame.sprite.spritecollide(player, self.explosions_group, False) # False: 不移除爆炸
+                    hit_explosions = pygame.sprite.spritecollide(player, self.explosions_group, False)
                     if hit_explosions:
-                        # 只要碰撞到，就受到一次傷害 (take_damage 內部處理無敵時間)
                         player.take_damage()
-                        # print(f"Player {id(player)} was in explosion area.") # 可選調試訊息
-            if hasattr(self.map_manager, 'destructible_walls_group'): # 確保 MapManager 有這個組
-                for d_wall in list(self.map_manager.destructible_walls_group): # 使用 list() 複製
-                    # 檢測此可破壞牆壁是否與 explosions_group 中的任何爆炸 Sprite 碰撞
+            
+            # 處理爆炸對可破壞牆壁的傷害
+            if hasattr(self.map_manager, 'destructible_walls_group'):
+                for d_wall in list(self.map_manager.destructible_walls_group):
                     hit_explosions_for_d_wall = pygame.sprite.spritecollide(d_wall, self.explosions_group, False)
                     if hit_explosions_for_d_wall:
-                        d_wall.take_damage() # DestructibleWall 的 take_damage 會處理 self.kill()
+                        d_wall.take_damage()
             
             # 3. 檢查玩家是否收集到道具
             for player in self.players_group:
                 if player.is_alive:
-                    # pygame.sprite.spritecollide(sprite, group, dokill)
-                    # dokill=True: 碰撞到的 item 會從 items_group 和 all_sprites 中移除 (因為 Item.apply_effect 會調用 self.kill())
-                    items_collected = pygame.sprite.spritecollide(player, self.items_group, True) # True: item is removed from groups
+                    items_collected = pygame.sprite.spritecollide(player, self.items_group, True)
                     for item in items_collected:
-                        item.apply_effect(player) # 道具應用效果 (並且 Item.apply_effect 內部會 self.kill())
-                        print(f"Player {id(player)} collected item type: {item.type}")
+                        item.apply_effect(player)
+                        # print(f"Player {id(player)} collected item type: {item.type}") # item.apply_effect 內部有 print
             
             # 4. 檢查遊戲結束條件
-            # 例如，如果只有一個人類玩家 (self.player1)
-            if self.player1 and not self.player1.is_alive:
-                # 為了防止在同一幀內多次觸發 GAME_OVER 邏輯
-                if self.game_state != "GAME_OVER": # 只有在狀態改變時才打印和切換
-                    print("Game Over! Player 1 has been defeated.")
-                    self.game_state = "GAME_OVER"
-                    # 在這裡可以觸發 UIManager 顯示遊戲結束畫面
-                    # self.ui_manager.show_game_over_screen()
+            # ... (遊戲結束條件邏輯保持不變) ...
+            human_player_alive = self.player1 and self.player1.is_alive
+            ai_player_alive = self.player2_ai and self.player2_ai.is_alive
 
-            # (如果有多個玩家，遊戲結束條件會更複雜)
+            if not human_player_alive and self.game_state != "GAME_OVER":
+                print("Game Over! Player 1 (Human) has been defeated.")
+                self.game_state = "GAME_OVER"
+            elif not ai_player_alive and human_player_alive and self.game_state != "GAME_OVER": # 確保 P1 還活著才算勝利
+                print("Victory! Player 2 (AI) has been defeated.")
+                self.game_state = "GAME_OVER" # 或者你可以定義一個 "VICTORY" 狀態
+            # 如果需要平局判斷 (例如兩者同時死亡)，可以在 Player.die() 中設置一個標記給 Game 類檢查
 
         elif self.game_state == "GAME_OVER":
-            # 在遊戲結束狀態下，通常不會更新遊戲世界的邏輯
-            # 可能會更新 UI 動畫或等待輸入
-            # 例如: self.ui_manager.update_game_over_screen(self.dt)
             pass
-
         elif self.game_state == "MENU":
             # 更新主選單的邏輯
             # 例如: self.ui_manager.update_menu_screen(self.dt)
@@ -197,34 +205,47 @@ class Game:
                 if hasattr(self.ai_controller_p2, 'debug_draw_path'): # 確保方法存在
                     self.ai_controller_p2.debug_draw_path(self.screen)
         # --- debug_draw_path 結束 ---
-        
+
         if self.game_state == "PLAYING":
-            if self.player1: # 確保 player1 存在
-                if not hasattr(self, 'hud_font'): # 第一次初始化 HUD 字型
-                    try:
-                        self.hud_font = pygame.font.Font(None, 28)
-                    except Exception as e: # 捕獲更通用的異常並打印
-                        print(f"Error initializing HUD font: {e}")
-                        self.hud_font = pygame.font.SysFont("arial", 28) # Fallback
+            if self.player1:
+                if not hasattr(self, 'hud_font'):
+                    try: self.hud_font = pygame.font.Font(None, 28)
+                    except: self.hud_font = pygame.font.SysFont("arial", 28)
                 
-                # 準備 HUD 文本
-                hud_texts = [
-                    f"Lives: {self.player1.lives}",
-                    f"Bombs: {self.player1.max_bombs - self.player1.bombs_placed_count}/{self.player1.max_bombs}",
-                    f"Range: {self.player1.bomb_range}",
-                    f"Score: {self.player1.score}"
-                ]
-                
-                # 逐行繪製 HUD
+                hud_texts = [] # 先收集所有要顯示的文本行
+                p1_prefix = "P1 " # 為玩家1的資訊加上前綴
+                hud_texts.append(f"{p1_prefix}Lives: {self.player1.lives}")
+                hud_texts.append(f"{p1_prefix}Bombs: {self.player1.max_bombs - self.player1.bombs_placed_count}/{self.player1.max_bombs}")
+                hud_texts.append(f"{p1_prefix}Range: {self.player1.bomb_range}")
+                hud_texts.append(f"{p1_prefix}Score: {self.player1.score}")
+
+                if self.player2_ai and self.player2_ai.is_alive: # 如果有 AI 玩家且存活
+                    ai_prefix = "AI "
+                    hud_texts.append(f"{ai_prefix}Lives: {self.player2_ai.lives}")
+                    # 如果想顯示更多AI資訊，可以在這裡添加
+
+                # ！！！修改開始：將 HUD 移到螢幕底部！！！
+                hud_start_y = settings.SCREEN_HEIGHT - (len(hud_texts) * 22) - 5 # 計算起始 Y 座標，每行高度約22，底部留5像素邊距
+                if hud_start_y < settings.SCREEN_HEIGHT * 0.75: # 確保不會太靠上
+                    hud_start_y = settings.SCREEN_HEIGHT * 0.75
+
+                # 可以選擇在底部繪製一個半透明的背景條，讓HUD更清晰
+                # hud_panel_height = (len(hud_texts) * 22) + 10
+                # hud_panel_rect = pygame.Rect(0, settings.SCREEN_HEIGHT - hud_panel_height, settings.SCREEN_WIDTH, hud_panel_height)
+                # panel_surface = pygame.Surface(hud_panel_rect.size, pygame.SRCALPHA)
+                # panel_surface.fill((50, 50, 50, 180)) # 深灰色半透明
+                # self.screen.blit(panel_surface, hud_panel_rect.topleft)
+
+
                 for i, text_line in enumerate(hud_texts):
-                    # 確保 self.hud_font 真的被成功創建了
-                    if hasattr(self, 'hud_font') and self.hud_font is not None:
-                        text_surface = self.hud_font.render(text_line, True, settings.BLACK) # 文本顏色是黑色
-                        self.screen.blit(text_surface, (10, 10 + i * 25)) # 每行向下偏移 25 像素
-                    else:
-                        print("[DEBUG] HUD font not available for rendering.") # 調試信息
-            # 在遊戲進行中，可能需要繪製 HUD (生命、分數等)
-            # self.ui_manager.draw_hud() # 假設 UIManager 負責
+                    if hasattr(self, 'hud_font') and self.hud_font:
+                        text_surface = self.hud_font.render(text_line, True, settings.BLACK)
+                        # 繪製在螢幕底部，水平居中或靠左
+                        # text_rect = text_surface.get_rect(left=10, top=hud_start_y + i * 22)
+                        text_rect = text_surface.get_rect(centerx=settings.SCREEN_WIDTH / 2, top=hud_start_y + i * 22)
+                        self.screen.blit(text_surface, text_rect)
+                    # ！！！修改結束：將 HUD 移到螢幕底部！！！
+
         elif self.game_state == "GAME_OVER":
             # 繪製遊戲結束畫面
             # self.ui_manager.draw_game_over_screen()

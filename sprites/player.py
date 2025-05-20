@@ -1,200 +1,211 @@
 # oop-2025-proj-pycade/sprites/player.py
 
 import pygame
-from .game_object import GameObject
+from .game_object import GameObject # 確保是相對導入
 import settings
-from .bomb import Bomb
+from .bomb import Bomb # 假設 Bomb 在同一個 sprites 套件中
 
 class Player(GameObject):
-    def __init__(self, game, x_tile, y_tile, player_image_path=settings.PLAYER_IMG, is_ai=False, ai_controller=None):
-        super().__init__(
-            x_tile * settings.TILE_SIZE,
-            y_tile * settings.TILE_SIZE,
-            settings.TILE_SIZE,
-            settings.TILE_SIZE,
-            image_path=player_image_path
-        )
+    def __init__(self, game, x_tile, y_tile, spritesheet_path, sprite_config, is_ai=False, ai_controller=None):
+        # ！！！ Player 初始化不再直接載入單一圖片 ！！！
+        # GameObject 的 __init__ 將被用來設定初始位置和空的 self.image, self.rect
+        # 我們將在 Player.__init__ 中自己處理圖像和動畫幀的載入
+
         self.game = game
         self.is_ai = is_ai
-        self.ai_controller = ai_controller # 如果是 AI，則持有對其控制器的引用
+        self.ai_controller = ai_controller
+
+        # --- 載入並切割 Sprite Sheet ---
+        self.animations = {} # 儲存所有方向的動畫幀列表: {"DOWN": [frame1, frame2...], "UP": [...]}
+        self.spritesheet = None
+        try:
+            self.spritesheet = pygame.image.load(spritesheet_path).convert_alpha()
+        except pygame.error as e:
+            print(f"Error loading spritesheet {spritesheet_path}: {e}")
+            # 如果 sprite sheet 載入失敗，創建一個紅色方塊作為備用
+            self.image = pygame.Surface((settings.PLAYER_SPRITE_FRAME_WIDTH, settings.PLAYER_SPRITE_FRAME_HEIGHT))
+            self.image.fill(settings.RED)
+            self.rect = self.image.get_rect()
         
-        # 我們在 GameObject 基類中假設 self.original_image 被儲存了原始圖像
-        # 如果沒有，直接操作 self.image
-        
-        # 設定縮放比例，例如 80% 或 90%。你可以調整這個值直到滿意為止。
-        # 0.9 意味著新的寬高是原來的 90%，這樣玩家就會比格子稍微小一點。
-        scale_factor = 0.8  # !!! 嘗試 0.8 或 0.9 !!!
+        if self.spritesheet:
+            for direction, row_index in sprite_config["ROW_MAP"].items():
+                frames = []
+                for i in range(sprite_config["NUM_FRAMES"]):
+                    frame_x = i * settings.PLAYER_SPRITE_FRAME_WIDTH
+                    frame_y = row_index * settings.PLAYER_SPRITE_FRAME_HEIGHT
+                    frame_surface = self.spritesheet.subsurface(
+                        pygame.Rect(frame_x, frame_y, settings.PLAYER_SPRITE_FRAME_WIDTH, settings.PLAYER_SPRITE_FRAME_HEIGHT)
+                    )
+                    frames.append(frame_surface)
+                self.animations[direction] = frames
+            
+            # 創建 "LEFT" 方向的動畫幀 (通過翻轉 "RIGHT" 方向的幀)
+            if "RIGHT" in self.animations:
+                self.animations["LEFT"] = [pygame.transform.flip(frame, True, False) for frame in self.animations["RIGHT"]]
+            else: # Fallback if RIGHT is missing
+                 self.animations["LEFT"] = self.animations.get("DOWN", []) # Or some other default
 
-        if hasattr(self, 'original_image') and self.original_image is not None:
-            base_image_to_scale = self.original_image
-        else:
-            # 如果 GameObject 沒有存 original_image，就用當前的 self.image
-            # 這要求 GameObject 在 __init__ 中將載入的圖像賦給 self.image 和 self.original_image
-            print("[PLAYER INIT WARNING] original_image not found, scaling current self.image. Ensure GameObject saves original_image.")
-            base_image_to_scale = self.image # Fallback
+        # 初始化動畫相關屬性
+        self.current_direction = "DOWN" # 初始方向
+        self.current_frame_index = 0
+        self.last_animation_update_time = pygame.time.get_ticks()
+        self.animation_speed = settings.PLAYER_ANIMATION_SPEED # 秒/幀
 
-        original_width = base_image_to_scale.get_width()
-        original_height = base_image_to_scale.get_height()
+        # 設定初始圖像和 rect (使用 GameObject 的 __init__ 的部分功能)
+        if self.animations and self.current_direction in self.animations and self.animations[self.current_direction]:
+            self.image = self.animations[self.current_direction][self.current_frame_index]
+        elif hasattr(self, 'image'): # 如果 spritesheet 載入失敗，image 已經是紅色方塊
+            pass
+        else: # 極端情況的備用
+            self.image = pygame.Surface((settings.PLAYER_SPRITE_FRAME_WIDTH, settings.PLAYER_SPRITE_FRAME_HEIGHT))
+            self.image.fill(settings.RED)
 
-        # 計算新的縮放後尺寸
-        new_width = int(original_width * scale_factor)
-        new_height = int(original_height * scale_factor)
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x_tile * settings.TILE_SIZE, y_tile * settings.TILE_SIZE)
+        # ！！！ GameObject 的 super().__init__ 不需要再調用，因為我們自己處理了 image 和 rect ！！！
+        # 如果 GameObject 基類有其他重要的初始化邏輯，你需要考慮如何整合，
+        # 但對於 image 和 rect，Player 現在自己完全控制。
+        # 一種方式是 Player 不繼承 GameObject，而是直接繼承 pygame.sprite.Sprite
+        # 或者 GameObject 的 __init__ 變得更通用，只做 Sprite 的基礎初始化。
+        # 為了保持簡單，我們假設 Player 直接處理 image/rect，不再依賴 GameObject 的 image_path 參數。
+        # 因此，GameObject 的 __init__ 在這裡的 Player 中不再被 `super().__init__` 調用來載入圖片。
+        # 我們需要確保 Player 仍然是 Sprite。所以 Player 應該繼承 pygame.sprite.Sprite。
+        # 我們之前的 GameObject 已經繼承了 pygame.sprite.Sprite，所以 Player 繼承 GameObject 是可以的。
+        # 關鍵是 Player 的 __init__ 現在自己負責 image 和 rect 的最終設定。
+        pygame.sprite.Sprite.__init__(self) # 確保 Sprite 被正確初始化
 
-        # 進行縮放 (smoothscale 品質較好)
-        self.image = pygame.transform.smoothscale(base_image_to_scale, (new_width, new_height))
-        
-        # 關鍵：更新 self.rect 以匹配新的縮小後圖像尺寸，並保持中心點不變
-        old_center = self.rect.center # 記錄縮放前 rect 的中心點
-        self.rect = self.image.get_rect() # 獲取基於新 self.image 的 rect
-        self.rect.center = old_center # 將新 rect 的中心點設置回原來的位置
+        # --- 圖像縮放邏輯 (在所有幀被載入和切割之後，對每一幀進行縮放) ---
+        self.scale_factor = 0.8 # 你之前設定的縮小比例
+        if self.animations:
+            for direction, frames in self.animations.items():
+                scaled_frames = []
+                for frame in frames:
+                    original_width = frame.get_width()
+                    original_height = frame.get_height()
+                    new_width = int(original_width * self.scale_factor)
+                    new_height = int(original_height * self.scale_factor)
+                    scaled_frames.append(pygame.transform.smoothscale(frame, (new_width, new_height)))
+                self.animations[direction] = scaled_frames
+            
+            # 更新當前的 self.image 和 self.rect 以使用縮放後的幀
+            if self.current_direction in self.animations and self.animations[self.current_direction]:
+                self.image = self.animations[self.current_direction][self.current_frame_index]
+                old_center = self.rect.center # 縮放前 rect 的中心點
+                self.rect = self.image.get_rect() # 從縮放後的圖像獲取新的 rect
+                self.rect.center = old_center # 保持中心點不變
+        # --- 縮放邏輯結束 ---
 
-        # 根據是否為 AI 調整速度 (可選)
+        # 根據是否為 AI 調整速度
         if self.is_ai and hasattr(settings, 'AI_PLAYER_SPEED_FACTOR'):
-            self.speed = int((settings.PLAYER_SPEED if hasattr(settings, 'PLAYER_SPEED') else 4) * settings.AI_PLAYER_SPEED_FACTOR)
+            base_speed = settings.PLAYER_SPEED if hasattr(settings, 'PLAYER_SPEED') else 4
+            self.speed = int(base_speed * settings.AI_PLAYER_SPEED_FACTOR)
         else:
             self.speed = settings.PLAYER_SPEED if hasattr(settings, 'PLAYER_SPEED') else 4
         
-        # ... (lives, max_bombs, bombs_placed_count, bomb_range, score, vx, vy, is_alive, etc. - 保持不變) ...
         self.lives = settings.MAX_LIVES if hasattr(settings, 'MAX_LIVES') else 3
         self.max_bombs = settings.INITIAL_BOMBS
         self.bombs_placed_count = 0
-        self.bomb_range = settings.INITIAL_BOMB_RANGE
+        self.bomb_range = settings.INITIAL_BOMB_RANGE if hasattr(settings, 'INITIAL_BOMB_RANGE') else 1
         self.score = 0
-        # self.speed 已經在上面設定了
-        self.vx = 0
-        self.vy = 0
-        self.is_alive = True
-        self.last_hit_time = 0
-        self.invincible_duration = 1000
+        self.vx = 0; self.vy = 0
+        self.is_alive = True; self.last_hit_time = 0; self.invincible_duration = 1000
+        self.is_moving = False # 新增：追蹤玩家是否正在移動，用於動畫
 
-
-    def get_input(self): # 這個方法只對人類玩家有效
+    def get_input(self):
         if self.is_ai:
-            return # AI 不從鍵盤獲取輸入
-
+            return
         self.vx, self.vy = 0, 0
         keys = pygame.key.get_pressed()
-        # ... (鍵盤輸入邏輯不變) ...
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            self.vx = -self.speed
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.vx = self.speed
-        if keys[pygame.K_UP] or keys[pygame.K_w]:
-            self.vy = -self.speed
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            self.vy = self.speed
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]: self.vx = -self.speed
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: self.vx = self.speed
+        if keys[pygame.K_UP] or keys[pygame.K_w]: self.vy = -self.speed
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]: self.vy = self.speed
         if self.vx != 0 and self.vy != 0:
             self.vx *= 0.7071
             self.vy *= 0.7071
-    
-    # AI 控制器會調用這個方法來設置玩家的移動意圖
-    def set_ai_movement_intent(self, dx_normalized, dy_normalized):
-        """
-        Called by AIController to set the player's desired movement direction.
-        dx_normalized, dy_normalized should be -1, 0, or 1.
-        """
-        if not self.is_ai: return # Should only be called for AI players
 
+    def set_ai_movement_intent(self, dx_normalized, dy_normalized):
+        if not self.is_ai: return
         self.vx = dx_normalized * self.speed
         self.vy = dy_normalized * self.speed
-        
-        # Normalize diagonal movement if both are non-zero
-        if self.vx != 0 and self.vy != 0:
-            self.vx *= 0.7071
-            self.vy *= 0.7071
-
-    def collide_with_walls(self, dx, dy, walls_group):
-        """
-        Checks for collision with walls after a potential move.
-        Adjusts player's rect if collision occurs.
-
-        Args:
-            dx (int): Change in x position.
-            dy (int): Change in y position.
-            walls_group (pygame.sprite.Group): Group of wall sprites.
-        """
-        # Move in x-direction
-        self.rect.x += dx
-        collided_walls_x = pygame.sprite.spritecollide(self, walls_group, False)
-        for wall in collided_walls_x:
-            if dx > 0: # Moving right
-                self.rect.right = wall.rect.left
-            elif dx < 0: # Moving left
-                self.rect.left = wall.rect.right
-        
-        # Move in y-direction
-        self.rect.y += dy
-        collided_walls_y = pygame.sprite.spritecollide(self, walls_group, False)
-        for wall in collided_walls_y:
-            if dy > 0: # Moving down
-                self.rect.bottom = wall.rect.top
-            elif dy < 0: # Moving up
-                self.rect.top = wall.rect.bottom
-
-    def update(self, dt, solid_obstacles_group): # Renamed walls_group for clarity
-        """
-        Updates the player's state, including movement and collision.
-        Handles differentiation between human and AI input for movement.
-        """
-        if not self.is_alive:
-            self.vx = 0 # Stop movement if dead
-            self.vy = 0
-            # Consider also stopping animations or other updates for a dead player
+        if dx_normalized != 0 and dy_normalized != 0:
+             self.vx *= 0.7071
+             self.vy *= 0.7071
+    
+    def _animate(self):
+        """處理玩家的動畫更新"""
+        if not self.animations or not self.is_moving: # 如果沒有動畫幀或不在移動，則使用靜止幀（如果有的話）或第一幀
+            # 可以設定一個站立的動畫幀，例如 self.animations[self.current_direction][0]
+            # 或者如果想在停止時固定朝向，可以不改變 current_frame_index
+            # 為了簡化，如果停止移動，我們將動畫幀索引重置為0，並顯示該方向的第一幀
+            self.current_frame_index = 0
+            if self.current_direction in self.animations and self.animations[self.current_direction]:
+                 self.image = self.animations[self.current_direction][self.current_frame_index]
             return
 
-        # 1. 獲取移動意圖 (vx, vy)
+        now = pygame.time.get_ticks()
+        if now - self.last_animation_update_time > self.animation_speed * 1000: # 轉換為毫秒
+            self.last_animation_update_time = now
+            self.current_frame_index = (self.current_frame_index + 1) % len(self.animations[self.current_direction])
+            
+            # 確保在切換圖像後保持 rect 的中心點，以避免圖像因幀尺寸細微差異而跳動
+            old_center = self.rect.center
+            self.image = self.animations[self.current_direction][self.current_frame_index]
+            self.rect = self.image.get_rect()
+            self.rect.center = old_center
+    
+    # ！！！ update 方法的再次強化版本 ！！！
+    def update(self, dt, solid_obstacles_group):
+        if not self.is_alive:
+            self.vx = 0; self.vy = 0
+            return
+
         if not self.is_ai:
-            self.get_input() # 人類玩家：從鍵盤讀取輸入並設定 self.vx, self.vy
-        # else:
-            # AI 玩家：self.vx 和 self.vy 應該已經由 AIController 
-            # (例如在其 move_along_path 方法中) 設定好了。
-            # Player.update 自身不需要再為 AI 設定 vx, vy，它只負責應用這些速度。
+            self.get_input()
+        
+        # ！！！修改：根據 vx, vy 更新朝向和 is_moving 狀態！！！
+        previous_direction = self.current_direction
+        if self.vx > 0: self.current_direction = "RIGHT"
+        elif self.vx < 0: self.current_direction = "LEFT"
+        # Y 軸的判斷應該在 X 之後，這樣在對角線移動時，上下方向優先（或根據你的喜好調整優先級）
+        if self.vy > 0: self.current_direction = "DOWN" # Y 軸向下為正
+        elif self.vy < 0: self.current_direction = "UP"
+        
+        self.is_moving = (self.vx != 0 or self.vy != 0)
+        
+        if not self.is_moving: # 如果沒有移動，可以將方向重置為一個預設的站立方向，例如 "DOWN"
+            # 或者保持最後的移動方向，取決於你想要的視覺效果
+            # self.current_direction = "DOWN" # 例如，閒置時總是朝下
+            # 為了讓玩家停下時保持最後的朝向，我們可以不修改 current_direction
             pass
 
-        # 2. X 軸移動和碰撞
-        self.rect.x += self.vx
-        # 檢測與所有固態障礙物的碰撞
+
+        # --- 移動和碰撞邏輯 (保持我們上次修正的版本) ---
+        move_x = round(self.vx); self.rect.x += move_x
         hit_list_x = pygame.sprite.spritecollide(self, solid_obstacles_group, False)
         for obstacle in hit_list_x:
-            if self.vx > 0:  # 向右移動撞到障礙物的左邊
-                self.rect.right = obstacle.rect.left
-            elif self.vx < 0:  # 向左移動撞到障礙物的右邊
-                self.rect.left = obstacle.rect.right
-        
-        # 3. Y 軸移動和碰撞 
-        self.rect.y += self.vy
-        # 檢測與所有固態障礙物的碰撞
+            if move_x > 0: self.rect.right = obstacle.rect.left
+            elif move_x < 0: self.rect.left = obstacle.rect.right
+            self.vx = 0
+        move_y = round(self.vy); self.rect.y += move_y
         hit_list_y = pygame.sprite.spritecollide(self, solid_obstacles_group, False)
         for obstacle in hit_list_y:
-            if self.vy > 0:  # 向下移動撞到障礙物的上邊
-                self.rect.bottom = obstacle.rect.top
-            elif self.vy < 0:  # 向上移動撞到障礙物的下邊
-                self.rect.top = obstacle.rect.bottom
-
-        # 4. 地圖邊界限制 (對人類和 AI 都適用)
+            if move_y > 0: self.rect.bottom = obstacle.rect.top
+            elif move_y < 0: self.rect.top = obstacle.rect.bottom
+            self.vy = 0
+        # --- 地圖邊界限制 (保持我們上次修正的版本) ---
         map_pixel_width = self.game.map_manager.tile_width * settings.TILE_SIZE
         map_pixel_height = self.game.map_manager.tile_height * settings.TILE_SIZE
+        if self.rect.left < 0: self.rect.left = 0; self.vx = 0 if self.vx < 0 else self.vx
+        if self.rect.right > map_pixel_width: self.rect.right = map_pixel_width; self.vx = 0 if self.vx > 0 else self.vx
+        if self.rect.top < 0: self.rect.top = 0; self.vy = 0 if self.vy < 0 else self.vy
+        if self.rect.bottom > map_pixel_height: self.rect.bottom = map_pixel_height; self.vy = 0 if self.vy > 0 else self.vy
+        # ！！！修改結束：動畫處理！！！
+        self._animate() # 在所有位置更新後調用動畫處理
 
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > map_pixel_width:
-            self.rect.right = map_pixel_width
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > map_pixel_height:
-            self.rect.bottom = map_pixel_height
-
-        # 5. (對於AI) 如果 AIController 不是每幀都更新 AI 的 vx, vy，
-        #    並且希望 AI 在執行完一步移動後停下來，可以在這裡重置。
-        #    但我們目前的 AIController.move_along_path 邏輯會在到達格子中心時重置 vx,vy。
-        # if self.is_ai:
-        #     # self.vx = 0 # 如果希望 AI 每“思考”一次才動一下，則在這裡重置
-        #     # self.vy = 0
-        #     pass
 
     def place_bomb(self):
         if not self.is_alive: return
-
         if self.bombs_placed_count < self.max_bombs:
             bomb_tile_x = self.rect.centerx // settings.TILE_SIZE
             bomb_tile_y = self.rect.centery // settings.TILE_SIZE
@@ -202,29 +213,18 @@ class Player(GameObject):
             for bomb_sprite in self.game.bombs_group:
                 if bomb_sprite.current_tile_x == bomb_tile_x and \
                    bomb_sprite.current_tile_y == bomb_tile_y:
-                    can_place = False
-                    if not self.is_ai: # 只對人類玩家打印，避免AI刷屏
-                        print(f"Cannot place bomb at ({bomb_tile_x}, {bomb_tile_y}): Bomb already exists.")
-                    break
-            
+                    can_place = False; break
             if can_place:
                 new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game)
                 self.game.all_sprites.add(new_bomb)
                 self.game.bombs_group.add(new_bomb)
                 self.bombs_placed_count += 1
-                # print(f"Player (ID: {id(self)}, AI: {self.is_ai}) placed bomb. Active: {self.bombs_placed_count}/{self.max_bombs}")
-                
                 if self.is_ai and self.ai_controller:
                     self.ai_controller.ai_placed_bomb_recently = True
                     self.ai_controller.last_bomb_placed_time = pygame.time.get_ticks()
-                    # AIController 的 update_state_machine 會決定是否切換到 WAIT_EXPLOSION 或 ESCAPE
-        # else:
-        #     if not self.is_ai:
-        #         print(f"Player (ID: {id(self)}) cannot place more bombs. Active: {self.bombs_placed_count}, Max: {self.max_bombs}")
 
     def bomb_exploded_feedback(self):
         self.bombs_placed_count = max(0, self.bombs_placed_count - 1)
-        # print(f"Player (ID: {id(self)}, AI: {self.is_ai}) notified of bomb explosion. Active bombs: {self.bombs_placed_count}/{self.max_bombs}")
         if self.is_ai and self.ai_controller:
             self.ai_controller.ai_placed_bomb_recently = False
 
@@ -234,9 +234,7 @@ class Player(GameObject):
             self.lives -= amount
             self.last_hit_time = current_time
             print(f"Player (ID: {id(self)}, AI: {self.is_ai}) took damage! Lives left: {self.lives}")
-            if self.lives <= 0:
-                self.lives = 0
-                self.die()
+            if self.lives <= 0: self.lives = 0; self.die()
 
     def die(self):
         if self.is_alive:
