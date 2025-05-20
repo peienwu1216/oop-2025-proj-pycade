@@ -64,7 +64,46 @@ class AIController:
             # if self.target_item: print(f"   Targeting item: {self.target_item.type} at tile ({self.target_item.rect.centerx//settings.TILE_SIZE},{self.target_item.rect.centery//settings.TILE_SIZE})")
             # if self.target_player and self.current_state == AI_STATE_ATTACK_PLAYER: print(f"   Targeting player: {id(self.target_player)}")
             # if self.escape_target_tile: print(f"   Escape target tile: {self.escape_target_tile}")
+    def find_safe_tiles_nearby(self, start_tile, max_search_depth=5):
+        """
+        使用 BFS 尋找附近最近的安全格子，最大搜索深度為 max_search_depth。
+        一個格子被視為「安全」是指它是可步行的，並且當前不是危險的。
+        """
+        queue = deque([(start_tile, 0)]) # 佇列元素: (格子座標, 當前深度)
+        visited = {start_tile}      # 已訪問過的格子集合
+        safe_tiles_found = []       # 儲存找到的安全格子
 
+        map_mgr = self.game.map_manager # 獲取地圖管理器
+
+        while queue:
+            (current_x, current_y), depth = queue.popleft()
+
+            if depth > max_search_depth: # 如果超過最大搜索深度，則停止擴展此路徑
+                continue
+
+            # 檢查當前格子是否安全 (非危險且可步行 - is_walkable 在下面擴展時檢查)
+            if not self.is_tile_dangerous(current_x, current_y, check_bombs=True, check_explosions=True, future_seconds=0.5): # 檢查0.5秒內的危險
+                safe_tiles_found.append((current_x, current_y))
+                # 優化：如果只想找最近的幾個，可以在找到足夠數量後提前結束
+                if len(safe_tiles_found) >= 5: # 例如，最多找5個候選安全點
+                    break 
+
+            # 如果未達到最大深度，則擴展到鄰近格子
+            if depth < max_search_depth:
+                for dx, dy in DIRECTIONS.values(): # DIRECTIONS 是 (dx, dy) 向量的字典
+                    next_x, next_y = current_x + dx, current_y + dy
+                    
+                    if (next_x, next_y) not in visited: # 如果鄰近格子未被訪問過
+                        if map_mgr.is_walkable(next_x, next_y): # 必須是可步行的
+                            visited.add((next_x, next_y))
+                            queue.append(((next_x, next_y), depth + 1))
+        
+        # if safe_tiles_found:
+        #     print(f"[AI ESCAPE] Found {len(safe_tiles_found)} safe tiles near {start_tile}: {safe_tiles_found}")
+        # else:
+        #     print(f"[AI ESCAPE] No safe tiles found near {start_tile} within depth {max_search_depth}")
+        return safe_tiles_found
+    
     def update_state_machine(self):
         """AI的核心決策邏輯，決定當前應該處於哪個狀態 (參考C++報告的優先級順序)"""
         if not self.ai_player.is_alive:
