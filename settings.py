@@ -18,6 +18,8 @@ TITLE = "Pycade Bomber"
 
 # Map settings (之後會更詳細)
 TILE_SIZE = 32 # 每個格子的像素大小，可以根據你的喜好調整
+PLAYER_SPRITE_FRAME_WIDTH = 32  # 玩家 Sprite Sheet 中單幀的寬度
+PLAYER_SPRITE_FRAME_HEIGHT = 32 # 玩家 Sprite Sheet 中單幀的高度
 
 # Initial game settings (可以從你的 C++ Globals.cpp 參考)
 # 例如：
