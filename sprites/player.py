@@ -107,7 +107,6 @@ class Player(GameObject):
         self.is_moving = False 
         self.action_timer = 0 # 用於控制行走動畫在瞬移後持續一小段時間
         self.ACTION_ANIMATION_DURATION = 0.15 # 行走動畫在移動後持續的秒數 (例如0.15秒)
-
         # 移除舊的 self.vx, self.vy, self.speed，因為移動方式改變
         # self.vx = 0; self.vy = 0
         # self.speed = ... (不再需要像素速度)
@@ -122,6 +121,8 @@ class Player(GameObject):
         if not self.is_alive:
             return False
         
+        if self.action_timer > 0:
+             return False
         # 如果正在執行上一個動作的動畫，則不允許新的移動 (可選)
         # if self.action_timer > 0:
         # return False
@@ -193,7 +194,8 @@ class Player(GameObject):
         """
         if self.is_ai: # AI 不使用這個方法來獲取鍵盤輸入
             return
-
+        if self.action_timer > 0:
+            return # 如果正在執行上一個動作的動畫，則不允許新的移動 (可選)
         # 人類玩家的 is_moving 主要由 action_timer 控制是否繼續播放動畫
         # 按鍵只負責觸發 attempt_move_to_tile
         # 如果沒有按鍵，且 action_timer 結束，is_moving 會是 False
@@ -212,6 +214,9 @@ class Player(GameObject):
 
         animation_frames = self.animations[self.current_direction] #
         
+        if not self.is_ai:
+            self.get_input() # get_input 內部會檢查 action_timer
+            
         if not self.is_moving: # 如果不在移動 (action_timer <= 0)，顯示該方向的第一幀 (站立幀)
             self.current_frame_index = 0 #
         else: # 如果在移動 (action_timer > 0)，則更新動畫幀

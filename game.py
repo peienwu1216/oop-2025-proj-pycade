@@ -116,47 +116,24 @@ class Game:
             self.draw()
 
     def events(self):
-        # ！！！修改開始：處理人類玩家的格子移動輸入！！！
-        human_player_moved_this_event_loop = False
+        # ！！！修改開始：移除人類玩家的 KEYDOWN 移動邏輯！！！
+        # is_moving 的狀態現在由 Player 物件內部根據 get_input 和 action_timer 管理
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN: # KEYDOWN 只處理一次性動作，如放炸彈、選單操作
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 
                 if self.game_state == "PLAYING":
-                    # --- 人類玩家移動 ---
-                    if self.player1 and self.player1.is_alive and not self.player1.is_ai:
-                        dx, dy = 0, 0
-                        if event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                            dx = -1
-                        elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                            dx = 1
-                        elif event.key == pygame.K_UP or event.key == pygame.K_w:
-                            dy = -1
-                        elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                            dy = 1
-                        
-                        if dx != 0 or dy != 0:
-                            # Player.attempt_move_to_tile 會處理 is_moving 和 action_timer
-                            self.player1.attempt_move_to_tile(dx, dy)
-                            human_player_moved_this_event_loop = True # 記錄本輪事件循環中有移動嘗試
-
                     # --- 放置炸彈 ---
                     if event.key == pygame.K_f: 
                         if self.player1 and self.player1.is_alive:
-                            self.player1.place_bomb()
+                            self.player1.place_bomb() # place_bomb 仍然是 KEYDOWN 事件
                 
                 elif self.game_state == "GAME_OVER":
                     if event.key == pygame.K_r:
                         self.setup_initial_state()
-        
-        # 如果本輪事件循環中，人類玩家沒有通過 KEYDOWN 觸發移動，
-        # 且其 action_timer 可能已結束（由 Player.update 處理），
-        # 則其 is_moving 狀態會由 Player.update 自動處理。
-        # 此處不需要再額外設定 is_moving = False。
-        # ！！！修改結束！！！
 
     def update(self):
         if self.game_state == "PLAYING":
