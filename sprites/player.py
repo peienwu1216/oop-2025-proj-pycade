@@ -15,6 +15,7 @@ class Player(GameObject):
             image_path=player_image_path
         )
         self.game = game # Store the game instance
+        scale_factor = 0.8 # 例如，縮放到原來的 80%
         # ... (rest of __init__ remains the same)
         self.lives = settings.MAX_LIVES if hasattr(settings, 'MAX_LIVES') else 3
         
