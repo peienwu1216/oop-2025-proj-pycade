@@ -54,4 +54,14 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 預留
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png")
 
+BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
+# 如果你有炸彈動畫幀，可以像這樣定義一個列表:
+# BOMB_ANIM_FRAMES = [
+#     os.path.join(IMAGES_DIR, "bomb", "bomb_tick_0.png"),
+#     os.path.join(IMAGES_DIR, "bomb", "bomb_tick_1.png"),
+# ]
+
 # ... (之後會添加更多圖片路徑) ...
+
+# Bomb settings
+BOMB_TIMER = 3000  # 炸彈爆炸前的毫秒數 (3 秒)
