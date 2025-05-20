@@ -112,4 +112,4 @@ AI_MOVE_DELAY = 200       # AI "思考"或主要決策的間隔毫秒數 (0.2秒
                           # 你的 C++ 版本有 AI_MOVE_DELAY = 4 (easy) 或 2 (hard)
                           # 這可能是指遊戲幀而不是毫秒，需要確認。
                           # Pygame 中用毫秒更常見。
-AI_PLAYER_SPEED_FACTOR = 0.8 # AI 玩家可以比人類玩家稍慢或一樣快
+AI_PLAYER_SPEED_FACTOR = 0.5 # AI 玩家可以比人類玩家稍慢或一樣快
