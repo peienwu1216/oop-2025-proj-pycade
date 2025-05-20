@@ -10,40 +10,59 @@ class Game:
         self.screen = screen
         self.clock = clock
         self.running = True
-        self.game_state = "PLAYING"
+        self.game_state = "PLAYING" # 初始狀態，會被 setup_initial_state 再次設定
 
         self.all_sprites = pygame.sprite.Group()
-        self.players_group = pygame.sprite.Group() # Group specifically for players
-        
-        self.bombs_group = pygame.sprite.Group() 
+        self.players_group = pygame.sprite.Group()
+        self.bombs_group = pygame.sprite.Group()
         self.explosions_group = pygame.sprite.Group()
-        self.map_manager = MapManager(self)
-        self.player1 = None # Placeholder for player 1 instance
+        # self.items_group = pygame.sprite.Group()
 
-        # self.load_assets()
-        self.setup_initial_state()
+        self.map_manager = MapManager(self)
+        self.player1 = None
+
+        self.setup_initial_state() # 調用以設定初始狀態
 
     def setup_initial_state(self):
-        """Sets up the initial game state."""
-        
-        print(f"Map loaded. Number of walls: {len(self.map_manager.walls_group)}")
+        """Sets up the initial game state, map, and players for a new game or restart."""
+        print("[DEBUG] Game.setup_initial_state() called.") # <--- 新增
 
+        # 1. 清理所有遊戲物件組
+        print("[DEBUG] Emptying sprite groups...") # <--- 新增
+        self.all_sprites.empty()
+        self.players_group.empty()
+        self.bombs_group.empty()
+        self.explosions_group.empty()
+        # if hasattr(self, 'items_group'): self.items_group.empty()
+
+        # 2. 重新加載/創建地圖物件 (MapManager 的 load_map_from_data 會將牆壁加入 all_sprites)
+        print("[DEBUG] Reloading map data...") # <--- 新增
+        self.map_manager.load_map_from_data(self.map_manager.get_simple_test_map())
+        print(f"[DEBUG] Map reloaded. Number of walls in map_manager.walls_group: {len(self.map_manager.walls_group)}")
+        print(f"[DEBUG] Number of d_walls in map_manager.destructible_walls_group: {len(self.map_manager.destructible_walls_group)}")
+
+
+        # 3. 重新創建玩家物件
+        print("[DEBUG] Recreating player...") # <--- 新增
         start_tile_x, start_tile_y = 1, 1
         if self.map_manager.is_walkable(start_tile_x, start_tile_y):
-            self.player1 = Player(self, start_tile_x, start_tile_y) # Pass 'self' (the game instance)
-            self.all_sprites.add(self.player1)
-            self.players_group.add(self.player1)
-            print(f"Player 1 created at tile ({start_tile_x}, {start_tile_y})")
+            self.player1 = Player(self, start_tile_x, start_tile_y)
         else:
-            print(f"Error: Could not find a walkable starting position for Player 1 at ({start_tile_x}, {start_tile_y})")
-            self.player1 = Player(self, 2, 1) # Pass 'self'
-            self.all_sprites.add(self.player1)
-            self.players_group.add(self.player1)
-        print(f"Total sprites in all_sprites: {len(self.all_sprites)}")
+            print(f"Warning: Default start position ({start_tile_x},{start_tile_y}) not walkable. Trying (2,1).")
+            self.player1 = Player(self, 2, 1)
+        
+        self.all_sprites.add(self.player1)
+        self.players_group.add(self.player1)
+        print(f"[DEBUG] Player 1 recreated. is_alive: {self.player1.is_alive}, Lives: {self.player1.lives}")
+        
+        # 4. 確保遊戲狀態是 PLAYING
+        print(f"[DEBUG] Setting game_state to PLAYING. Previous state was: {self.game_state}") # <--- 新增
+        self.game_state = "PLAYING"
+        
+        print(f"[DEBUG] Total sprites in all_sprites after setup: {len(self.all_sprites)}")
+        print("[DEBUG] Game.setup_initial_state() finished.") # <--- 新增
 
-    # def load_assets(self):
-    #     pass
-
+    # ... (run method) ...
     def run(self):
         while self.running:
             self.dt = self.clock.tick(settings.FPS) / 1000.0
@@ -58,17 +77,16 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
-                if self.game_state == "PLAYING": # 確保只在遊戲進行中才能放炸彈
-                    if event.key == pygame.K_f: # 假設 F 鍵是玩家1的炸彈鍵
-                        if self.player1:
+                
+                if self.game_state == "PLAYING":
+                    if event.key == pygame.K_f:
+                        if self.player1 and self.player1.is_alive:
                             self.player1.place_bomb()
-                    # 如果有玩家2，在這裡添加玩家2的炸彈鍵響應
-                    # elif event.key == pygame.K_j: # 假設 J 鍵是玩家2的炸彈鍵 (你的C++設定)
-                    #     if self.player2: # 假設有 self.player2
-                    #         self.player2.place_bomb()
-            # We are using pygame.key.get_pressed() in Player.get_input()
-            # so specific keydown events for movement are not strictly needed here,
-            # unless you want single press actions.
+                
+                elif self.game_state == "GAME_OVER":
+                    if event.key == pygame.K_r:
+                        print("[DEBUG] R key pressed in GAME_OVER state.") # <--- 確認事件被捕捉
+                        self.setup_initial_state()
 
     def update(self):
         """
