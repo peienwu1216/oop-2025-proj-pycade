@@ -28,7 +28,17 @@ TILE_SIZE = 32 # 每個格子的像素大小，可以根據你的喜好調整
 # INITIAL_BOMB_RANGE = 3
 
 # Player settings
-# PLAYER_SPEED = 5 # 像素/幀
+PLAYER_SPEED = 4         # 玩家移動速度 (像素/幀)
+MAX_LIVES = 3
+INITIAL_BOMBS = 1        # 初始可放置炸彈數
+INITIAL_BOMB_RANGE = 1   # 炸彈初始範圍 (格子數) - 你C++是3，可以調整
+
+# Player controls (for reference, actual input handled in Player class)
+# P1_UP = pygame.K_w (Pygame key constants)
+# P1_DOWN = pygame.K_s
+# P1_LEFT = pygame.K_a
+# P1_RIGHT = pygame.K_d
+# P1_BOMB = pygame.K_f
 
 import os # 為了處理路徑
 
