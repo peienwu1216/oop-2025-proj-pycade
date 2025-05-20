@@ -3,6 +3,7 @@
 import pygame
 from .game_object import GameObject
 import settings
+from .bomb import Bomb
 
 class Player(GameObject):
     def __init__(self, game, x_tile, y_tile, player_image_path=settings.PLAYER_IMG): # Add 'game'
@@ -16,6 +17,10 @@ class Player(GameObject):
         self.game = game # Store the game instance
         # ... (rest of __init__ remains the same)
         self.lives = settings.MAX_LIVES if hasattr(settings, 'MAX_LIVES') else 3
+        
+        self.max_bombs = settings.INITIAL_BOMBS 
+        self.bombs_placed_count = 0 
+
         self.bombs_available = settings.INITIAL_BOMBS if hasattr(settings, 'INITIAL_BOMBS') else 1
         self.bomb_range = settings.INITIAL_BOMB_RANGE if hasattr(settings, 'INITIAL_BOMB_RANGE') else 1
         self.score = 0
@@ -119,6 +124,43 @@ class Player(GameObject):
         if self.rect.bottom > map_pixel_height:
             self.rect.bottom = map_pixel_height
 
+    def place_bomb(self):
+        """
+        Player attempts to place a bomb at their current tile position.
+        """
+        if self.bombs_placed_count < self.max_bombs:
+            # 將炸彈放置在玩家腳下所在的格子中心
+            # 你的 C++ 版本是 player.x, player.y，這裡我們用格子的中心
+            bomb_tile_x = self.rect.centerx // settings.TILE_SIZE
+            bomb_tile_y = self.rect.centery // settings.TILE_SIZE
 
+            # 檢查該位置是否已經有炸彈 (避免重疊放置)
+            # 這需要 Game 類別能夠提供這個檢查，或者 Bomb 自己註冊位置
+            can_place = True
+            for bomb_sprite in self.game.bombs_group: # 假設 Game 有 bombs_group
+                if bomb_sprite.current_tile_x == bomb_tile_x and \
+                   bomb_sprite.current_tile_y == bomb_tile_y:
+                    can_place = False
+                    print(f"Cannot place bomb at ({bomb_tile_x}, {bomb_tile_y}): Bomb already exists.")
+                    break
+            
+            if can_place:
+                # 創建 Bomb 實例，並傳遞 game 實例
+                new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game)
+                self.game.all_sprites.add(new_bomb)
+                self.game.bombs_group.add(new_bomb) # Game 類需要有這個 bombs_group
+                self.bombs_placed_count += 1
+                print(f"Player (ID: {id(self)}) placed bomb at ({bomb_tile_x}, {bomb_tile_y}). Active bombs: {self.bombs_placed_count}/{self.max_bombs}")
+        else:
+            print(f"Player (ID: {id(self)}) cannot place more bombs. Active: {self.bombs_placed_count}, Max: {self.max_bombs}")
+        
+    def bomb_exploded_feedback(self):
+        """
+        Called by a Bomb instance when it explodes,
+        decrementing the count of active bombs for this player.
+        """
+        self.bombs_placed_count = max(0, self.bombs_placed_count - 1) # 確保不小於0
+        print(f"Player (ID: {id(self)}) notified of bomb explosion. Active bombs: {self.bombs_placed_count}/{self.max_bombs}")
+        
     # We need to pass the game instance to the Player if it needs to access game.map_manager
     # Let's modify Player.__init__ and Game.setup_initial_state
