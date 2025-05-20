@@ -14,16 +14,19 @@ class Game:
 
         self.all_sprites = pygame.sprite.Group()
         self.players_group = pygame.sprite.Group() # Group specifically for players
+        
+        self.bombs_group = pygame.sprite.Group() 
 
         self.map_manager = MapManager(self)
         self.player1 = None # Placeholder for player 1 instance
 
         # self.load_assets()
         self.setup_initial_state()
-        
+
     def setup_initial_state(self):
         """Sets up the initial game state."""
         print(f"Map loaded. Number of walls: {len(self.map_manager.walls_group)}")
+
         start_tile_x, start_tile_y = 1, 1
         if self.map_manager.is_walkable(start_tile_x, start_tile_y):
             self.player1 = Player(self, start_tile_x, start_tile_y) # Pass 'self' (the game instance)
@@ -40,35 +43,6 @@ class Game:
     # def load_assets(self):
     #     pass
 
-    def setup_initial_state(self):
-        """Sets up the initial game state."""
-        # MapManager already loads the map and adds walls to self.all_sprites
-        print(f"Map loaded. Number of walls: {len(self.map_manager.walls_group)}")
-
-        # Create Player 1 - Find a walkable starting position
-        # For now, let's hardcode a starting tile that should be empty on our test map
-        # Test map:
-        # "WWWWWWWWWWWWWWW", # 0
-        # "W.............W", # 1  <- Player starts at (1,1) tile
-        # "W.W.W.W.W.W.W.W", # 2
-        start_tile_x, start_tile_y = 1, 1
-        if self.map_manager.is_walkable(start_tile_x, start_tile_y): # Check if the spot is empty
-            self.player1 = Player(start_tile_x, start_tile_y)
-            self.all_sprites.add(self.player1)
-            self.players_group.add(self.player1)
-            print(f"Player 1 created at tile ({start_tile_x}, {start_tile_y})")
-        else:
-            print(f"Error: Could not find a walkable starting position for Player 1 at ({start_tile_x}, {start_tile_y})")
-            # Fallback or raise an error
-            # For now, let's try another spot or just print error
-            self.player1 = Player(2, 1) # Try a different spot if (1,1) is blocked in future maps
-            self.all_sprites.add(self.player1)
-            self.players_group.add(self.player1)
-
-
-        print(f"Total sprites in all_sprites: {len(self.all_sprites)}")
-
-
     def run(self):
         while self.running:
             self.dt = self.clock.tick(settings.FPS) / 1000.0
@@ -83,6 +57,14 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
+                if self.game_state == "PLAYING": # 確保只在遊戲進行中才能放炸彈
+                    if event.key == pygame.K_f: # 假設 F 鍵是玩家1的炸彈鍵
+                        if self.player1:
+                            self.player1.place_bomb()
+                    # 如果有玩家2，在這裡添加玩家2的炸彈鍵響應
+                    # elif event.key == pygame.K_j: # 假設 J 鍵是玩家2的炸彈鍵 (你的C++設定)
+                    #     if self.player2: # 假設有 self.player2
+                    #         self.player2.place_bomb()
             # We are using pygame.key.get_pressed() in Player.get_input()
             # so specific keydown events for movement are not strictly needed here,
             # unless you want single press actions.
