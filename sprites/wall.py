@@ -3,6 +3,8 @@
 import pygame
 from .game_object import GameObject # 從同一個 sprites 套件中匯入 GameObject
 import settings
+from .item import create_random_item # 用於掉落道具
+import random # 用於 item_drop_chance 的判斷
 
 class Wall(GameObject):
     """
@@ -61,9 +63,6 @@ class DestructibleWall(Wall): # 繼承自 Wall，因為它也是一種牆
         self.tile_x = x_tile # 儲存格子座標，方便掉落道具
         self.tile_y = y_tile
         self.is_destroyed = False
-
-        # 你的 C++ 版本中，道具是在可破壞障礙物被破壞後“有機率”生成的。
-        # 我們可以在這裡先定義一個掉落道具的機率。
         self.item_drop_chance = 0.8 # 80% 機率掉落道具 (參考你的 C++ 報告)
         # 你還定義了不同道具的具體機率，我們之後會在掉落時處理
 
@@ -82,16 +81,20 @@ class DestructibleWall(Wall): # 繼承自 Wall，因為它也是一種牆
 
     def try_drop_item(self):
         """
-        Determines if an item should be dropped and creates it.
+        Determines if an item should be dropped (based on item_drop_chance)
+        and then creates a specific random item.
         """
-        if pygame.time.get_ticks() % 100 < self.item_drop_chance * 100: # 簡單的機率實現
-        # 或者更標準的: if random.random() < self.item_drop_chance: (需要 import random)
-            print(f"Attempting to drop item at ({self.tile_x}, {self.tile_y})")
-            # item_to_drop = create_random_item(self.tile_x, self.tile_y, self.game) # 假設有這個函數
-            # if item_to_drop:
-            #     self.game.all_sprites.add(item_to_drop)
-            #     self.game.items_group.add(item_to_drop) # Game 類需要有 items_group
-            #     print(f"Dropped an item at ({self.tile_x}, {self.tile_y})")
-            # 目前我們先不實現具體的道具掉落，只打印一個訊息
-            # 之後我們會在 sprites/item.py 中定義道具類和 create_random_item 函數
-            pass # 佔位符，表示成功觸發掉落機率，但還未生成道具
+        # 首先判斷這面牆本身是否掉落道具 (80% 機率)
+        if random.random() < self.item_drop_chance: # random.random() 返回 [0.0, 1.0)
+            print(f"DestructibleWall at ({self.tile_x}, {self.tile_y}) will attempt to drop an item.")
+            # 如果觸發了掉落，再調用 create_random_item 決定掉落哪種道具
+            item_to_drop = create_random_item(self.tile_x, self.tile_y, self.game)
+            if item_to_drop:
+                self.game.all_sprites.add(item_to_drop)
+                # Game 類需要一個 items_group 來管理道具，以便玩家拾取
+                if not hasattr(self.game, 'items_group'): # 為了安全，如果 Game 忘記創建
+                    self.game.items_group = pygame.sprite.Group()
+                self.game.items_group.add(item_to_drop)
+                print(f"Dropped a {item_to_drop.type} item at ({self.tile_x}, {self.tile_y})")
+        else:
+            print(f"DestructibleWall at ({self.tile_x}, {self.tile_y}) did not drop an item (chance miss).")
