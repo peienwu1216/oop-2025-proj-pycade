@@ -65,3 +65,8 @@ BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
 
 # Bomb settings
 BOMB_TIMER = 3000  # 炸彈爆炸前的毫秒數 (3 秒)
+EXPLOSION_DURATION = 500  # 爆炸效果持續的毫秒數 (0.5 秒)
+EXPLOSION_COLOR = (255, 165, 0) # 橘色，用於繪製爆炸效果
+# 如果使用圖片，可以在這裡定義路徑:
+# EXPLOSION_CENTER_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_center.png")
+# EXPLOSION_SEGMENT_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_segment.png") # 假設水平垂直用同一種
