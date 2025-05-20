@@ -25,6 +25,7 @@ class Game:
 
     def setup_initial_state(self):
         """Sets up the initial game state."""
+        
         print(f"Map loaded. Number of walls: {len(self.map_manager.walls_group)}")
 
         start_tile_x, start_tile_y = 1, 1
@@ -98,12 +99,6 @@ class Game:
                     hit_explosions_for_d_wall = pygame.sprite.spritecollide(d_wall, self.explosions_group, False)
                     if hit_explosions_for_d_wall:
                         d_wall.take_damage() # DestructibleWall 的 take_damage 會處理 self.kill()
-            # 3. 處理爆炸對可破壞牆壁的傷害 (我們稍後會添加 DestructibleWall)
-            # if hasattr(self.map_manager, 'destructible_walls_group'):
-            #     for d_wall in list(self.map_manager.destructible_walls_group):
-            #         hit_explosions = pygame.sprite.spritecollide(d_wall, self.explosions_group, False)
-            #         if hit_explosions:
-            #             d_wall.take_damage() # 假設 DestructibleWall 也有 take_damage 或 destroy 方法
 
             # 4. 檢查遊戲結束條件
             #    例如，如果只有一個人類玩家 (self.player1)
