@@ -30,7 +30,7 @@ TILE_SIZE = 32 # 每個格子的像素大小，可以根據你的喜好調整
 # Player settings
 PLAYER_SPEED = 4         # 玩家移動速度 (像素/幀)
 MAX_LIVES = 3
-INITIAL_BOMBS = 1        # 初始可放置炸彈數
+INITIAL_BOMBS = 2        # 初始可放置炸彈數
 INITIAL_BOMB_RANGE = 1   # 炸彈初始範圍 (格子數) - 你C++是3，可以調整
 
 # Player controls (for reference, actual input handled in Player class)
