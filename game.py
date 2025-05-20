@@ -18,6 +18,8 @@ class Game:
         self.explosions_group = pygame.sprite.Group()
         self.items_group = pygame.sprite.Group() 
 
+        self.solid_obstacles_group = pygame.sprite.Group() # 用於玩家碰撞
+
         self.map_manager = MapManager(self)
         self.player1 = None
 
@@ -34,6 +36,7 @@ class Game:
         self.bombs_group.empty()
         self.explosions_group.empty()
         if hasattr(self, 'items_group'): self.items_group.empty()
+        if hasattr(self, 'solid_obstacles_group'): self.solid_obstacles_group.empty()
 
         # 2. 重新加載/創建地圖物件 (MapManager 的 load_map_from_data 會將牆壁加入 all_sprites)
         print("[DEBUG] Reloading map data...") # <--- 新增
@@ -94,12 +97,13 @@ class Game:
         Handles sprite updates, collisions, and game logic.
         """
         if self.game_state == "PLAYING":
+            self.all_sprites.update(self.dt, self.solid_obstacles_group) # 傳遞包含所有牆的組
+            self.all_sprites.update(self.dt, self.map_manager.walls_group)
             # 1. 更新所有 Sprites
             #    - Player.update 會處理輸入、移動、與牆壁碰撞
             #    - Bomb.update 會處理倒數計時、視覺更新、時間到了調用 explode()
             #    - Explosion.update 會處理持續時間，時間到了 self.kill()
             #    - Wall.update (目前是 pass)
-            self.all_sprites.update(self.dt, self.map_manager.walls_group)
 
             # 2. 處理爆炸對玩家的傷害
             #    迭代 players_group 中的每個活著的玩家
@@ -154,7 +158,7 @@ class Game:
         # (可以添加更多遊戲狀態，如 PAUSED, LEVEL_TRANSITION 等)
     
     def draw(self):
-        self.screen.fill(settings.BLACK)
+        self.screen.fill(settings.WHITE)
         self.all_sprites.draw(self.screen) # 繪製所有遊戲物件
 
         if self.game_state == "PLAYING":
