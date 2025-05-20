@@ -61,7 +61,7 @@ class Game:
         p2_start_tile_y = grid_height - 2 if grid_height > 2 else 1
         p2_start_tile = (p2_start_tile_x, p2_start_tile_y)
 
-        safe_radius = 1 
+        safe_radius = 2
 
         random_map_layout = self.map_manager.get_randomized_map_layout(
             grid_width, grid_height,
@@ -116,24 +116,23 @@ class Game:
             self.draw()
 
     def events(self):
-        # ！！！修改開始：移除人類玩家的 KEYDOWN 移動邏輯！！！
-        # is_moving 的狀態現在由 Player 物件內部根據 get_input 和 action_timer 管理
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            if event.type == pygame.KEYDOWN: # KEYDOWN 只處理一次性動作，如放炸彈、選單操作
+            if event.type == pygame.KEYDOWN: 
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 
                 if self.game_state == "PLAYING":
-                    # --- 放置炸彈 ---
+                    # 只處理一次性動作，如放炸彈
                     if event.key == pygame.K_f: 
                         if self.player1 and self.player1.is_alive:
-                            self.player1.place_bomb() # place_bomb 仍然是 KEYDOWN 事件
+                            self.player1.place_bomb()
                 
                 elif self.game_state == "GAME_OVER":
                     if event.key == pygame.K_r:
                         self.setup_initial_state()
+        # 方向移動的 KEYDOWN 處理已移除，改由 Player.get_input() 配合 get_pressed() 處理
 
     def update(self):
         if self.game_state == "PLAYING":
