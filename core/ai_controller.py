@@ -170,30 +170,28 @@ class AIController:
     def can_place_bomb_safely_at(self, bomb_placement_x, bomb_placement_y):
         ai_bomb_range = self.ai_player.bomb_range
         # ！！！修改開始：增加日誌，微調參數！！！
-        # print(f"[AI CAN_PLACE_BOMB_SAFELY] Attempting for spot ({bomb_placement_x},{bomb_placement_y}), AI range: {ai_bomb_range}") # DEBUG
+        print(f"[AI CAN_PLACE_BOMB_SAFELY] Attempting for spot ({bomb_placement_x},{bomb_placement_y}), AI range: {ai_bomb_range}") # DEBUG
 
         # 1. 檢查放置點本身是否已經因為其他原因而危險 (在放置我們自己的炸彈之前)
         #    使用一個非常短的預測時間，因為我們關心的是“現在”是否安全。
         if self.is_tile_dangerous(bomb_placement_x, bomb_placement_y, True, True, future_seconds=0.1): 
-             # print(f"  [CAN_PLACE_BOMB_SAFELY] Placement spot ({bomb_placement_x},{bomb_placement_y}) is ALREADY dangerous from other sources (0.1s check). Cannot place.") # DEBUG
+             print(f"  [CAN_PLACE_BOMB_SAFELY] Placement spot ({bomb_placement_x},{bomb_placement_y}) is ALREADY dangerous from other sources (0.1s check). Cannot place.") # DEBUG
              return False
-
-        # 2. 尋找放置炸彈後的逃生點
-        #    - start_tile 是炸彈放置點，因為 AI 放完炸彈後從該點開始逃生。
-        #    - max_search_depth 需要足夠大，至少能逃出炸彈範圍。
-        #    - avoid_specific_bomb_data 告訴 find_safe_tiles_nearby 要避開我們即將放置的這顆炸彈的爆炸範圍。
+        
+        # 2. 檢查放置點的四周是否有牆壁 (如果有，則無法放置)
         safe_escape_spots = self.find_safe_tiles_nearby(
             start_tile=(bomb_placement_x, bomb_placement_y),
-            max_search_depth=ai_bomb_range + 2, # 搜索深度：炸彈範圍再加兩格緩衝
-            avoid_specific_bomb_data=((bomb_placement_x, bomb_placement_y), ai_bomb_range) # 要避開的炸彈
+            max_search_depth=ai_bomb_range + 3, # 增加一點搜索深度以確保能逃出大範圍炸彈
+            avoid_specific_bomb_data=((bomb_placement_x, bomb_placement_y), ai_bomb_range),
+            destination_future_check_seconds=0.6, # 逃生目標點在0.6秒內安全即可 (相對寬鬆)
+            step_future_check_seconds=0.15         # 但到達該點的路徑每一步驟需在0.15秒內安全 (嚴格)
         )
 
         if not safe_escape_spots:
-            # print(f"  [CAN_PLACE_BOMB_SAFELY] No safe escape spots found by find_safe_tiles_nearby from ({bomb_placement_x},{bomb_placement_y}) after considering own hypothetical bomb. Cannot place.") # DEBUG
+            print(f"  [CAN_PLACE_BOMB_SAFELY] No safe escape spots found by find_safe_tiles_nearby from ({bomb_placement_x},{bomb_placement_y}) after considering own hypothetical bomb. Cannot place.") # DEBUG
             return False
-        
-        # print(f"  [CAN_PLACE_BOMB_SAFELY] Found safe escape spots: {safe_escape_spots}. Bombing at ({bomb_placement_x},{bomb_placement_y}) deemed potentially safe to escape from.") # DEBUG
-        # ！！！修改結束！！！
+
+        print(f"  [CAN_PLACE_BOMB_SAFELY] Found safe escape spots: {safe_escape_spots}. Bombing at ({bomb_placement_x},{bomb_placement_y}) deemed potentially safe to escape from.") # DEBUG
         return True
 
 
@@ -203,7 +201,7 @@ class AIController:
         # [AIC_NO_CHANGE_NEEDED] 此方法返回格子列表，與新移動系統兼容。
         # 內部的 is_walkable 和 is_tile_dangerous 判斷仍然有效。
         if not start_tile or not end_tile or start_tile == (None,None) or end_tile == (None,None):
-            # print(f"[BFS] Invalid start or end tile: start={start_tile}, end={end_tile}") #DEBUG
+            print(f"[BFS] Invalid start or end tile: start={start_tile}, end={end_tile}") #DEBUG
             return []
         if start_tile == end_tile : return [start_tile]
         # ... (其餘邏輯不變，使用 step_future_check_seconds) ...
@@ -235,12 +233,12 @@ class AIController:
         return []
 
 
-    def find_safe_tiles_nearby(self, start_tile, max_search_depth=5, avoid_specific_bomb_data=None):
+    def find_safe_tiles_nearby(self, start_tile, max_search_depth=5, avoid_specific_bomb_data=None,
+                           destination_future_check_seconds=0.25, 
+                           step_future_check_seconds=0.1):       
         if not start_tile or start_tile == (None,None): return []
-        # ！！！修改開始：增加日誌，調整 BFS 參數和安全檢查！！！
-        # print(f"[AI FIND_SAFE_NEARBY] Start: {start_tile}, MaxDepth: {max_search_depth}, AvoidSpecificBomb: {avoid_specific_bomb_data is not None}") # DEBUG
+        # print(f"[AI FIND_SAFE_NEARBY] Start: {start_tile}, MaxDepth: {max_search_depth}, AvoidSpecificBomb: {avoid_specific_bomb_data is not None}, DestCheckSec: {destination_future_check_seconds}, StepCheckSec: {step_future_check_seconds}") # DEBUG
         
-        # BFS 佇列中的元素：( (x,y), path_to_tile, current_depth )
         queue = deque([(start_tile, [start_tile], 0)]) 
         visited = {start_tile}
         safe_tiles_found = []
@@ -250,37 +248,29 @@ class AIController:
             (current_x, current_y), path_to_current, depth = queue.popleft()
 
             if depth > max_search_depth:
-                # print(f"  [FIND_SAFE_NEARBY] Depth {depth} exceeded max {max_search_depth} for ({current_x},{current_y})") # DEBUG
                 continue
 
-            # --- 評估 (current_x, current_y) 是否為一個合格的「安全逃生點」 ---
-            # 1. 它本身不能在“要避開的特定炸彈”的爆炸範圍內 (如果有的話)
-            is_safe_from_specific_bomb_blast = True
-            if avoid_specific_bomb_data:
+            # --- 評估 (current_x, current_y) 是否為一個合格的「安全逃生點」(Destination) ---
+            is_safe_from_specific_bomb_blast = True 
+            if avoid_specific_bomb_data: # 如果需要避開特定炸彈
                 bomb_tile, bomb_range = avoid_specific_bomb_data
                 if self._is_tile_in_hypothetical_blast(current_x, current_y, bomb_tile[0], bomb_tile[1], bomb_range):
-                    is_safe_from_specific_bomb_blast = False
-                    # print(f"  [FIND_SAFE_NEARBY] Tile ({current_x},{current_y}) is IN specific bomb blast {avoid_specific_bomb_data}. Not a safe dest.") # DEBUG
+                    is_safe_from_specific_bomb_blast = False # 此目標點在特定炸彈的爆炸範圍內
             
-            # 2. 它本身不能因為“其他一般危險”(其他炸彈/火焰)而即將變得危險
-            #    對於逃生“目的地”，我們預期它在稍長一點的時間內是安全的。
             is_safe_from_general_dangers = False
-            if is_safe_from_specific_bomb_blast: # 只有在不在特定炸彈範圍內時，才檢查一般危險
-                if not self.is_tile_dangerous(current_x, current_y, True, True, future_seconds=0.3): # 目的地格子在0.3秒內安全
-                    is_safe_from_general_dangers = True
-                # else:
-                    # print(f"  [FIND_SAFE_NEARBY] Tile ({current_x},{current_y}) IS generally dangerous (0.3s check). Not a safe dest.") # DEBUG
+            if is_safe_from_specific_bomb_blast: # 目的地必須不在特定炸彈範圍內
+                if not self.is_tile_dangerous(current_x, current_y, True, True, future_seconds=destination_future_check_seconds):
+                    is_safe_from_general_dangers = True # 目的地也不受其他一般危險影響
 
-            # print(f"  [FIND_SAFE_NEARBY] Checking tile ({current_x},{current_y}) as Dest: SpecSafe={is_safe_from_specific_bomb_blast}, GenSafe={is_safe_from_general_dangers}") # DEBUG
+            # print(f"  [FIND_SAFE_NEARBY] Check Dest ({current_x},{current_y}): SpecSafeDest={is_safe_from_specific_bomb_blast}, GenSafeDest={is_safe_from_general_dangers} (using {destination_future_check_seconds}s)") # DEBUG
 
             if is_safe_from_specific_bomb_blast and is_safe_from_general_dangers:
                 safe_tiles_found.append((current_x, current_y))
-                # print(f"    [FIND_SAFE_NEARBY] Added ({current_x},{current_y}) to safe_tiles_found. Path: {path_to_current}") # DEBUG
-                if len(safe_tiles_found) >= 3: # 找到幾個就夠了
-                    # print(f"    [FIND_SAFE_NEARBY] Found {len(safe_tiles_found)} safe spots, stopping search early.") # DEBUG
+                # print(f"    [FIND_SAFE_NEARBY] Added ({current_x},{current_y}) to safe_tiles_found.") # DEBUG
+                if len(safe_tiles_found) >= 3: # 找到一些就夠了
                     break 
 
-            # --- 探索鄰近格子 ---
+            # --- 探索鄰近格子 (Path Steps) ---
             if depth < max_search_depth:
                 shuffled_directions = list(DIRECTIONS.values())
                 random.shuffle(shuffled_directions)
@@ -289,30 +279,27 @@ class AIController:
                     if (next_x, next_y) not in visited and map_mgr.is_walkable(next_x, next_y):
                         visited.add((next_x, next_y))
                         
-                        # 要加入佇列的「下一步」必須：
-                        # 1. 不在“要避開的特定炸彈”的爆炸範圍內
-                        step_ok_from_specific = True
-                        if avoid_specific_bomb_data:
-                             bomb_tile_spec, bomb_range_spec = avoid_specific_bomb_data
-                             if self._is_tile_in_hypothetical_blast(next_x, next_y, bomb_tile_spec[0], bomb_tile_spec[1], bomb_range_spec):
-                                 step_ok_from_specific = False
+                        # ！！！修改的核心在這裡！！！
+                        # 對於「路徑步驟」(next_x, next_y)，我們只檢查它是否受到「一般危險」的影響。
+                        # 如果我們正在為 avoid_specific_bomb_data（AI自己剛放的炸彈）規劃逃生路徑，
+                        # 那麼路徑步驟 *可以* 暫時處於該特定炸彈的未來爆炸範圍內，
+                        # 因為AI的目的是快速穿過這個區域。
                         
-                        # 2. 本身不能因為“其他一般危險”而「極短期內」（例如0.1秒）變得危險
-                        step_ok_from_general = False
-                        if step_ok_from_specific: # 只有在不在特定炸彈範圍內時，才檢查一般危險
-                            if not self.is_tile_dangerous(next_x,next_y,True,True, future_seconds=0.1): # 極短時間檢查
-                                step_ok_from_general = True
+                        step_is_generally_safe = not self.is_tile_dangerous(
+                            next_x, next_y, 
+                            check_bombs=True,         # 檢查其他炸彈
+                            check_explosions=True,    # 檢查現有火焰
+                            future_seconds=step_future_check_seconds # 短期預測一般危險
+                        )
                         
-                        if step_ok_from_specific and step_ok_from_general:
+                        # print(f"    [FIND_SAFE_NEARBY] Check Step to ({next_x},{next_y}): GenStepSafe={step_is_generally_safe} (using {step_future_check_seconds}s)") # DEBUG
+                        
+                        if step_is_generally_safe:
                             new_path = list(path_to_current); new_path.append((next_x,next_y))
                             queue.append(((next_x, next_y), new_path, depth + 1))
-                        # else:
-                            # print(f"    [FIND_SAFE_NEARBY] Step to ({next_x},{next_y}) is not safe: SpecStepSafe={step_ok_from_specific}, GenStepSafe={step_ok_from_general}") # DEBUG
         
-        # print(f"  [FIND_SAFE_NEARBY] Search complete. Returning: {safe_tiles_found}") # DEBUG
-        # ！！！修改結束！！！
+        # print(f"  [FIND_SAFE_NEARBY] Search for {start_tile} complete. Returning: {safe_tiles_found}") # DEBUG
         return safe_tiles_found
-
 
     def find_best_powerup(self):
         ai_tile = self._get_ai_current_tile()
@@ -542,15 +529,21 @@ class AIController:
                 self.change_state(AI_STATE_EVALUATE_SITUATION); return
         
         if re_evaluate_escape:
-            safe_spots = self.find_safe_tiles_nearby(ai_tile, max_search_depth=5, avoid_specific_bomb_data=None)
+            safe_spots = self.find_safe_tiles_nearby(
+                ai_tile, 
+                max_search_depth=6, # 緊急逃生時，搜索範圍可以稍大
+                avoid_specific_bomb_data=None, # 緊急逃生是躲避所有已知危險，不是自己剛放的特定炸彈
+                destination_future_check_seconds=0.2, # 逃生目標點必須在0.2秒內安全
+                step_future_check_seconds=0.1      # 路徑每一步驟需在0.1秒內安全
+            )
             if safe_spots:
                 potential_spots = [s for s in safe_spots if s != ai_tile] or safe_spots
                 escape_tile_candidate = random.choice(potential_spots)
-                path = self.bfs_find_path(ai_tile, escape_tile_candidate, True, True, step_future_check_seconds=0.05) # 極度謹慎的逃生步伐
+                path = self.bfs_find_path(ai_tile, escape_tile_candidate, True, True, step_future_check_seconds=0.05) 
                 if path and len(path) > 1:
                     self.current_path = path; self.current_path_index = 0; self.current_escape_target_tile = escape_tile_candidate
-                else: self.current_path = [] # 找不到路徑，清除路徑以停止移動
-            else: self.current_path = [] # 找不到安全點，清除路徑以停止移動
+                else: self.current_path = [] 
+            else: self.current_path = [] 
         
         if not self.current_path: # 如果最終沒有路徑（無論是初始就沒有，還是重新評估後沒有）
             if self.ai_player: self.ai_player.is_moving = False # 確保動畫停止
@@ -593,10 +586,16 @@ class AIController:
             
             if my_bomb_sprite_info:
                 bomb_data_for_escape = (my_bomb_sprite_info['tile'], my_bomb_sprite_info['range'])
-                safe_spots = self.find_safe_tiles_nearby(ai_tile, max_search_depth=my_bomb_sprite_info['range'] + 2, avoid_specific_bomb_data=bomb_data_for_escape)
+                safe_spots = self.find_safe_tiles_nearby(
+                    ai_tile, 
+                    max_search_depth=my_bomb_sprite_info['range'] + 2, 
+                    avoid_specific_bomb_data=bomb_data_for_escape,
+                    destination_future_check_seconds=0.3, # 戰術撤退目標點0.3秒安全即可
+                    step_future_check_seconds=0.1          # 路徑步驟0.1秒安全
+                )
                 if safe_spots:
                     retreat_target = random.choice(safe_spots)
-                    path = self.bfs_find_path(ai_tile, retreat_target, True, True, step_future_check_seconds=0.05) # 極度謹慎
+                    path = self.bfs_find_path(ai_tile, retreat_target, True, True, step_future_check_seconds=0.05) 
                     if path and len(path) > 1 :
                         self.current_path = path; self.current_path_index = 0; self.current_escape_target_tile = retreat_target
                     else: self.current_path = []
