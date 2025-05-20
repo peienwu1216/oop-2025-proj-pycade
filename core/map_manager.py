@@ -2,7 +2,7 @@
 
 import pygame
 import settings
-from sprites.wall import Wall # 從 sprites 套件中匯入 Wall
+from sprites.wall import Wall, DestructibleWall # 從 sprites 套件中匯入 Wall
 
 class MapManager:
     """
@@ -23,9 +23,9 @@ class MapManager:
 
         # Sprite groups for map objects
         self.walls_group = pygame.sprite.Group()
-        # self.destructible_walls_group = pygame.sprite.Group() # For later
+        self.destructible_walls_group = pygame.sprite.Group()
 
-        self.load_map_from_data(self.get_simple_test_map()) # Load a test map for now
+        self.load_map_from_data(self.get_simple_test_map())
 
     def get_simple_test_map(self):
         """Returns a simple hardcoded map for testing."""
@@ -33,17 +33,17 @@ class MapManager:
         # This matches your C++ project's map dimensions roughly (21x21)
         # But for Pygame, a smaller initial map is easier to manage visually
         test_map = [
-            "WWWWWWWWWWWWWWW", # 15 tiles wide
-            "W.............W",
-            "W.W.W.W.W.W.W.W",
-            "W.............W",
-            "W.W.W.W.W.W.W.W",
-            "W.............W",
-            "W.W.W.W.W.W.W.W",
-            "W.............W",
-            "W.W.W.W.W.W.W.W",
-            "W.............W",
-            "WWWWWWWWWWWWWWW", # 11 tiles high
+            "WWWWWWWWWWWWWWW",
+            "W.D.D.D.D.D.D.W", # 在空格和 'W' 之間加入 'D'
+            "WDW.WDW.WDW.WDW",
+            "W.D.D.D.D.D.D.W",
+            "WDW.WDW.WDW.WDW",
+            "W.D.D.D.D.D.D.W",
+            "WDW.WDW.WDW.WDW",
+            "W.D.D.D.D.D.D.W",
+            "WDW.WDW.WDW.WDW",
+            "W.............W", # 留一些空格給玩家
+            "WWWWWWWWWWWWWWW",
         ]
         return test_map
 
@@ -64,10 +64,10 @@ class MapManager:
                     wall = Wall(col_index, row_index)
                     self.walls_group.add(wall)
                     self.game.all_sprites.add(wall) # Add to the game's main sprite group
-                # elif tile_char == 'D': # For DestructibleWall later
-                    # d_wall = DestructibleWall(col_index, row_index)
-                    # self.destructible_walls_group.add(d_wall)
-                    # self.game.all_sprites.add(d_wall)
+                elif tile_char == 'D':
+                    d_wall = DestructibleWall(col_index, row_index, self.game) # 傳遞 game instance
+                    self.destructible_walls_group.add(d_wall)
+                    self.game.all_sprites.add(d_wall)
                 # elif tile_char == '.':
                     # Empty space, do nothing or create Floor sprite if needed
                     # pass
@@ -89,4 +89,16 @@ class MapManager:
             # For now, only non-wall tiles are walkable
             # This needs to be more robust later (check for bombs, etc.)
             return self.map_data[tile_y][tile_x] == '.'
+        return False
+
+    def is_solid_wall_at(self, tile_x, tile_y):
+        """Checks if there is a solid, non-destructible wall at the given tile coordinates."""
+        if not (0 <= tile_x < self.tile_width and 0 <= tile_y < self.tile_height):
+            return True # 地圖外視為實心牆
+
+        # 檢查 self.walls_group (不可破壞的牆)
+        # 這裡我們假設一個格子上只有一個牆體物件
+        # 更精確的方法是直接查 map_data，如果 'W' 代表固態牆
+        if self.map_data[tile_y][tile_x] == 'W':
+            return True
         return False

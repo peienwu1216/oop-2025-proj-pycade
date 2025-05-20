@@ -52,6 +52,7 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 預留
 
 # Image specific paths
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
+WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png")
 
 BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")

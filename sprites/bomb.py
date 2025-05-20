@@ -101,7 +101,28 @@ class Bomb(GameObject):
                     if not (0 <= nx < self.game.map_manager.tile_width and \
                             0 <= ny < self.game.map_manager.tile_height):
                         break # 超出邊界，停止這個方向的延伸
+                
+                    tile_blocked = False # 標記這個方向的火焰是否應停止
 
+                    # 檢查是否有不可破壞的牆 (Solid Wall)
+                    if self.game.map_manager.is_solid_wall_at(nx, ny):
+                        tile_blocked = True # 實心牆，火焰停止
+                    
+                    if not tile_blocked:
+                        explosion_tiles.append((nx, ny)) # 火焰可以到達這個格子
+                        
+                        # 檢查是否有可破壞的牆 (Destructible Wall)
+                        # 如果火焰到達這個格子，並且這個格子上是可破壞的牆，那麼牆被摧毀，火焰也到此為止
+                        for d_wall in list(self.game.map_manager.destructible_walls_group):
+                            # 檢查 d_wall 是否在 (nx, ny) 這個格子上
+                            if d_wall.tile_x == nx and d_wall.tile_y == ny:
+                                # d_wall.take_damage() # DestructibleWall 自己會 kill()
+                                tile_blocked = True # 火焰摧毀了它，然後停止
+                                break # 找到對應的可破壞牆壁，無需再檢查其他
+                    
+                    if tile_blocked:
+                        break # 這個方向的火焰延伸停止
+                    
                     # 檢查是否撞到不可破壞的牆壁 (Wall)
                     # 需要一種方法來查詢特定格子上是否有 Wall
                     # 簡單的方式是迭代 self.game.map_manager.walls_group
