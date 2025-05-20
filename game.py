@@ -16,7 +16,7 @@ class Game:
         self.players_group = pygame.sprite.Group()
         self.bombs_group = pygame.sprite.Group()
         self.explosions_group = pygame.sprite.Group()
-        # self.items_group = pygame.sprite.Group()
+        self.items_group = pygame.sprite.Group() 
 
         self.map_manager = MapManager(self)
         self.player1 = None
@@ -33,7 +33,7 @@ class Game:
         self.players_group.empty()
         self.bombs_group.empty()
         self.explosions_group.empty()
-        # if hasattr(self, 'items_group'): self.items_group.empty()
+        if hasattr(self, 'items_group'): self.items_group.empty()
 
         # 2. 重新加載/創建地圖物件 (MapManager 的 load_map_from_data 會將牆壁加入 all_sprites)
         print("[DEBUG] Reloading map data...") # <--- 新增
@@ -117,9 +117,19 @@ class Game:
                     hit_explosions_for_d_wall = pygame.sprite.spritecollide(d_wall, self.explosions_group, False)
                     if hit_explosions_for_d_wall:
                         d_wall.take_damage() # DestructibleWall 的 take_damage 會處理 self.kill()
-
+            
+            # 3. 檢查玩家是否收集到道具
+            for player in self.players_group:
+                if player.is_alive:
+                    # pygame.sprite.spritecollide(sprite, group, dokill)
+                    # dokill=True: 碰撞到的 item 會從 items_group 和 all_sprites 中移除 (因為 Item.apply_effect 會調用 self.kill())
+                    items_collected = pygame.sprite.spritecollide(player, self.items_group, True) # True: item is removed from groups
+                    for item in items_collected:
+                        item.apply_effect(player) # 道具應用效果 (並且 Item.apply_effect 內部會 self.kill())
+                        print(f"Player {id(player)} collected item type: {item.type}")
+            
             # 4. 檢查遊戲結束條件
-            #    例如，如果只有一個人類玩家 (self.player1)
+            # 例如，如果只有一個人類玩家 (self.player1)
             if self.player1 and not self.player1.is_alive:
                 # 為了防止在同一幀內多次觸發 GAME_OVER 邏輯
                 if self.game_state != "GAME_OVER": # 只有在狀態改變時才打印和切換
