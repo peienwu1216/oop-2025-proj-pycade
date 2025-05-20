@@ -86,3 +86,10 @@ EXPLOSION_COLOR = (255, 165, 0) # 橘色，用於繪製爆炸效果
 # 如果使用圖片，可以在這裡定義路徑:
 # EXPLOSION_CENTER_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_center.png")
 # EXPLOSION_SEGMENT_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_segment.png") # 假設水平垂直用同一種
+
+# AI Settings
+AI_MOVE_DELAY = 200       # AI "思考"或主要決策的間隔毫秒數 (0.2秒)
+                          # 你的 C++ 版本有 AI_MOVE_DELAY = 4 (easy) 或 2 (hard)
+                          # 這可能是指遊戲幀而不是毫秒，需要確認。
+                          # Pygame 中用毫秒更常見。
+AI_PLAYER_SPEED_FACTOR = 0.9 # AI 玩家可以比人類玩家稍慢或一樣快
