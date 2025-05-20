@@ -30,4 +30,18 @@ TILE_SIZE = 32 # 每個格子的像素大小，可以根據你的喜好調整
 # Player settings
 # PLAYER_SPEED = 5 # 像素/幀
 
-# (更多設定會在這裡添加)
+import os # 為了處理路徑
+
+# Asset paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # 專案根目錄
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
+SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds") # 預留
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")   # 預留
+DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 預留
+
+# Image specific paths
+WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
+PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png")
+
+# ... (之後會添加更多圖片路徑) ...
