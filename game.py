@@ -20,6 +20,22 @@ class Game:
 
         # self.load_assets()
         self.setup_initial_state()
+        
+    def setup_initial_state(self):
+        """Sets up the initial game state."""
+        print(f"Map loaded. Number of walls: {len(self.map_manager.walls_group)}")
+        start_tile_x, start_tile_y = 1, 1
+        if self.map_manager.is_walkable(start_tile_x, start_tile_y):
+            self.player1 = Player(self, start_tile_x, start_tile_y) # Pass 'self' (the game instance)
+            self.all_sprites.add(self.player1)
+            self.players_group.add(self.player1)
+            print(f"Player 1 created at tile ({start_tile_x}, {start_tile_y})")
+        else:
+            print(f"Error: Could not find a walkable starting position for Player 1 at ({start_tile_x}, {start_tile_y})")
+            self.player1 = Player(self, 2, 1) # Pass 'self'
+            self.all_sprites.add(self.player1)
+            self.players_group.add(self.player1)
+        print(f"Total sprites in all_sprites: {len(self.all_sprites)}")
 
     # def load_assets(self):
     #     pass

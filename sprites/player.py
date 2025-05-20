@@ -5,49 +5,30 @@ from .game_object import GameObject
 import settings
 
 class Player(GameObject):
-    """
-    Represents the player character.
-    """
-    def __init__(self, x_tile, y_tile, player_image_path=settings.PLAYER_IMG):
-        """
-        Initializes a Player object.
-
-        Args:
-            x_tile (int): The initial x-coordinate (in tile units).
-            y_tile (int): The initial y-coordinate (in tile units).
-            player_image_path (str, optional): Path to the player's image.
-                                               Defaults to settings.PLAYER_IMG.
-        """
+    def __init__(self, game, x_tile, y_tile, player_image_path=settings.PLAYER_IMG): # Add 'game'
         super().__init__(
             x_tile * settings.TILE_SIZE,
             y_tile * settings.TILE_SIZE,
-            settings.TILE_SIZE, # width (will be overridden by image)
-            settings.TILE_SIZE, # height (will be overridden by image)
+            settings.TILE_SIZE,
+            settings.TILE_SIZE,
             image_path=player_image_path
         )
-
-        # Player specific attributes (can be expanded from your C++ Player struct)
+        self.game = game # Store the game instance
+        # ... (rest of __init__ remains the same)
         self.lives = settings.MAX_LIVES if hasattr(settings, 'MAX_LIVES') else 3
         self.bombs_available = settings.INITIAL_BOMBS if hasattr(settings, 'INITIAL_BOMBS') else 1
-        self.bomb_range = settings.INITIAL_BOMB_RANGE if hasattr(settings, 'INITIAL_BOMB_RANGE') else 1 # C++ is 3, check settings
+        self.bomb_range = settings.INITIAL_BOMB_RANGE if hasattr(settings, 'INITIAL_BOMB_RANGE') else 1
         self.score = 0
-        self.speed = settings.PLAYER_SPEED if hasattr(settings, 'PLAYER_SPEED') else 4 # pixels per frame
+        self.speed = settings.PLAYER_SPEED if hasattr(settings, 'PLAYER_SPEED') else 4
+        self.vx = 0
+        self.vy = 0
 
-        # Movement attributes
-        self.vx = 0 # Velocity x
-        self.vy = 0 # Velocity y
-
-        # Store the game instance if needed for interactions
-        # self.game = game # We might pass the game instance if player needs to access it directly
+        # ... (get_input and update methods as modified above)
 
     def get_input(self):
-        """
-        Handles player input for movement.
-        This version uses continuous key pressing.
-        """
+        # ... (get_input 內容不變) ...
         self.vx, self.vy = 0, 0
         keys = pygame.key.get_pressed()
-
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vx = -self.speed
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
@@ -56,40 +37,88 @@ class Player(GameObject):
             self.vy = -self.speed
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             self.vy = self.speed
-
-        # Normalize diagonal movement (optional, but good practice)
         if self.vx != 0 and self.vy != 0:
-            # Multiply by 1/sqrt(2) (approx 0.7071)
             self.vx *= 0.7071
             self.vy *= 0.7071
 
-    def update(self, dt, walls_group): # Add walls_group for collision later
+    def collide_with_walls(self, dx, dy, walls_group):
         """
-        Updates the player's state, including movement and animation.
+        Checks for collision with walls after a potential move.
+        Adjusts player's rect if collision occurs.
 
         Args:
-            dt (float): Delta time, the time since the last frame in seconds.
-                        Not strictly used for this simple pixel-based movement yet,
-                        but good to have for physics-based movement later.
-            walls_group (pygame.sprite.Group): Group containing all wall sprites for collision.
+            dx (int): Change in x position.
+            dy (int): Change in y position.
+            walls_group (pygame.sprite.Group): Group of wall sprites.
         """
-        self.get_input() # Get movement intention
+        # Move in x-direction
+        self.rect.x += dx
+        collided_walls_x = pygame.sprite.spritecollide(self, walls_group, False)
+        for wall in collided_walls_x:
+            if dx > 0: # Moving right
+                self.rect.right = wall.rect.left
+            elif dx < 0: # Moving left
+                self.rect.left = wall.rect.right
+        
+        # Move in y-direction
+        self.rect.y += dy
+        collided_walls_y = pygame.sprite.spritecollide(self, walls_group, False)
+        for wall in collided_walls_y:
+            if dy > 0: # Moving down
+                self.rect.bottom = wall.rect.top
+            elif dy < 0: # Moving up
+                self.rect.top = wall.rect.bottom
 
-        # Update position based on velocity
-        # For now, simple movement without collision
-        self.rect.x += self.vx
-        self.rect.y += self.vy
+    def update(self, dt, walls_group):
+        """
+        Updates the player's state, including movement and collision.
+        """
+        self.get_input()
 
-        # --- Collision detection will be added here in the next step ---
+        # Store potential movement
+        intended_dx = self.vx
+        intended_dy = self.vy
 
-        # Keep player on screen (optional, or handle via map boundaries)
-        # if self.rect.left < 0:
-        #     self.rect.left = 0
-        # if self.rect.right > settings.SCREEN_WIDTH: # This should be map width later
-        #     self.rect.right = settings.SCREEN_WIDTH
-        # if self.rect.top < 0:
-        #     self.rect.top = 0
-        # if self.rect.bottom > settings.SCREEN_HEIGHT: # This should be map height later
-        #     self.rect.bottom = settings.SCREEN_HEIGHT
+        # Temporarily move rect to check collision without committing the full move yet
+        # This is a common way: move x, check collision, then move y, check collision.
+        
+        # Apply movement and handle collisions separately for x and y axes
+        # This prevents getting stuck in corners or sticking to walls.
 
-    # place_bomb() method will be added later
+        # Move in X direction and check for collisions
+        self.rect.x += intended_dx
+        hit_list_x = pygame.sprite.spritecollide(self, walls_group, False)
+        for wall in hit_list_x:
+            if intended_dx > 0:  # Moving right; hit the left side of the wall
+                self.rect.right = wall.rect.left
+            elif intended_dx < 0:  # Moving left; hit the right side of the wall
+                self.rect.left = wall.rect.right
+        
+        # Move in Y direction and check for collisions
+        self.rect.y += intended_dy
+        hit_list_y = pygame.sprite.spritecollide(self, walls_group, False)
+        for wall in hit_list_y:
+            if intended_dy > 0:  # Moving down; hit the top side of the wall
+                self.rect.bottom = wall.rect.top
+            elif intended_dy < 0:  # Moving up; hit the bottom side of the wall
+                self.rect.top = wall.rect.bottom
+
+        # Keep player within map boundaries (using tile coordinates for map size)
+        # This assumes map_manager provides map_pixel_width and map_pixel_height
+        # For now, we can use a simplified boundary or define it in settings
+        
+        map_pixel_width = self.game.map_manager.tile_width * settings.TILE_SIZE if hasattr(self, 'game') else settings.SCREEN_WIDTH
+        map_pixel_height = self.game.map_manager.tile_height * settings.TILE_SIZE if hasattr(self, 'game') else settings.SCREEN_HEIGHT
+
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > map_pixel_width:
+            self.rect.right = map_pixel_width
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > map_pixel_height:
+            self.rect.bottom = map_pixel_height
+
+
+    # We need to pass the game instance to the Player if it needs to access game.map_manager
+    # Let's modify Player.__init__ and Game.setup_initial_state
