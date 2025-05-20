@@ -68,90 +68,48 @@ class Bomb(GameObject):
             text_rect = text_surface.get_rect(center=(self.image.get_width() / 2, self.image.get_height() / 2))
             self.image.blit(text_surface, text_rect)
 
-
     def explode(self):
-        """
-        Handles the bomb explosion logic.
-        """
         if not self.exploded:
-            print(f"Bomb at ({self.current_tile_x}, {self.current_tile_y}) EXPLOADED!")
+            print(f"Bomb at ({self.current_tile_x}, {self.current_tile_y}) EXPLOADED by player with range {self.placed_by_player.bomb_range}!")
             self.exploded = True
-            
-            # 通知放置者炸彈已爆炸 (這樣玩家才能再放新的)
             if self.placed_by_player:
-                 self.placed_by_player.bomb_exploded_feedback() 
+                 self.placed_by_player.bomb_exploded_feedback()
 
-            # --- 實際的爆炸效果和傷害處理將在下一步驟中添加 ---
-            # 例如: self.game.create_explosion_at(self.current_tile_x, self.current_tile_y, self.placed_by_player.bomb_range)
-            
-            # 爆炸範圍，從放置炸彈的玩家那裡獲取
-            bomb_range = self.placed_by_player.bomb_range 
-            explosion_tiles = [] # 用來儲存將要產生爆炸火焰的格子座標
+            bomb_range = self.placed_by_player.bomb_range
+            explosion_tiles = []
+            explosion_tiles.append((self.current_tile_x, self.current_tile_y)) # 中心點
 
-            # 1. 中心點
-            explosion_tiles.append((self.current_tile_x, self.current_tile_y))
-
-            # 2. 四個方向延伸
-            #    dx, dy: (0, -1) -> Up, (0, 1) -> Down, (-1, 0) -> Left, (1, 0) -> Right
-            for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]: # 上, 下, 左, 右
                 for i in range(1, bomb_range + 1):
                     nx, ny = self.current_tile_x + dx * i, self.current_tile_y + dy * i
                     
-                    # 檢查是否超出地圖邊界
+                    # 1. 檢查是否超出地圖邊界
                     if not (0 <= nx < self.game.map_manager.tile_width and \
                             0 <= ny < self.game.map_manager.tile_height):
                         break # 超出邊界，停止這個方向的延伸
-                
-                    tile_blocked = False # 標記這個方向的火焰是否應停止
 
-                    # 檢查是否有不可破壞的牆 (Solid Wall)
+                    # 2. 檢查是否有不可破壞的牆 (Solid Wall)
                     if self.game.map_manager.is_solid_wall_at(nx, ny):
-                        tile_blocked = True # 實心牆，火焰停止
-                    
-                    if not tile_blocked:
-                        explosion_tiles.append((nx, ny)) # 火焰可以到達這個格子
-                        
-                        # 檢查是否有可破壞的牆 (Destructible Wall)
-                        # 如果火焰到達這個格子，並且這個格子上是可破壞的牆，那麼牆被摧毀，火焰也到此為止
-                        for d_wall in list(self.game.map_manager.destructible_walls_group):
-                            # 檢查 d_wall 是否在 (nx, ny) 這個格子上
-                            if d_wall.tile_x == nx and d_wall.tile_y == ny:
-                                # d_wall.take_damage() # DestructibleWall 自己會 kill()
-                                tile_blocked = True # 火焰摧毀了它，然後停止
-                                break # 找到對應的可破壞牆壁，無需再檢查其他
-                    
-                    if tile_blocked:
-                        break # 這個方向的火焰延伸停止
-                    
-                    # 檢查是否撞到不可破壞的牆壁 (Wall)
-                    # 需要一種方法來查詢特定格子上是否有 Wall
-                    # 簡單的方式是迭代 self.game.map_manager.walls_group
-                    collided_with_solid_wall = False
-                    for wall in self.game.map_manager.walls_group: # 假設 MapManager 有 walls_group
-                        if wall.rect.collidepoint(nx * settings.TILE_SIZE + settings.TILE_SIZE // 2, 
-                                                  ny * settings.TILE_SIZE + settings.TILE_SIZE // 2):
-                            # 這裡假設 Wall 是不可破壞的。如果是 DestructibleWall，則火焰可以穿過一次。
-                            # 我們目前只有 Wall (不可破壞)
-                            collided_with_solid_wall = True
-                            break 
-                    
-                    if collided_with_solid_wall:
                         break # 撞到不可破壞牆壁，停止這個方向的延伸
-
+                    
+                    # 3. 如果沒有被固態牆阻擋，則火焰可以到達這個格子
                     explosion_tiles.append((nx, ny))
-
-                    # 如果是可破壞牆壁 (DestructibleWall)，火焰會摧毀它並停止在這個方向的延伸
-                    # (我們之後會加入 DestructibleWall 的邏輯)
-                    # for d_wall in self.game.map_manager.destructible_walls_group:
-                    #     if d_wall.rect.collidepoint(nx_pixel + TILE_SIZE/2, ny_pixel + TILE_SIZE/2):
-                    #         # d_wall.destroy() # 假設有個摧毀方法
-                    #         break_further = True # 火焰到此為止
-                    # if break_further: break
+                    
+                    # 4. 檢查這個格子是否是可破壞的牆
+                    # 如果是，火焰雖然到達了這裡 (加入了 explosion_tiles)，
+                    # 但這個方向的火焰延伸也應該停止 (火焰不會穿透被炸開的牆)
+                    is_destructible_here = False
+                    for d_wall in self.game.map_manager.destructible_walls_group:
+                        if d_wall.tile_x == nx and d_wall.tile_y == ny:
+                            is_destructible_here = True
+                            break
+                    if is_destructible_here:
+                        break # 撞到可破壞牆壁，火焰也停止在這個方向的延伸
 
             # 根據 explosion_tiles 創建 Explosion Sprite
             for ex_tile_x, ex_tile_y in explosion_tiles:
                 expl_sprite = Explosion(ex_tile_x, ex_tile_y, self.game)
                 self.game.all_sprites.add(expl_sprite)
-                self.game.explosions_group.add(expl_sprite) # Game 類需要有這個 group
-                
-            self.kill() # 從所有 Sprite Group 中移除此炸彈 Sprite
+                self.game.explosions_group.add(expl_sprite)
+            
+            self.kill()
