@@ -51,59 +51,107 @@ class AIController:
         print(f"AIController initialized for Player ID: {id(self.ai_player)}. Targeting Player ID: {id(self.target_player) if self.target_player else 'None'}")
 
     def update_state_machine(self):
-        """Decides the AI's state based on game conditions."""
-        # Priority 1: Escape danger (placeholder, will be more complex)
-        # current_ai_tile = (self.ai_player.rect.centerx // settings.TILE_SIZE, self.ai_player.rect.centery // settings.TILE_SIZE)
-        # if self.is_tile_dangerous(current_ai_tile[0], current_ai_tile[1]):
-        #     if self.current_state != AI_STATE_ESCAPE:
-        #         # safe_tiles = self.find_safe_tiles_nearby(current_ai_tile)
-        #         # if safe_tiles:
-        #         #     self.change_state(AI_STATE_ESCAPE, escape_tile=random.choice(safe_tiles))
-        #         # else:
-        #         #     print(f"AI {id(self.ai_player)} is in danger but found no safe tiles!")
-        #         #     self.change_state(AI_STATE_IDLE) # Or a panic state
-        #         pass # Escape logic will be detailed later
-        #     return # If escaping, no other decisions for now
+        """Decides the AI's state based on game conditions. Escape has highest priority."""
+        current_ai_tile = (self.ai_player.rect.centerx // settings.TILE_SIZE,
+                           self.ai_player.rect.centery // settings.TILE_SIZE)
 
-        # If AI just placed a bomb, wait
-        if self.ai_placed_bomb_recently and pygame.time.get_ticks() - self.last_bomb_placed_time < settings.BOMB_TIMER / 2: # Wait a bit
-             if self.current_state != AI_STATE_WAIT_EXPLOSION and self.current_state != AI_STATE_ESCAPE:
-                # self.change_state(AI_STATE_WAIT_EXPLOSION) # Escape should take precedence if needed
-                pass # Let escape logic (when implemented) handle moving away
-             return
+        # --- PRIORITY 1: ESCAPE ---
+        # Is the AI's current tile dangerous, or will it be imminently dangerous?
+        if self.is_tile_dangerous(current_ai_tile[0], current_ai_tile[1]):
+            if self.current_state != AI_STATE_ESCAPE: # Only change if not already escaping
+                print(f"[AI DECISION] AI at {current_ai_tile} is in DANGER!")
+                safe_escape_spots = self.find_safe_tiles_nearby(current_ai_tile)
+                if safe_escape_spots:
+                    # Choose the closest safe spot (BFS ensures closer ones are found first if depth limited)
+                    # Or simply pick one. For now, let's pick the first one found.
+                    chosen_escape_tile = safe_escape_spots[0] 
+                    # We need a path to this chosen escape tile
+                    path_to_safe_spot = self.bfs_find_path(current_ai_tile, chosen_escape_tile, 
+                                                           avoid_danger_from_bombs=True, 
+                                                           avoid_current_explosions=True)
+                    if path_to_safe_spot:
+                        self.current_path = path_to_safe_spot # Set the path for handle_escape_state
+                        self.current_path_index = 0
+                        self.change_state(AI_STATE_ESCAPE, escape_tile=chosen_escape_tile)
+                        return # Decision made: Escape
+                    else:
+                        print(f"[AI WARNING] In danger at {current_ai_tile}, found safe spot {chosen_escape_tile}, but NO PATH!")
+                        # No path to chosen safe spot, maybe try another safe spot or panic (e.g., random move)
+                        # For now, might fall through to IDLE or another state if no path.
+                        # This scenario (safe spot exists but no path) should be rare if find_safe_tiles_nearby works.
+                        self.change_state(AI_STATE_IDLE) # Fallback if no path to safe spot
+                else:
+                    print(f"[AI CRITICAL] In danger at {current_ai_tile} and NO SAFE SPOTS FOUND NEARBY!")
+                    # Panic mode: Try a random move, hoping to get lucky.
+                    # This is a last resort.
+                    self.current_path = [] # Clear any old path
+                    # Attempt a random move (will be handled by IDLE if we switch to it, or needs specific panic logic)
+                    self.change_state(AI_STATE_IDLE) # Fallback if truly trapped
+                return # Decision made or attempted
+
+        # If currently escaping, but current path leads to a now dangerous tile, or current tile on path is dangerous
+        if self.current_state == AI_STATE_ESCAPE:
+            # Check if the current path is still valid (e.g., target isn't now dangerous)
+            if self.current_path:
+                next_immediate_tile_on_path = self.current_path[self.current_path_index + 1] if self.current_path_index + 1 < len(self.current_path) else None
+                if next_immediate_tile_on_path and self.is_tile_dangerous(next_immediate_tile_on_path[0], next_immediate_tile_on_path[1]):
+                    print(f"[AI ESCAPE] Path to {self.escape_target_tile} has become dangerous at {next_immediate_tile_on_path}. Re-evaluating escape.")
+                    self.current_path = [] # Invalidate path
+                    # Fall through to re-trigger escape logic to find a new path/spot
+                elif self.escape_target_tile and self.is_tile_dangerous(self.escape_target_tile[0], self.escape_target_tile[1]):
+                     print(f"[AI ESCAPE] Target escape tile {self.escape_target_tile} has become dangerous. Re-evaluating escape.")
+                     self.current_path = [] # Invalidate path
+                     self.escape_target_tile = None
+                     # Fall through
+                else:
+                    return # Continue escaping along current valid path
 
 
-        # Priority 2: Attack player (placeholder)
-        # if self.target_player and self.target_player.is_alive:
-        #     # path_to_player = self.bfs_find_path(current_ai_tile, 
-        #     #                                   (self.target_player.rect.centerx // settings.TILE_SIZE, 
-        #     #                                    self.target_player.rect.centery // settings.TILE_SIZE))
-        #     # if path_to_player and len(path_to_player) < 5: # If player is close
-        #     #     self.change_state(AI_STATE_ATTACK_PLAYER, target_player=self.target_player)
-        #     #     return
-        #     pass
+        # --- PRIORITY 2: WAIT_EXPLOSION (if AI placed a bomb and is not currently escaping danger) ---
+        if self.ai_placed_bomb_recently:
+            time_since_bomb = pygame.time.get_ticks() - self.last_bomb_placed_time
+            # If bomb is still ticking and AI is not primarily escaping something else
+            if time_since_bomb < (settings.BOMB_TIMER + settings.EXPLOSION_DURATION / 2): # Wait until bomb + half explosion
+                if self.current_state != AI_STATE_WAIT_EXPLOSION and self.current_state != AI_STATE_ESCAPE:
+                    # AI should have already moved to a safe spot after placing the bomb.
+                    # This state is more about "don't do anything else rash until my bomb is done"
+                    print(f"[AI DECISION] AI placed bomb, current state {self.current_state}, considering WAIT_EXPLOSION")
+                    # If current tile is safe, can wait. If not, ESCAPE should have triggered.
+                    if not self.is_tile_dangerous(current_ai_tile[0], current_ai_tile[1], check_bombs=True, check_explosions=False, future_seconds=0.5): # check immediate future
+                        self.change_state(AI_STATE_WAIT_EXPLOSION)
+                        return
+                    # else ESCAPE should handle it.
+            else: # Bomb has exploded
+                self.ai_placed_bomb_recently = False # Reset flag
 
+        # --- Placeholder for ATTACK_PLAYER and FETCH_ITEMS ---
+        # (These will be based on your C++ logic: find target, get path, change state)
+        # For now, if not escaping or waiting for own bomb, consider IDLE or fetching.
 
-        # Priority 3: Fetch items
-        # closest_item = self.find_closest_item()
-        # if closest_item:
-        #     if self.current_state != AI_STATE_FETCH_ITEMS or self.target_item != closest_item:
-        #          self.change_state(AI_STATE_FETCH_ITEMS, target_item=closest_item)
-        #     return # If fetching, do this
+        # Example: Try to find an item if IDLE or finished waiting
+        if self.current_state in [AI_STATE_IDLE, AI_STATE_WAIT_EXPLOSION] and not self.ai_placed_bomb_recently:
+            # closest_item = self.find_closest_item() # We need to implement find_closest_item
+            # if closest_item:
+            #     if self.current_state != AI_STATE_FETCH_ITEMS or self.target_item != closest_item:
+            #         path_to_item = self.bfs_find_path(current_ai_tile, 
+            #                                           (closest_item.rect.centerx // settings.TILE_SIZE, 
+            #                                            closest_item.rect.centery // settings.TILE_SIZE))
+            #         if path_to_item:
+            #             self.current_path = path_to_item
+            #             self.current_path_index = 0
+            #             self.change_state(AI_STATE_FETCH_ITEMS, target_item=closest_item)
+            #             return
+            pass # Item fetching to be added
 
-        # Default to IDLE if no other pressing needs or if current path is done
-        if not self.current_path: # If no current task or path completed
-            if self.current_state not in [AI_STATE_IDLE, AI_STATE_WAIT_EXPLOSION]:
-                 self.change_state(AI_STATE_IDLE)
-        
-        # If IDLE for too long, maybe try to find an item or move
+        # Default to IDLE if no other state is applicable or path is completed
+        if not self.current_path and self.current_state not in [AI_STATE_WAIT_EXPLOSION]: # Don't idle if waiting for bomb
+            if self.current_state != AI_STATE_IDLE:
+                self.change_state(AI_STATE_IDLE)
+
+        # If IDLE for too long, just reset the timer (handle_idle_state might pick a random move)
         if self.current_state == AI_STATE_IDLE and \
-           pygame.time.get_ticks() - self.state_start_time > 3000: # 3 seconds
-            # if closest_item: # Check again for items
-            #    self.change_state(AI_STATE_FETCH_ITEMS, target_item=closest_item)
-            # else: # No items, just reset IDLE timer or move randomly
-                self.state_start_time = pygame.time.get_ticks() # Reset idle timer
-                # print(f"AI {id(self.ai_player)} resetting IDLE timer.")
+           pygame.time.get_ticks() - self.state_start_time > 3000:
+            self.state_start_time = pygame.time.get_ticks() # Reset idle timer
 
 
     def change_state(self, new_state, target_player=None, target_item=None, escape_tile=None):
@@ -127,6 +175,44 @@ class AIController:
              self.current_path_index = 0
 
 
+    def find_safe_tiles_nearby(self, start_tile, max_search_depth=5):
+        """
+        Uses BFS to find the closest safe tiles nearby, up to a certain depth.
+        A tile is "safe" if it's walkable and not currently dangerous.
+        """
+        q = deque([(start_tile, 0)]) # (tile, depth)
+        visited = {start_tile}
+        safe_tiles_found = []
+
+        map_mgr = self.game.map_manager
+
+        while q:
+            (curr_x, curr_y), depth = q.popleft()
+
+            if depth > max_search_depth: # Don't search too far for an immediate escape
+                continue
+
+            # Check if this current tile is safe
+            if not self.is_tile_dangerous(curr_x, curr_y):
+                safe_tiles_found.append((curr_x, curr_y))
+                # Optimization: if we want the *closest* safe tiles,
+                # and we are doing BFS, the first ones found at a certain depth are good.
+                # We could return immediately or collect all at this depth.
+                # For now, let's collect a few. If too many, BFS can be slow.
+                if len(safe_tiles_found) >= 5: # Collect up to 5 candidates
+                    break 
+
+            if depth < max_search_depth: # Only expand if not at max depth
+                for dx, dy in DIRECTIONS.values():
+                    next_x, next_y = curr_x + dx, curr_y + dy
+                    if (next_x, next_y) not in visited:
+                        if map_mgr.is_walkable(next_x, next_y): # Must be walkable
+                            visited.add((next_x, next_y))
+                            q.append(((next_x, next_y), depth + 1))
+        
+        # print(f"[AI ESCAPE] Found {len(safe_tiles_found)} safe tiles near {start_tile}: {safe_tiles_found}")
+        return safe_tiles_found
+    
     def perform_current_state_action(self):
         """
         Executes actions based on the AI's current state.
@@ -171,10 +257,55 @@ class AIController:
 
 
     def handle_escape_state(self):
-        # Find a safe path and move along it.
-        # If no path, or at destination, what to do?
-        # print(f"AI Escaping: current path {self.current_path}")
-        pass
+        """
+        AI is trying to escape to self.escape_target_tile using self.current_path.
+        If path is finished or invalid, it should re-evaluate its situation.
+        """
+        ai_current_tile = (self.ai_player.rect.centerx // settings.TILE_SIZE,
+                           self.ai_player.rect.centery // settings.TILE_SIZE)
+
+        if not self.current_path: # No path currently, or path was invalidated
+            # This means update_state_machine decided to escape but couldn't set a path,
+            # or an existing escape path became invalid.
+            # update_state_machine should try to find a new escape path/target.
+            # If it can't, it might switch to IDLE (which might make a random move).
+            print(f"[AI ESCAPE] In escape state but no current path. AI at {ai_current_tile}. Re-evaluating next cycle.")
+            # Forcing a quick re-evaluation by a small trick:
+            self.last_decision_time = 0 # Force decision in next AI update
+            return
+
+        # If AI has a path, move_along_path is called by AIController.update()
+        # We need to check if the escape target has been reached or if the AI is now safe.
+
+        # Is the AI at the target escape tile?
+        if self.escape_target_tile and \
+           ai_current_tile[0] == self.escape_target_tile[0] and \
+           ai_current_tile[1] == self.escape_target_tile[1]:
+            # Reached the intended safe spot. Is it ACTUALLY safe now?
+            if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=0.5): # Check immediate safety
+                print(f"[AI ESCAPE] Reached safe escape target {self.escape_target_tile} and it's safe. Switching to IDLE.")
+                self.change_state(AI_STATE_IDLE)
+            else:
+                print(f"[AI ESCAPE] Reached escape target {self.escape_target_tile} BUT IT'S STILL DANGEROUS! Re-evaluating.")
+                self.current_path = [] # Path led to danger
+                self.escape_target_tile = None
+                self.last_decision_time = 0 # Force re-evaluation
+            return
+        
+        # If the path is completed (move_along_path clears it), but not at escape_target_tile (should be rare)
+        # or if simply the AI is no longer in an immediately dangerous spot even if not at escape_target_tile
+        if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=0.2):
+             # Optimization: If current spot is safe, no need to continue to original escape_target_tile if it's far
+             # unless that original target was strategically very safe.
+             # For now, if current spot is safe, let's re-evaluate by going IDLE.
+             # print(f"[AI ESCAPE] AI at {ai_current_tile} is now safe (even if not at escape_target_tile). Switching to IDLE.")
+             # self.change_state(AI_STATE_IDLE) # This might be too quick to switch out of escape.
+             # Let's only switch if path is done OR current target becomes dangerous
+             pass
+
+
+        # If still on a path, AIController.update() will call move_along_path().
+        # No specific action here other than path validation done in update_state_machine.
 
     def handle_attack_player_state(self):
         # Move towards target_player, decide when to place a bomb.
@@ -286,14 +417,9 @@ class AIController:
 
         return False # Still moving towards current segment's target tile center
 
-    def is_tile_dangerous(self, tile_x, tile_y, check_bombs=True, check_explosions=True, future_seconds=1.5):
+    def is_tile_dangerous(self, tile_x, tile_y, check_bombs=True, check_explosions=True, future_seconds=settings.BOMB_TIMER / 1000.0 + 0.2): # Predict slightly beyond bomb timer
         """
-        Checks if a given tile is currently dangerous or will be dangerous soon.
-        Args:
-            tile_x, tile_y: Tile coordinates to check.
-            check_bombs: Whether to consider active bombs.
-            check_explosions: Whether to consider current explosions.
-            future_seconds: How far into the future to predict bomb explosions.
+        Checks if a given tile is currently dangerous or will be dangerous soon (within future_seconds).
         """
         target_pixel_x = tile_x * settings.TILE_SIZE + settings.TILE_SIZE // 2
         target_pixel_y = tile_y * settings.TILE_SIZE + settings.TILE_SIZE // 2
@@ -301,45 +427,55 @@ class AIController:
         if check_explosions:
             for explosion in self.game.explosions_group:
                 if explosion.rect.collidepoint(target_pixel_x, target_pixel_y):
-                    # print(f"Tile ({tile_x},{tile_y}) is dangerous due to current explosion.")
+                    # print(f"[AI DANGER] Tile ({tile_x},{tile_y}) is dangerous due to current explosion.")
                     return True
         
         if check_bombs:
             for bomb in self.game.bombs_group:
-                time_until_explosion = (bomb.spawn_time + bomb.timer) - pygame.time.get_ticks()
-                if 0 < time_until_explosion < future_seconds * 1000: # Bomb will explode soon
-                    # Check if (tile_x, tile_y) is in this bomb's explosion range
-                    bomb_center_x, bomb_center_y = bomb.current_tile_x, bomb.current_tile_y
-                    bomb_range = bomb.placed_by_player.bomb_range
+                if bomb.exploded: continue # Ignore already exploded bombs
 
-                    # Check center
-                    if bomb_center_x == tile_x and bomb_center_y == tile_y: return True
-                    # Check horizontal line
+                time_until_explosion_ms = (bomb.spawn_time + bomb.timer) - pygame.time.get_ticks()
+                
+                # Only consider bombs that will explode within our prediction window
+                if 0 < time_until_explosion_ms < future_seconds * 1000:
+                    bomb_center_x, bomb_center_y = bomb.current_tile_x, bomb.current_tile_y
+                    bomb_range = bomb.placed_by_player.bomb_range # Use actual range of the bomb
+
+                    # Check if (tile_x, tile_y) is in this bomb's direct line of fire
+                    # This is a simplified check, a more accurate one would trace the explosion path like in Bomb.explode()
+
+                    # Is the tile the bomb itself?
+                    if bomb_center_x == tile_x and bomb_center_y == tile_y:
+                        # print(f"[AI DANGER] Tile ({tile_x},{tile_y}) is dangerous, bomb is on it, exploding in {time_until_explosion_ms/1000:.1f}s.")
+                        return True
+
+                    # Is the tile in the horizontal path of the bomb?
                     if bomb_center_y == tile_y and abs(bomb_center_x - tile_x) <= bomb_range:
-                        # Check if path is blocked by solid wall
+                        # Check for blocking solid walls between bomb and tile
                         blocked = False
-                        for i in range(1, abs(bomb_center_x - tile_x) + 1):
-                            check_x = bomb_center_x + i * (1 if tile_x > bomb_center_x else -1)
+                        step = 1 if tile_x > bomb_center_x else -1
+                        for i_check in range(1, abs(bomb_center_x - tile_x)): # Check tiles *between* bomb and target
+                            check_x = bomb_center_x + i_check * step
                             if self.game.map_manager.is_solid_wall_at(check_x, bomb_center_y):
-                                if (tile_x > bomb_center_x and check_x < tile_x) or \
-                                   (tile_x < bomb_center_x and check_x > tile_x): # Wall is between bomb and tile
-                                    blocked = True
-                                    break
-                        if not blocked: return True
+                                blocked = True
+                                break
+                        if not blocked:
+                            # print(f"[AI DANGER] Tile ({tile_x},{tile_y}) in horizontal danger from bomb at ({bomb_center_x},{bomb_center_y}), exploding in {time_until_explosion_ms/1000:.1f}s.")
+                            return True
                     
-                    # Check vertical line
+                    # Is the tile in the vertical path of the bomb?
                     if bomb_center_x == tile_x and abs(bomb_center_y - tile_y) <= bomb_range:
                         blocked = False
-                        for i in range(1, abs(bomb_center_y - tile_y) + 1):
-                            check_y = bomb_center_y + i * (1 if tile_y > bomb_center_y else -1)
+                        step = 1 if tile_y > bomb_center_y else -1
+                        for i_check in range(1, abs(bomb_center_y - tile_y)): # Check tiles *between* bomb and target
+                            check_y = bomb_center_y + i_check * step
                             if self.game.map_manager.is_solid_wall_at(bomb_center_x, check_y):
-                                 if (tile_y > bomb_center_y and check_y < tile_y) or \
-                                    (tile_y < bomb_center_y and check_y > tile_y): # Wall is between bomb and tile
-                                    blocked = True
-                                    break
-                        if not blocked: return True
+                                blocked = True
+                                break
+                        if not blocked:
+                            # print(f"[AI DANGER] Tile ({tile_x},{tile_y}) in vertical danger from bomb at ({bomb_center_x},{bomb_center_y}), exploding in {time_until_explosion_ms/1000:.1f}s.")
+                            return True
         return False
-
 
     def update(self):
         current_time = pygame.time.get_ticks()
