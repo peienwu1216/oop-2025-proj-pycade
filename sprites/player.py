@@ -106,7 +106,7 @@ class Player(GameObject):
         # 在瞬時格子移動中，is_moving 可能只在移動發生的那一幀或短時間內為 True。
         self.is_moving = False 
         self.action_timer = 0 # 用於控制行走動畫在瞬移後持續一小段時間
-        self.ACTION_ANIMATION_DURATION = 0.15 # 行走動畫在移動後持續的秒數 (例如0.15秒)
+        self.ACTION_ANIMATION_DURATION = 0.20 # 行走動畫在移動後持續的秒數 (例如0.15秒)
         # 移除舊的 self.vx, self.vy, self.speed，因為移動方式改變
         # self.vx = 0; self.vy = 0
         # self.speed = ... (不再需要像素速度)
@@ -187,20 +187,38 @@ class Player(GameObject):
         # print(f"[PLAYER ATTEMPT_MOVE] ID: {id(self)} successfully moved to ({self.tile_x},{self.tile_y})") # DEBUG
         return True
 
-    def get_input(self): # 這個方法現在會在 Game.events 中被 KEYDOWN 事件觸發時呼叫，或者由 AI 呼叫
+    def get_input(self):
         """
-        處理人類玩家的輸入 (透過 Game.events 中的 KEYDOWN)。
-        AI 則由 AIController 呼叫 attempt_move_to_tile。
+        處理人類玩家的持續按鍵輸入。
+        如果按住方向鍵且上一個格子移動動畫已結束 (action_timer <= 0)，則嘗試移動。
+        此方法應在 Player.update() 中被呼叫。
         """
-        if self.is_ai: # AI 不使用這個方法來獲取鍵盤輸入
+        if self.is_ai or not self.is_alive: # AI 不處理鍵盤，死亡不處理
             return
-        if self.action_timer > 0:
-            return # 如果正在執行上一個動作的動畫，則不允許新的移動 (可選)
-        # 人類玩家的 is_moving 主要由 action_timer 控制是否繼續播放動畫
-        # 按鍵只負責觸發 attempt_move_to_tile
-        # 如果沒有按鍵，且 action_timer 結束，is_moving 會是 False
-        pass # 具體的按鍵邏輯移到 Game.events 中
 
+        if self.action_timer > 0: # 如果正在播放上一個移動的動畫，則暫不接受新移動
+            # print(f"[Player.get_input] Action timer active ({self.action_timer:.2f}), skipping input.") # DEBUG
+            return 
+
+        keys = pygame.key.get_pressed() # 獲取當前所有被按住的鍵的狀態
+        dx, dy = 0, 0
+
+        # 判斷方向鍵 (只允許單一方向，避免對角線瞬移)
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            dx = -1
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            dx = 1
+        elif keys[pygame.K_UP] or keys[pygame.K_w]: # 使用 elif 確保一次只處理一個主要方向
+            dy = -1
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            dy = 1
+        
+        if dx != 0 or dy != 0:
+            # print(f"[Player.get_input] Key pressed ({dx},{dy}). Attempting move...") # DEBUG
+            self.attempt_move_to_tile(dx, dy) # is_moving 和 action_timer 會在 attempt_move_to_tile 內部設定
+        # else: # 如果沒有方向鍵按下，不需要特別處理 is_moving，它會由 action_timer 在 update 中管理
+            # self.is_moving = False # 不在這裡設定，讓 action_timer 控制
+            pass
 
     # AIController 將不再呼叫此方法
     # def set_ai_movement_intent(self, dx_normalized, dy_normalized):
@@ -216,7 +234,7 @@ class Player(GameObject):
         
         if not self.is_ai:
             self.get_input() # get_input 內部會檢查 action_timer
-            
+
         if not self.is_moving: # 如果不在移動 (action_timer <= 0)，顯示該方向的第一幀 (站立幀)
             self.current_frame_index = 0 #
         else: # 如果在移動 (action_timer > 0)，則更新動畫幀
@@ -236,43 +254,33 @@ class Player(GameObject):
             self.rect.center = old_center # # 保持中心對齊
     
     def update(self, dt, solid_obstacles_group): # solid_obstacles_group 在此不再直接用於碰撞
-        if not self.is_alive: #
+        if not self.is_alive:
             self.is_moving = False
-            # self.vx = 0; self.vy = 0 # 不再有 vx, vy
             return
 
         # 更新動作計時器
         if self.action_timer > 0:
             self.action_timer -= dt
             if self.action_timer <= 0:
-                self.is_moving = False # 動作動畫時間到，停止移動狀態
+                self.is_moving = False 
                 self.action_timer = 0 
-        else: # 如果 action_timer 本來就是0或負數
-             self.is_moving = False
+        # else: # 不需要這個 else，因為 is_moving 會在 action_timer <= 0 時被設為 False
+            # self.is_moving = False
 
-
-        # 人類玩家的輸入現在應該在 Game.events 中處理，並呼叫 attempt_move_to_tile
+        # 如果是人類玩家，處理輸入
         if not self.is_ai:
-            # 如果希望按住按鍵連續移動（但仍是格子接格子，只是頻率快）
-            # 則 Game.events 中 get_pressed 的邏輯可以保留並呼叫 attempt_move_to_tile
-            # 但更符合「按一下走一格」的是在 Game.events 中處理 KEYDOWN
-            pass # get_input() 邏輯已整合或移至 Game.events
-
-        # AI 玩家的移動由 AIController 呼叫 attempt_move_to_tile 來觸發
+            self.get_input() # get_input 內部會檢查 action_timer
         
-        # 視覺位置已經在 attempt_move_to_tile 成功時更新到目標格子的中心
-        # 或者，如果希望在 action_timer 期間平滑移動（即使邏輯位置已更新），可以在這裡做插值
-        # 但基於「瞬移」的請求，我們在 attempt_move_to_tile 中已更新 rect.center
+        # ... (後續確保精確停在格子上的邏輯 和 _animate()) ...
+        if not self.is_moving and self.action_timer <=0 :
+            expected_center_x = self.tile_x * settings.TILE_SIZE + settings.TILE_SIZE // 2
+            expected_center_y = self.tile_y * settings.TILE_SIZE + settings.TILE_SIZE // 2
+            if self.rect.centerx != expected_center_x or self.rect.centery != expected_center_y:
+                self.rect.center = (expected_center_x, expected_center_y)
+                if hasattr(self, 'hitbox'):
+                    self.hitbox.center = self.rect.center
 
-        # 如果沒有進行任何移動，確保精確停在格子上 (以防萬一)
-        if not self.is_moving and self.action_timer <=0 : # 確保精確對齊
-            self.rect.center = (self.tile_x * settings.TILE_SIZE + settings.TILE_SIZE // 2,
-                                 self.tile_y * settings.TILE_SIZE + settings.TILE_SIZE // 2)
-            if hasattr(self, 'hitbox'):
-                self.hitbox.center = self.rect.center
-
-
-        self._animate() # 更新動畫幀
+        self._animate()
 
     def place_bomb(self):
         if not self.is_alive: return #
