@@ -16,7 +16,7 @@ class Game:
         self.players_group = pygame.sprite.Group() # Group specifically for players
         
         self.bombs_group = pygame.sprite.Group() 
-
+        self.explosions_group = pygame.sprite.Group()
         self.map_manager = MapManager(self)
         self.player1 = None # Placeholder for player 1 instance
 
@@ -73,6 +73,20 @@ class Game:
         # Pass necessary arguments to player's update method
         # For now, player update doesn't need walls_group, but it will soon.
         self.all_sprites.update(self.dt, self.map_manager.walls_group) # Pass walls_group
+        # --- 爆炸與玩家/牆壁的碰撞檢測將在這裡添加 ---
+            # Check for explosion collisions with players
+            # for player in self.players_group:
+            #     hits = pygame.sprite.spritecollide(player, self.explosions_group, False)
+            #     if hits:
+            #         player.take_damage() # 假設 Player 有 take_damage 方法
+            #         print(f"Player {id(player)} hit by explosion!")
+
+            # Check for explosion collisions with destructible walls (LATER)
+            # for d_wall in self.map_manager.destructible_walls_group: # 假設有這個 group
+            #     hits = pygame.sprite.spritecollide(d_wall, self.explosions_group, False)
+            #     if hits:
+            #         d_wall.destroy() # 假設 DestructibleWall 有 destroy 方法
+            #         print(f"Destructible wall at ({d_wall.rect.x}, {d_wall.rect.y}) hit!")
 
     def draw(self):
         self.screen.fill(settings.BLACK)
