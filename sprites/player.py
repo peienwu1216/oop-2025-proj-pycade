@@ -75,7 +75,7 @@ class Player(GameObject):
         pygame.sprite.Sprite.__init__(self) # 確保 Sprite 被正確初始化
 
         # --- 圖像縮放邏輯 (在所有幀被載入和切割之後，對每一幀進行縮放) ---
-        self.scale_factor = 0.8 # 你之前設定的縮小比例
+        self.scale_factor = 0.25 # 你之前設定的縮小比例
         if self.animations:
             for direction, frames in self.animations.items():
                 scaled_frames = []
