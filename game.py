@@ -3,7 +3,8 @@
 import pygame
 import settings
 from core.map_manager import MapManager
-from sprites.player import Player # Import Player class
+from sprites.player import Player
+from core.ai_controller import AIController
 
 class Game:
     def __init__(self, screen, clock):
@@ -22,6 +23,8 @@ class Game:
 
         self.map_manager = MapManager(self)
         self.player1 = None
+        self.player2_ai = None
+        self.ai_controller_p2 = None
 
         self.setup_initial_state() # 調用以設定初始狀態
 
@@ -46,7 +49,7 @@ class Game:
 
 
         # 3. 重新創建玩家物件
-        print("[DEBUG] Recreating player...") # <--- 新增
+        print("[DEBUG] Recreating player...")
         start_tile_x, start_tile_y = 1, 1
         if self.map_manager.is_walkable(start_tile_x, start_tile_y):
             self.player1 = Player(self, start_tile_x, start_tile_y)
@@ -57,7 +60,32 @@ class Game:
         self.all_sprites.add(self.player1)
         self.players_group.add(self.player1)
         print(f"[DEBUG] Player 1 recreated. is_alive: {self.player1.is_alive}, Lives: {self.player1.lives}")
+        print("[DEBUG] Recreating player 2 (AI)...")
+        # 為 AI 玩家選擇一個不同的起始位置，例如右下角
+        # 地圖大小是 15x11 (tile_width x tile_height from simple_test_map)
+        # 所以右下角附近的空格可能是 (13, 9) 或 (map_width-2, map_height-2)
+        p2_start_x = self.map_manager.tile_width - 2
+        p2_start_y = self.map_manager.tile_height - 2
         
+        # 確保 AI 起始位置可通行
+        if not self.map_manager.is_walkable(p2_start_x, p2_start_y):
+            print(f"Warning: AI start position ({p2_start_x},{p2_start_y}) not walkable. Trying another.")
+            # 可以嘗試尋找另一個可通行的點，或簡化處理
+            p2_start_x, p2_start_y = self.map_manager.tile_width - 3, self.map_manager.tile_height - 2 # 備用
+
+        # 可以為 AI 玩家使用不同的圖片 (如果準備了 settings.PLAYER2_AI_IMG)
+        player2_image = settings.PLAYER_IMG # 暫時用和 P1 一樣的圖片，但可以改成紅色或其他
+        self.player2_ai = Player(self, p2_start_x, p2_start_y, player_image_path=player2_image, is_ai=True)
+        
+        self.ai_controller_p2 = AIController(self.player2_ai, self) # 創建 AI 控制器
+        self.player2_ai.ai_controller = self.ai_controller_p2 # 讓 AI Player 持有對其控制器的引用
+
+        self.all_sprites.add(self.player2_ai)
+        self.players_group.add(self.player2_ai) # AI 也是玩家，加入玩家組
+        print(f"[DEBUG] Player 2 (AI) created at tile ({p2_start_x}, {p2_start_y}). Lives: {self.player2_ai.lives}")
+        if self.ai_controller_p2:
+            self.ai_controller_p2.target_player = self.player1 # AI 的目標是 P1
+            
         # 4. 確保遊戲狀態是 PLAYING
         print(f"[DEBUG] Setting game_state to PLAYING. Previous state was: {self.game_state}") # <--- 新增
         self.game_state = "PLAYING"
@@ -99,6 +127,8 @@ class Game:
         if self.game_state == "PLAYING":
             self.all_sprites.update(self.dt, self.solid_obstacles_group) # 傳遞包含所有牆的組
             self.all_sprites.update(self.dt, self.map_manager.walls_group)
+            if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
+                self.ai_controller_p2.update()
             # 1. 更新所有 Sprites
             #    - Player.update 會處理輸入、移動、與牆壁碰撞
             #    - Bomb.update 會處理倒數計時、視覺更新、時間到了調用 explode()
@@ -161,6 +191,13 @@ class Game:
         self.screen.fill(settings.WHITE)
         self.all_sprites.draw(self.screen) # 繪製所有遊戲物件
 
+        # --- 5. (可選) 調用 AIController 的 debug_draw_path ---
+        if self.game_state == "PLAYING":
+            if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
+                if hasattr(self.ai_controller_p2, 'debug_draw_path'): # 確保方法存在
+                    self.ai_controller_p2.debug_draw_path(self.screen)
+        # --- debug_draw_path 結束 ---
+        
         if self.game_state == "PLAYING":
             if self.player1: # 確保 player1 存在
                 if not hasattr(self, 'hud_font'): # 第一次初始化 HUD 字型
