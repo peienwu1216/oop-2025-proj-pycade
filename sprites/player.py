@@ -237,29 +237,32 @@ class Player(GameObject):
     # ！！！ update 方法結束 ！！！
 
     def place_bomb(self):
-        if not self.is_alive: return
-        if self.bombs_placed_count < self.max_bombs:
-            # 炸彈放置位置基於 hitbox 的中心（玩家的實際邏輯位置）
-            bomb_tile_x = self.hitbox.centerx // settings.TILE_SIZE
-            bomb_tile_y = self.hitbox.centery // settings.TILE_SIZE
+        if not self.is_alive: return #
+        if self.bombs_placed_count < self.max_bombs: #
+            bomb_tile_x = self.hitbox.centerx // settings.TILE_SIZE #
+            bomb_tile_y = self.hitbox.centery // settings.TILE_SIZE #
             can_place = True
-            for bomb_sprite in self.game.bombs_group:
+            for bomb_sprite in self.game.bombs_group: #
                 if bomb_sprite.current_tile_x == bomb_tile_x and \
-                   bomb_sprite.current_tile_y == bomb_tile_y:
+                   bomb_sprite.current_tile_y == bomb_tile_y: #
                     can_place = False; break
             if can_place:
-                new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game)
-                self.game.all_sprites.add(new_bomb)
-                self.game.bombs_group.add(new_bomb)
-                self.bombs_placed_count += 1
-                if self.is_ai and self.ai_controller:
-                    self.ai_controller.ai_placed_bomb_recently = True
-                    self.ai_controller.last_bomb_placed_time = pygame.time.get_ticks()
-
-    def bomb_exploded_feedback(self):
-        self.bombs_placed_count = max(0, self.bombs_placed_count - 1)
-        if self.is_ai and self.ai_controller:
-            self.ai_controller.ai_placed_bomb_recently = False
+                new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game) #
+                self.game.all_sprites.add(new_bomb) #
+                self.game.bombs_group.add(new_bomb) #
+                self.bombs_placed_count += 1 #
+                
+                # --- AI Controller Feedback ---
+                if self.is_ai and self.ai_controller: #
+                    self.ai_controller.ai_just_placed_bomb = True # 使用新的標記名稱
+                    self.ai_controller.last_bomb_placed_time = pygame.time.get_ticks() #
+    
+    def bomb_exploded_feedback(self): #
+        self.bombs_placed_count = max(0, self.bombs_placed_count - 1) #
+        # ai_just_placed_bomb 的重置主要由 AWAIT_OPPORTUNITY 狀態結束時處理
+        # 或者在 TACTICAL_RETREAT 完成且確認非自己炸彈時處理
+        # if self.is_ai and self.ai_controller:
+        #    self.ai_controller.ai_just_placed_bomb = False # 暫時不由這裡重置
 
     def take_damage(self, amount=1):
         current_time = pygame.time.get_ticks()
