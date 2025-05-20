@@ -43,7 +43,7 @@ class Player(GameObject):
 
         # --- ！！！步驟 A：定義視覺縮放因子！！！ ---
         # ！！！ 在這裡設定你想要的視覺大小比例 ！！！
-        self.visual_scale_factor = 0.9  # 1.0 = 原始大小, 0.8 = 80% 大小, 1.2 = 120% 大小
+        self.visual_scale_factor = 0.85  # 1.0 = 原始大小, 0.8 = 80% 大小, 1.2 = 120% 大小
         # ！！！ 視覺縮放因子設定結束 ！！！
 
         # --- 根據 visual_scale_factor 縮放所有動畫幀 ---
