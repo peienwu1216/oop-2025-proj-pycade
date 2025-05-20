@@ -54,8 +54,23 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 預留
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png")
-
 BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
+ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
+ITEM_LIFE_IMG = os.path.join(IMAGES_DIR, "items", "item_life_placeholder.png")
+ITEM_BOMB_CAPACITY_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_capacity_placeholder.png")
+ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeholder.png")
+
+# Item Types (用字串來標識道具類型)
+ITEM_TYPE_SCORE = "score"
+ITEM_TYPE_LIFE = "life"
+ITEM_TYPE_BOMB_CAPACITY = "bomb_capacity"
+ITEM_TYPE_BOMB_RANGE = "bomb_range"
+
+# Item settings
+SCORE_ITEM_VALUE = 50 # 參考你的 C++ 報告，加分道具增加 50 分 [cite: 3]
+# 其他道具增加 20 分 [cite: 3]
+GENERIC_ITEM_SCORE_VALUE = 20
+
 # 如果你有炸彈動畫幀，可以像這樣定義一個列表:
 # BOMB_ANIM_FRAMES = [
 #     os.path.join(IMAGES_DIR, "bomb", "bomb_tick_0.png"),
