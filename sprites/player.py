@@ -28,6 +28,10 @@ class Player(GameObject):
         self.vx = 0
         self.vy = 0
 
+        self.is_alive = True
+        self.last_hit_time = 0 # 用於實現短暫的無敵時間 (可選)
+        self.invincible_duration = 1000 # 1秒無敵 (毫秒)
+
         # ... (get_input and update methods as modified above)
 
     def get_input(self):
@@ -161,6 +165,39 @@ class Player(GameObject):
         """
         self.bombs_placed_count = max(0, self.bombs_placed_count - 1) # 確保不小於0
         print(f"Player (ID: {id(self)}) notified of bomb explosion. Active bombs: {self.bombs_placed_count}/{self.max_bombs}")
-        
+    
+    def take_damage(self, amount=1):
+        """
+        Reduces player's lives by the given amount.
+        Handles invincibility period.
+        """
+        current_time = pygame.time.get_ticks()
+        if self.is_alive and (current_time - self.last_hit_time > self.invincible_duration):
+            self.lives -= amount
+            self.last_hit_time = current_time # 更新上次受傷時間
+            print(f"Player (ID: {id(self)}) took damage! Lives left: {self.lives}")
+            
+            # 播放受傷音效 (如果有的話)
+            # if self.game.sounds_enabled and settings.PLAYER_HIT_SOUND:
+            #     pygame.mixer.Sound(settings.PLAYER_HIT_SOUND).play()
+
+            if self.lives <= 0:
+                self.lives = 0 # 確保生命值不為負
+                self.die()
+            # 可以添加視覺效果，例如閃爍
+            # self.start_blinking_effect()
+
+    def die(self):
+        """
+        Handles player death.
+        """
+        if self.is_alive:
+            self.is_alive = False
+            print(f"Player (ID: {id(self)}) has died!")
+            # 播放死亡動畫/音效
+            # 從 Sprite Group 中移除，或者設置一個標記讓 Game 類處理
+            self.kill() # 從所有 group 中移除自己
+            # 或者: self.game.player_died(self) # 讓 Game 類處理後續，比如遊戲結束判斷
+    
     # We need to pass the game instance to the Player if it needs to access game.map_manager
     # Let's modify Player.__init__ and Game.setup_initial_state
