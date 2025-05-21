@@ -39,7 +39,7 @@
 * **已知主要待辦事項 / 問題點**：
     * **AI 行為**：
         * AI 對於「放置炸彈開路」的策略執行尚不穩定或過於保守。根據最新日誌，AI 雖然能判斷可以安全放置炸彈並找到逃生路線 (`can_place_bomb_safely_at` 返回 `True`，`find_strategic_wall_to_bomb` 返回有效計畫），但實際放置炸彈的行為仍未穩定出現，需要進一步確認從決策到執行的完整鏈路是否通暢，特別是 `handle_strategic_bombing_for_path_state` 中的最終放置條件。
-        * AI 的整體「智慧感」、 ситуаational awareness (情境感知) 和行為多樣性有很大的提升空間。
+        * AI 的整體「智慧感」、 situational awareness (情境感知) 和行為多樣性有很大的提升空間。
         * AI 在複雜危險環境下的逃生路徑選擇及執行可能不夠完美。
     * **人類玩家體驗**：
         * 持續按鍵移動的「手感」（例如，`Player.ACTION_ANIMATION_DURATION` 的值）可能需要進一步微調以達到最佳體驗。
