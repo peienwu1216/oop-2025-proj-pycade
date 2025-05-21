@@ -379,107 +379,85 @@ class AIController:
 
     def update_state_machine(self):
         ai_current_tile = self._get_ai_current_tile()
-        if ai_current_tile == (None,None) or not self.ai_player or not self.ai_player.is_alive: # AI might have been killed
+        if ai_current_tile == (None,None) or not self.ai_player or not self.ai_player.is_alive:
             if self.current_state != AI_STATE_DEAD: self.change_state(AI_STATE_DEAD)
             return
 
         # 1. 最高優先級：檢查立即危險並逃生
-        if self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], True, True, future_seconds=0.6): # 0.6s 預判危險
-            if self.current_state != AI_STATE_CRITICAL_ESCAPE: # 避免重複進入
+        if self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], True, True, future_seconds=0.6):
+            if self.current_state != AI_STATE_CRITICAL_ESCAPE:
                 # print(f"[AI FSM] DANGER at {ai_current_tile}! -> CRITICAL_ESCAPE.") # DEBUG
                 self.change_state(AI_STATE_CRITICAL_ESCAPE)
-            return # CRITICAL_ESCAPE 的 handle 會處理路徑
+            return
 
-        # 2. 如果剛放了炸彈，必須戰術撤退
+        # 2. 如果剛放了炸彈，必須戰術撤退，然後等待
         if self.ai_just_placed_bomb:
-            if self.current_state != AI_STATE_TACTICAL_RETREAT:
+            if self.current_state != AI_STATE_TACTICAL_RETREAT and self.current_state != AI_STATE_AWAIT_OPPORTUNITY:
                 # print(f"[AI FSM] Just placed bomb. -> TACTICAL_RETREAT.") # DEBUG
                 self.change_state(AI_STATE_TACTICAL_RETREAT)
-            return # TACTICAL_RETREAT 的 handle 會處理路徑
+            return # TACTICAL_RETREAT 和 AWAIT_OPPORTUNITY 的 handle 會處理後續
 
-        # --- 根據優先級進行其他決策 ---
-        human_player_tile = self._get_player_tile(self.human_player_sprite) if self.human_player_sprite and self.human_player_sprite.is_alive else None
-
-        # 3. 攻擊人類玩家 (如果可達)
-        if human_player_tile:
-            path_to_player = self.bfs_find_path(ai_current_tile, human_player_tile, True, True, step_future_check_seconds=0.25)
-            if path_to_player:
-                self.player_unreachable_start_time = 0 # 重置計時器
-                self.change_state(AI_STATE_ENGAGE_TARGET, target_player_sprite=self.human_player_sprite, path=path_to_player)
-                # print(f"[AI FSM] Player reachable at {human_player_tile}. Path len {len(path_to_player)}. -> ENGAGE_TARGET.") # DEBUG
-                return
-            else: # 玩家存在但目前無法到達
-                if self.player_unreachable_start_time == 0: self.player_unreachable_start_time = pygame.time.get_ticks()
-        else: # 沒有人類玩家或人類玩家已死亡
-            self.player_unreachable_start_time = 0
-
-
-        # 4. 拾取道具
-        powerup_data = self.find_best_powerup()
+        # ！！！修改開始：提高拾取道具的優先級！！！
+        # 在考慮攻擊玩家或炸牆之前，先檢查是否有吸引人的道具
+        powerup_data = self.find_best_powerup() # find_best_powerup 內部會使用適當的 step_check_sec
         if powerup_data:
             item_sprite, path_to_item = powerup_data
-            if item_sprite and path_to_item : # 確保兩者都有效
+            if item_sprite and path_to_item:
+                # print(f"[AI FSM PRIORITY] Found attractive powerup {item_sprite.type}. Path len {len(path_to_item)}. -> COLLECT_POWERUP.") # DEBUG
                 self.change_state(AI_STATE_COLLECT_POWERUP, target_item_sprite=item_sprite, path=path_to_item)
-                # print(f"[AI FSM] Found powerup {item_sprite.type}. Path len {len(path_to_item)}. -> COLLECT_POWERUP.") # DEBUG
                 return
+        # ！！！修改結束！！！
 
-        # 5. 策略性轟炸開路
+        human_player_tile = self._get_player_tile(self.human_player_sprite) if self.human_player_sprite and self.human_player_sprite.is_alive else None
+
+        # 3. 攻擊人類玩家 (如果可達且沒有更優先的道具)
+        if human_player_tile:
+            # 這裡的 step_future_check_seconds 可以根據追擊的積極性調整
+            path_to_player = self.bfs_find_path(ai_current_tile, human_player_tile, True, True, step_future_check_seconds=0.3) 
+            if path_to_player:
+                self.player_unreachable_start_time = 0 
+                self.change_state(AI_STATE_ENGAGE_TARGET, target_player_sprite=self.human_player_sprite, path=path_to_player)
+                # print(f"[AI FSM] Player reachable at {human_player_tile}. -> ENGAGE_TARGET.") # DEBUG
+                return
+            elif self.player_unreachable_start_time == 0: # 玩家存在但首次無法到達
+                 self.player_unreachable_start_time = pygame.time.get_ticks()
+        else: 
+            self.player_unreachable_start_time = 0 # 沒有玩家目標，重置計時器
+
+        # 4. 策略性轟炸開路 (如果沒有道具可撿，且玩家無法到達或巡邏卡住)
         if self.ai_player.bombs_placed_count < self.ai_player.max_bombs:
             should_try_bombing_wall = False
             current_time = pygame.time.get_ticks()
             
-            # 如果玩家無法到達已達一段時間
             if human_player_tile and self.player_unreachable_start_time > 0 and \
-               (current_time - self.player_unreachable_start_time > 2000): # 2秒後考慮炸牆去玩家那裡
+               (current_time - self.player_unreachable_start_time > 2000): 
                 should_try_bombing_wall = True
-                # print(f"[AI FSM] Player unreachable for >2s. Considering bombing wall.") # DEBUG
-            # 或者如果沒事做且巡邏卡住
-            elif not human_player_tile and not powerup_data: # 沒玩家目標，沒道具
-                if self.current_state == AI_STATE_PATROL and not self.current_path and \
+            elif not human_player_tile and not powerup_data: # 沒有玩家目標，也沒有找到道具
+                if (self.current_state == AI_STATE_PATROL and not self.current_path and \
                    self.stuck_in_patrol_start_time > 0 and \
-                   (current_time - self.stuck_in_patrol_start_time > 3000): # 巡邏卡住3秒
+                   (current_time - self.stuck_in_patrol_start_time > 3000)): 
                     should_try_bombing_wall = True
-                    # print(f"[AI FSM] Stuck in PATROL with no path for >3s. Considering bombing wall.") # DEBUG
             
             if should_try_bombing_wall:
-                print(f"[AI FSM DEBUG] Conditions met for trying to bomb a wall.") # DEBUG
-                print(f"  Player unreachable time: {current_time - self.player_unreachable_start_time if self.player_unreachable_start_time > 0 else 0} ms") # DEBUG
-                print(f"  Stuck in patrol time: {current_time - self.stuck_in_patrol_start_time if self.stuck_in_patrol_start_time > 0 else 0} ms") # DEBUG
-                ultimate_target_for_bombing_decision = human_player_tile if human_player_tile else None # 如果有玩家，以玩家為最終目標
+                # print(f"[AI FSM DEBUG] Conditions met for trying to bomb a wall.") # DEBUG
+                # print(f"  Player unreachable time: {current_time - self.player_unreachable_start_time if self.player_unreachable_start_time > 0 else 0} ms") # DEBUG
+                # print(f"  Stuck in patrol time: {current_time - self.stuck_in_patrol_start_time if self.stuck_in_patrol_start_time > 0 else 0} ms") # DEBUG
+                ultimate_target_for_bombing_decision = human_player_tile if human_player_tile else None
                 wall_data = self.find_strategic_wall_to_bomb(ultimate_target_tile=ultimate_target_for_bombing_decision)
                 if wall_data:
-                    print(f"[AI FSM DEBUG] find_strategic_wall_to_bomb returned: {wall_data}") # DEBUG
+                    # print(f"[AI FSM DEBUG] find_strategic_wall_to_bomb returned: {wall_data}") # DEBUG
                     self.change_state(AI_STATE_STRATEGIC_BOMBING_FOR_PATH,
                                       target_wall_sprite=wall_data['wall_sprite'],
                                       bombing_spot=wall_data['bomb_spot'],
                                       path=wall_data['path_to_bomb_spot'])
-                    # print(f"[AI FSM] Decided to break wall: {wall_data['wall_sprite'].tile_x},{wall_data['wall_sprite'].tile_y}. -> STRATEGIC_BOMBING.") # DEBUG
                     return
+                # else:
+                    # print(f"[AI FSM DEBUG] find_strategic_wall_to_bomb returned None this cycle.") #DEBUG
 
-        # 6. 等待時機 (通常是躲完自己炸彈後，或者戰術性等待)
-        # AWAIT_OPPORTUNITY 的進入主要由 TACTICAL_RETREAT 成功後觸發，或AI覺得需要等待時
-        # 此處的邏輯是：如果 ai_just_placed_bomb 為 True，則 TACTICAL_RETREAT 會優先處理。
-        # 如果 tactical_retreat 完成並轉到 AWAIT_OPPORTUNITY，則 AWAIT_OPPORTUNITY 的 handle 會處理持續時間。
-        # 此處僅處理一個 fallback: 如果長時間沒事做，也許進入 AWAIT (但通常是 PATROL)
-        time_since_ai_bomb = pygame.time.get_ticks() - self.last_bomb_placed_time
-        is_safe_at_current_spot = not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], True, True, 0.1)
-
-        if self.ai_just_placed_bomb : # 此 flag 理論上應在 AWAIT_OPPORTUNITY 結束時或 TACTICAL_RETREAT 失敗時重設
-            if is_safe_at_current_spot and \
-               (time_since_ai_bomb < settings.BOMB_TIMER + settings.EXPLOSION_DURATION + 300):
-                if self.current_state != AI_STATE_AWAIT_OPPORTUNITY: # 避免重複進入
-                    # print(f"[AI FSM] Own bomb still active, safe spot. -> AWAIT_OPPORTUNITY.") # DEBUG
-                    self.change_state(AI_STATE_AWAIT_OPPORTUNITY)
-                return
-            elif time_since_ai_bomb >= settings.BOMB_TIMER + settings.EXPLOSION_DURATION + 300:
-                # print(f"[AI FSM] Own bomb cycle likely finished. Resetting ai_just_placed_bomb.") # DEBUG
-                self.ai_just_placed_bomb = False 
-                # 清除此狀態後，會重新評估，可能進入 Patrol 或其他
-
-        # 7. 巡邏 (預設行為)
-        if self.current_state != AI_STATE_PATROL or not self.current_path: # 如果不在巡邏，或在巡邏但沒路徑
+        # 5. 巡邏 (如果以上都沒有可執行的動作)
+        if self.current_state != AI_STATE_PATROL or not self.current_path:
             # print(f"[AI FSM] No other actions. Defaulting/Re-evaluating -> PATROL.") # DEBUG
-            self.change_state(AI_STATE_PATROL) # PATROL 的 handle 會計算路徑
+            self.change_state(AI_STATE_PATROL)
 
 
     def perform_current_state_action(self): # 各狀態的具體行為邏輯
@@ -689,35 +667,58 @@ class AIController:
 
     def handle_strategic_bombing_for_path_state(self): # 與格子移動系統兼容
         ai_tile = self._get_ai_current_tile()
+        # ！！！修改開始：加入詳細日誌！！！
+        # print(f"[AI STRATEGIC BOMBING STATE] Entered. AI at: {ai_tile}, Target Bomb Spot: {self.bombing_spot_for_wall}, Target Wall: ({self.current_bombing_target_wall_sprite.tile_x if self.current_bombing_target_wall_sprite else 'N/A'}, {self.current_bombing_target_wall_sprite.tile_y if self.current_bombing_target_wall_sprite else 'N/A'}), Current Path: {self.current_path}") # DEBUG
+
         if ai_tile == (None,None) or not self.current_bombing_target_wall_sprite or \
            not self.current_bombing_target_wall_sprite.alive() or \
            (hasattr(self.current_bombing_target_wall_sprite, 'is_destroyed') and self.current_bombing_target_wall_sprite.is_destroyed) or \
            not self.bombing_spot_for_wall:
+            # print(f"  [STRATEGIC BOMBING] Invalid state data or target wall gone. Re-evaluating.") # DEBUG
             self.change_state(AI_STATE_EVALUATE_SITUATION); return
 
+        # 如果沒有到達放置點的路徑，或者路徑的終點不是預期的放置點，則重新規劃
         if not self.current_path or (len(self.current_path)>0 and self.current_path[-1] != self.bombing_spot_for_wall):
-            new_path = self.bfs_find_path(ai_tile, self.bombing_spot_for_wall, True, True, step_future_check_seconds=0.3)
-            if new_path: self.current_path = new_path; self.current_path_index = 0
-            else: self.change_state(AI_STATE_EVALUATE_SITUATION); return
+            # print(f"  [STRATEGIC BOMBING] Path to bombing spot {self.bombing_spot_for_wall} is missing or incorrect. Re-planning path from {ai_tile}.") # DEBUG
+            new_path = self.bfs_find_path(ai_tile, self.bombing_spot_for_wall, True, True, step_future_check_seconds=0.3) # 使用與規劃時類似的謹慎度
+            if new_path:
+                # print(f"    New path to bombing spot: {new_path}") # DEBUG
+                self.current_path = new_path; self.current_path_index = 0
+            else:
+                # print(f"    Failed to re-plan path to bombing spot. Re-evaluating general situation.") # DEBUG
+                self.change_state(AI_STATE_EVALUATE_SITUATION); return
         
-        if not self.current_path: self.change_state(AI_STATE_EVALUATE_SITUATION); return
+        if not self.current_path: # 再次檢查，如果還是沒有路徑
+             # print(f"  [STRATEGIC BOMBING] Still no path after re-plan attempt. Re-evaluating.") # DEBUG
+             self.change_state(AI_STATE_EVALUATE_SITUATION); return
 
-        if ai_tile == self.bombing_spot_for_wall: # AI 已到達放置炸彈的地點
+        # 如果 AI 已經到達預定的炸彈放置點
+        if ai_tile == self.bombing_spot_for_wall:
+            # print(f"  [STRATEGIC BOMBING] AI has arrived at bombing spot: {ai_tile}.") # DEBUG
             if self.ai_player.bombs_placed_count < self.ai_player.max_bombs:
-                if self.can_place_bomb_safely_at(ai_tile[0], ai_tile[1]):
-                    # print(f"[AI BOMB_WALL] At bombing spot {ai_tile} for wall. Placing bomb.") # DEBUG
+                # print(f"    AI has {self.ai_player.max_bombs - self.ai_player.bombs_placed_count} bombs left. Re-checking safety to place bomb at {ai_tile}.") # DEBUG
+                
+                # 在放置前再次確認是否安全 (戰場情況可能已改變)
+                is_still_safe_to_place = self.can_place_bomb_safely_at(ai_tile[0], ai_tile[1])
+                print(f"    [STRATEGIC BOMBING] Result of final can_place_bomb_safely_at({ai_tile}): {is_still_safe_to_place}") # DEBUG
+                
+                if is_still_safe_to_place:
+                    print(f"    PLACING BOMB at {ai_tile} for wall ({self.current_bombing_target_wall_sprite.tile_x if self.current_bombing_target_wall_sprite else 'N/A'},{self.current_bombing_target_wall_sprite.tile_y if self.current_bombing_target_wall_sprite else 'N/A'}). Changing to TACTICAL_RETREAT.") # DEBUG
                     self.ai_player.place_bomb()
-                    self.change_state(AI_STATE_TACTICAL_RETREAT)
+                    self.change_state(AI_STATE_TACTICAL_RETREAT) # 放置炸彈後立即進入戰術撤退
                     return
-                else: # 放置點不安全
-                    # print(f"[AI BOMB_WALL] Bombing spot {ai_tile} is not safe to place bomb. Re-evaluating.") # DEBUG
+                else: # 到達後發現放置點不安全了
+                    print(f"    [STRATEGIC BOMBING] Final safety check FAILED for bombing spot {ai_tile}. Spot likely became unsafe. Clearing path and re-evaluating.") # DEBUG
                     self.current_path = [] # 清除去往不安全放置點的路徑
-                    self.change_state(AI_STATE_EVALUATE_SITUATION)
+                    self.change_state(AI_STATE_EVALUATE_SITUATION) # 重新評估局勢
                     return
             else: # 沒有炸彈了
+                # print(f"    [STRATEGIC BOMBING] AI has no bombs left. Re-evaluating.") # DEBUG
                 self.change_state(AI_STATE_EVALUATE_SITUATION)
                 return
-
+        # else: # 如果還未到達放置點，move_along_path 會繼續處理移動
+            # print(f"  [STRATEGIC BOMBING] AI still en route to bombing spot. Current tile: {ai_tile}, Path: {self.current_path}, Index: {self.current_path_index}") # DEBUG
+            pass
 
     def handle_await_opportunity_state(self): # 與格子移動系統兼容 (主要是不動)
         ai_tile = self._get_ai_current_tile()
