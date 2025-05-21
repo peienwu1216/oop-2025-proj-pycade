@@ -251,23 +251,25 @@ class AIController:
                 continue
 
             # --- 評估 (current_x, current_y) 是否為一個合格的「安全逃生點」(Destination) ---
-            is_safe_from_specific_bomb_blast = True 
-            if avoid_specific_bomb_data: # 如果需要避開特定炸彈
+            # 1. 它本身不能在“要避開的特定炸彈”的爆炸範圍內 (如果有的話)
+            is_safe_from_specific_bomb_blast = True # 先假設安全
+            if avoid_specific_bomb_data: 
                 bomb_tile, bomb_range = avoid_specific_bomb_data
                 if self._is_tile_in_hypothetical_blast(current_x, current_y, bomb_tile[0], bomb_tile[1], bomb_range):
-                    is_safe_from_specific_bomb_blast = False # 此目標點在特定炸彈的爆炸範圍內
+                    is_safe_from_specific_bomb_blast = False 
             
+            # 2. 它本身不能因為“其他一般危險”(其他炸彈/火焰)而即將變得危險
             is_safe_from_general_dangers = False
             if is_safe_from_specific_bomb_blast: # 目的地必須不在特定炸彈範圍內
                 if not self.is_tile_dangerous(current_x, current_y, True, True, future_seconds=destination_future_check_seconds):
-                    is_safe_from_general_dangers = True # 目的地也不受其他一般危險影響
+                    is_safe_from_general_dangers = True 
 
             # print(f"  [FIND_SAFE_NEARBY] Check Dest ({current_x},{current_y}): SpecSafeDest={is_safe_from_specific_bomb_blast}, GenSafeDest={is_safe_from_general_dangers} (using {destination_future_check_seconds}s)") # DEBUG
 
             if is_safe_from_specific_bomb_blast and is_safe_from_general_dangers:
                 safe_tiles_found.append((current_x, current_y))
                 # print(f"    [FIND_SAFE_NEARBY] Added ({current_x},{current_y}) to safe_tiles_found.") # DEBUG
-                if len(safe_tiles_found) >= 3: # 找到一些就夠了
+                if len(safe_tiles_found) >= 3: 
                     break 
 
             # --- 探索鄰近格子 (Path Steps) ---
@@ -279,26 +281,26 @@ class AIController:
                     if (next_x, next_y) not in visited and map_mgr.is_walkable(next_x, next_y):
                         visited.add((next_x, next_y))
                         
-                        # ！！！修改的核心在這裡！！！
-                        # 對於「路徑步驟」(next_x, next_y)，我們只檢查它是否受到「一般危險」的影響。
-                        # 如果我們正在為 avoid_specific_bomb_data（AI自己剛放的炸彈）規劃逃生路徑，
-                        # 那麼路徑步驟 *可以* 暫時處於該特定炸彈的未來爆炸範圍內，
-                        # 因為AI的目的是快速穿過這個區域。
+                        # ！！！修改的核心：評估「路徑步驟」的安全性！！！
+                        # 當 avoid_specific_bomb_data 存在時（即我們正在為逃離該特定炸彈規劃路徑），
+                        # 路徑步驟 (next_x, next_y) 的安全性不應再被這個“特定炸彈”影響，
+                        # 因為 AI 必須能夠移動到「即將」被自己炸彈波及的格子，才能最終逃脫。
+                        # 我們只需要檢查這個步驟是否會受到「其他一般危險」的影響。
                         
                         step_is_generally_safe = not self.is_tile_dangerous(
                             next_x, next_y, 
-                            check_bombs=True,         # 檢查其他炸彈
-                            check_explosions=True,    # 檢查現有火焰
-                            future_seconds=step_future_check_seconds # 短期預測一般危險
+                            check_bombs=True,         # 檢查其他已存在的炸彈
+                            check_explosions=True,    # 檢查現有的火焰
+                            future_seconds=step_future_check_seconds # 對步驟進行短期的「一般危險」預測
                         )
                         
-                        # print(f"    [FIND_SAFE_NEARBY] Check Step to ({next_x},{next_y}): GenStepSafe={step_is_generally_safe} (using {step_future_check_seconds}s)") # DEBUG
+                        # print(f"    [FIND_SAFE_NEARBY] Check Step to ({next_x},{next_y}): GenStepSafe={step_is_generally_safe} (using {step_future_check_seconds}s for general, specific bomb is ignored for step)") # DEBUG
                         
-                        if step_is_generally_safe:
+                        if step_is_generally_safe: # 只要這一步驟不受其他一般危險影響即可
                             new_path = list(path_to_current); new_path.append((next_x,next_y))
                             queue.append(((next_x, next_y), new_path, depth + 1))
         
-        # print(f"  [FIND_SAFE_NEARBY] Search for {start_tile} complete. Returning: {safe_tiles_found}") # DEBUG
+        # print(f"  [FIND_SAFE_NEARBY] Search for {start_tile} (AvoidSpecific: {avoid_specific_bomb_data is not None}) complete. Returning: {safe_tiles_found}") # DEBUG
         return safe_tiles_found
 
     def find_best_powerup(self):
