@@ -106,7 +106,14 @@ class Player(GameObject):
         # 在瞬時格子移動中，is_moving 可能只在移動發生的那一幀或短時間內為 True。
         self.is_moving = False 
         self.action_timer = 0 # 用於控制行走動畫在瞬移後持續一小段時間
-        self.ACTION_ANIMATION_DURATION = 0.20 # 行走動畫在移動後持續的秒數 (例如0.15秒)
+        
+        if self.is_ai:
+            self.ACTION_ANIMATION_DURATION = getattr(settings, 'AI_GRID_MOVE_ACTION_DURATION', 0.5) # AI 每 0.5 秒移動一格
+        else:
+            # 人類玩家的移動節奏可以更快，例如 0.1 秒，或者更短以達到更連續的效果
+            # 如果設為非常小的值 (例如 0.01)，則 action_timer 的限制幾乎可以忽略，
+            # 主要由按鍵檢測的幀率決定移動頻率。
+            self.ACTION_ANIMATION_DURATION = getattr(settings, 'HUMAN_GRID_MOVE_ACTION_DURATION', 0.2) # 人類玩家可以更頻繁地移動
         # 移除舊的 self.vx, self.vy, self.speed，因為移動方式改變
         # self.vx = 0; self.vy = 0
         # self.speed = ... (不再需要像素速度)
@@ -115,7 +122,7 @@ class Player(GameObject):
     def attempt_move_to_tile(self, dx, dy):
         """
         嘗試向指定的方向 (dx, dy) 移動一個格子。
-        dx, dy 分別為 -1, 0, 或 1，且不同時為0，不同時為非零 (除非允許對角線)。
+        dx, dy 分別為 -1, 0, 或 1、且不同時為0、不同時為非零 (除非允許對角線)。
         返回 True 如果移動成功，否則 False。
         """
         if not self.is_alive:
