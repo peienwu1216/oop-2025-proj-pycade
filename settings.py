@@ -73,6 +73,8 @@ ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
 ITEM_LIFE_IMG = os.path.join(IMAGES_DIR, "items", "item_life_placeholder.png")
 ITEM_BOMB_CAPACITY_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_capacity_placeholder.png")
 ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeholder.png")
+# Explosion Image Path (新增或修改)
+EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png") # 假設您的圖片名和路徑
 
 # Item Types
 ITEM_TYPE_SCORE = "score"
@@ -111,6 +113,7 @@ PLAYER_SPRITESHEET_ROW_MAP = {
 # Bomb settings
 BOMB_TIMER = 3000  
 EXPLOSION_DURATION = 300  
+USE_EXPLOSION_IMAGES = True # 改為 False 則使用顏色方塊
 EXPLOSION_COLOR = (255, 165, 0) 
 
 # AI Settings
