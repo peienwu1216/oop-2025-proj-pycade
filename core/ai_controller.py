@@ -6,7 +6,7 @@ import random
 from collections import deque
 import heapq 
 
-AI_DEBUG_MODE = True 
+AI_DEBUG_MODE = True
 
 def ai_log(message):
     if AI_DEBUG_MODE:
@@ -646,37 +646,97 @@ class AIController:
         if not self.ai_player or not self.ai_player.is_alive: return
         ai_tile_now = self._get_ai_current_tile()
         if not ai_tile_now: return
-        try: # Wrap drawing in try-except to prevent crashes if TILE_SIZE is not yet set
-            if self.astar_planned_path:
-                astar_points = []
-                for i, node in enumerate(self.astar_planned_path):
-                    px = node.x * settings.TILE_SIZE + settings.TILE_SIZE // 2; py = node.y * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    astar_points.append((px,py))
-                    if i == self.astar_path_current_segment_index: pygame.draw.circle(surface, (255,165,0, 200), (px,py), settings.TILE_SIZE//3 + 2, 3)
-                if len(astar_points) > 1: pygame.draw.lines(surface, (50,50,200,150), False, astar_points, 2)
-            if self.current_movement_sub_path:
-                sub_path_points = []
-                if self.current_movement_sub_path_index < len(self.current_movement_sub_path):
-                    start_px = ai_tile_now[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2; start_py = ai_tile_now[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    if not (len(self.current_movement_sub_path) == 1 and self.current_movement_sub_path[0] == ai_tile_now): # Don't draw line from self to self
-                        sub_path_points.append((start_px, start_py))
 
-                    for i in range(self.current_movement_sub_path_index, len(self.current_movement_sub_path)):
-                        tile_coords = self.current_movement_sub_path[i]
-                        if i == self.current_movement_sub_path_index and tile_coords == ai_tile_now: continue # Skip first point if it's current location
-                        px = tile_coords[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2; py = tile_coords[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                        sub_path_points.append((px,py))
-                        if i == self.current_movement_sub_path_index +1 : pygame.draw.circle(surface, (0,200,200,200), (px,py), settings.TILE_SIZE//4, 3)
-                if len(sub_path_points) > 1: pygame.draw.lines(surface, (150,0,150,200), False, sub_path_points, 4)
-            if self.chosen_bombing_spot_coords:
-                pygame.draw.circle(surface, (255,0,0,150), (self.chosen_bombing_spot_coords[0]*settings.TILE_SIZE+settings.TILE_SIZE//2, self.chosen_bombing_spot_coords[1]*settings.TILE_SIZE+settings.TILE_SIZE//2), settings.TILE_SIZE//3, 3)
-            if self.chosen_retreat_spot_coords:
-                pygame.draw.rect(surface, (0,0,255,150), (self.chosen_retreat_spot_coords[0]*settings.TILE_SIZE+settings.TILE_SIZE//4, self.chosen_retreat_spot_coords[1]*settings.TILE_SIZE+settings.TILE_SIZE//4, settings.TILE_SIZE//2, settings.TILE_SIZE//2), 0)
-            if self.target_destructible_wall_node_in_astar:
+        try:
+            # --- A* 戰略路徑 (深藍色線) ---
+            # 代表 AI 的長期目標路徑，用於清除障礙。
+            if self.astar_planned_path and \
+               self.astar_path_current_segment_index < len(self.astar_planned_path):
+                astar_points_to_draw = []
+                
+                # 連接 AI 當前位置到 A* 路徑的當前或下一個節點
+                start_px_astar = ai_tile_now[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                start_py_astar = ai_tile_now[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                astar_points_to_draw.append((start_px_astar, start_py_astar))
+
+                # 從 A* 路徑的當前活躍段開始繪製
+                for i in range(self.astar_path_current_segment_index, len(self.astar_planned_path)):
+                    node = self.astar_planned_path[i]
+                    px = node.x * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    py = node.y * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    astar_points_to_draw.append((px,py))
+                    
+                    # 標記 A* 路徑的當前目標節點 (AI 最終要處理的這個 A* path segment)
+                    if i == self.astar_path_current_segment_index:
+                         pygame.draw.circle(surface, (255, 165, 0, 220), (px,py), settings.TILE_SIZE//3 + 1, 3) # 橙色圈
+                
+                if len(astar_points_to_draw) > 1:
+                     pygame.draw.lines(surface, (0, 0, 139, 180), False, astar_points_to_draw, 2) # 深藍色 (DarkBlue), Alpha 180, 線寬 2
+
+
+            # --- 即時移動子路徑 (BFS 短途移動，紫紅色線) ---
+            # 代表 AI 當前正在執行的短程移動。
+            if self.current_movement_sub_path and \
+               self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 : # 確保至少還有下一步
+                sub_path_points_to_draw = []
+                
+                # 從 AI 當前位置開始
+                start_px_sub = ai_tile_now[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                start_py_sub = ai_tile_now[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                sub_path_points_to_draw.append((start_px_sub, start_py_sub))
+
+                # 繪製到子路徑的剩餘部分
+                for i in range(self.current_movement_sub_path_index + 1, len(self.current_movement_sub_path)):
+                    tile_coords = self.current_movement_sub_path[i]
+                    px = tile_coords[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    py = tile_coords[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    sub_path_points_to_draw.append((px,py))
+                
+                if len(sub_path_points_to_draw) > 1:
+                    pygame.draw.lines(surface, (138, 43, 226, 200), False, sub_path_points_to_draw, 3) # 藍紫色 (BlueViolet), Alpha 200, 線寬 3
+                    # 標記子路徑的下一個直接目標點
+                    next_sub_step_coords = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
+                    next_px = next_sub_step_coords[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    next_py = next_sub_step_coords[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    pygame.draw.circle(surface, (0, 220, 220, 220), (next_px, next_py), settings.TILE_SIZE//5, 2) # 青色小圈
+
+
+            # --- 撤退點標記 (淺藍色半透明小方塊) ---
+            # （1）！！！ 修改：使淺藍色撤退方塊變小並保持半透明 ！！！（1）
+            if self.chosen_retreat_spot_coords and self.current_state == AI_STATE_TACTICAL_RETREAT_AND_WAIT:
+                # 計算小方塊的大小和位置
+                square_size = settings.TILE_SIZE // 2 # 例如，格子大小的一半
+                offset = (settings.TILE_SIZE - square_size) // 2 # 使其在格子中居中
+                
+                rx_pixel = self.chosen_retreat_spot_coords[0] * settings.TILE_SIZE + offset
+                ry_pixel = self.chosen_retreat_spot_coords[1] * settings.TILE_SIZE + offset
+                
+                s = pygame.Surface((square_size, square_size), pygame.SRCALPHA)
+                # 淺藍色，例如 (173, 216, 230)，透明度 120
+                pygame.draw.rect(s, (173, 216, 230, 120), s.get_rect())  
+                surface.blit(s, (rx_pixel, ry_pixel))
+            # （1）！！！ 修改結束 ！！！（1）
+
+
+            # --- 炸彈放置點標記 (紅色目標圈) ---
+            if self.chosen_bombing_spot_coords and \
+               (self.current_state == AI_STATE_EXECUTING_PATH_CLEARANCE or \
+                (self.current_state == AI_STATE_ENGAGING_PLAYER and self.ai_just_placed_bomb)):
+                pygame.draw.circle(surface, (255,0,0,180), 
+                                   (self.chosen_bombing_spot_coords[0]*settings.TILE_SIZE+settings.TILE_SIZE//2, 
+                                    self.chosen_bombing_spot_coords[1]*settings.TILE_SIZE+settings.TILE_SIZE//2), 
+                                   settings.TILE_SIZE//3 -1, 3) # 紅色圈，略小一點
+
+            # --- A*路徑上要炸的牆 (黃色框) ---
+            if self.target_destructible_wall_node_in_astar and \
+               self.current_state == AI_STATE_EXECUTING_PATH_CLEARANCE : 
                 wall_node = self.target_destructible_wall_node_in_astar
-                pygame.draw.rect(surface, (255,255,0, 100), (wall_node.x*settings.TILE_SIZE, wall_node.y*settings.TILE_SIZE, settings.TILE_SIZE, settings.TILE_SIZE), 4)
+                pygame.draw.rect(surface, (255,255,0, 120), # 黃色，半透明
+                                 (wall_node.x*settings.TILE_SIZE, wall_node.y*settings.TILE_SIZE, 
+                                  settings.TILE_SIZE, settings.TILE_SIZE), 3) # 線寬 3
+        
         except AttributeError as e:
-            if 'TILE_SIZE' in str(e): # Settings might not be fully loaded during early init
-                pass # Silently ignore if TILE_SIZE is the issue
-            else:
-                raise e # Re-raise other AttributeErrors
+            if 'TILE_SIZE' in str(e): pass 
+            else: raise e
+        except Exception as e: 
+            print(f"Error during debug_draw_path: {e}")
