@@ -156,30 +156,19 @@ class Player(GameObject):
                 if obstacle.rect.colliderect(target_check_rect):
                     return False
         
-        # （9）！！！ 新增與修改：檢查是否與其他玩家或已固化的炸彈重疊 ！！！（9）
-        # 功能需求 2：禁止角色重疊
-        if hasattr(self.game, 'players_group'):
-            for other_player in self.game.players_group:
-                if other_player is self: 
-                    continue 
-                if other_player.is_alive and \
-                   other_player.tile_x == target_tile_x and \
-                   other_player.tile_y == target_tile_y:
-                    # print(f"Player {id(self)} blocked by other player {id(other_player)} at ({target_tile_x},{target_tile_y})")
-                    return False 
-
-        # 功能需求 1：炸彈放置後格子不可通行
+        # 3. 這裡的炸彈檢查是為了防止玩家重疊在炸彈上
         if hasattr(self.game, 'bombs_group'):
             for bomb in self.game.bombs_group:
                 if not bomb.exploded and \
                    bomb.current_tile_x == target_tile_x and \
                    bomb.current_tile_y == target_tile_y:
+                    # 如果是自己剛放置的炸彈，且自己還未離開該格，則允許移動（這是為了能順利離開）
                     if bomb.placed_by_player is self and not bomb.owner_has_left_tile:
-                        pass 
-                    elif bomb.is_solidified: 
+                        pass # 允許玩家離開自己剛放的、尚未固化的炸彈
+                    elif bomb.is_solidified: # 炸彈已經固化，不可通行
                         # print(f"Player {id(self)} blocked by solidified bomb at ({target_tile_x},{target_tile_y})")
-                        return False 
-        # （9）！！！ 新增與修改結束 ！！！（9）
+                        return False # 被固化炸彈阻擋
+        
         
         self.tile_x = target_tile_x
         self.tile_y = target_tile_y
