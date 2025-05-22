@@ -17,14 +17,23 @@ class Explosion(GameObject):
             y_tile (int): The y-coordinate (in tile units) of this explosion segment.
             game_instance (Game): The main game instance.
         """
-        # 使用顏色繪製，不使用圖片路徑參數
-        super().__init__(
-            x_tile * settings.TILE_SIZE,
-            y_tile * settings.TILE_SIZE,
-            settings.TILE_SIZE,
-            settings.TILE_SIZE,
-            color=settings.EXPLOSION_COLOR # 使用設定中的爆炸顏色
-        )
+
+        if settings.USE_EXPLOSION_IMAGES:
+            super().__init__(
+                x_tile * settings.TILE_SIZE,
+                y_tile * settings.TILE_SIZE,
+                settings.TILE_SIZE, # width (會被圖片覆蓋，但 GameObject 需要)
+                settings.TILE_SIZE, # height (會被圖片覆蓋，但 GameObject 需要)
+                image_path=settings.EXPLOSION_PARTICLE_IMG # 使用單一張爆炸圖片
+            )
+        else: # 如果不使用圖片，則使用顏色
+            super().__init__(
+                x_tile * settings.TILE_SIZE,
+                y_tile * settings.TILE_SIZE,
+                settings.TILE_SIZE,
+                settings.TILE_SIZE,
+                color=settings.EXPLOSION_COLOR
+            )
         self.game = game_instance
         self.spawn_time = pygame.time.get_ticks()
         self.duration = settings.EXPLOSION_DURATION
