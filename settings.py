@@ -30,11 +30,9 @@ INITIAL_BOMBS = 2
 INITIAL_BOMB_RANGE = 1
 
 
-# （2）！！！ 新增或確認 Player 動畫與視覺相關設定 ！！！（2）
 PLAYER_ANIMATION_SPEED = 0.1  # 秒/幀，值越小動畫越快
 PLAYER_NUM_WALK_FRAMES = 6    # 假設每個方向的行走動畫有6幀 (需要與你的 sprite sheet 匹配)
 PLAYER_VISUAL_SCALE_FACTOR = 0.85 # 角色視覺縮放比例，1.0 為不縮放
-# （2）！！！ 新增或確認結束 ！！！（2）
 
 
 # （3）！！！ 新增或確認 Player 移動與碰撞相關設定 ！！！（3）
@@ -52,6 +50,8 @@ AI_GRID_MOVE_ACTION_DURATION = 0.3   # AI 移動可以慢一點，方便觀察
 # 受傷無敵時間 (毫秒)
 PLAYER_INVINCIBLE_DURATION = 1500 
 # （3）！！！ 新增或確認結束 ！！！（3）
+
+DESTRUCTIBLE_WALL_CHANCE = 0.5
 
 
 import os
@@ -79,6 +79,18 @@ ITEM_TYPE_SCORE = "score"
 ITEM_TYPE_LIFE = "life"
 ITEM_TYPE_BOMB_CAPACITY = "bomb_capacity"
 ITEM_TYPE_BOMB_RANGE = "bomb_range"
+
+ITEM_DROP_WEIGHTS = {
+    ITEM_TYPE_LIFE: 30,            # 生命值道具的權重，例如從 10 增加到 30
+    ITEM_TYPE_BOMB_CAPACITY: 20,   # 炸彈容量道具的權重 (保持或略微調整)
+    ITEM_TYPE_BOMB_RANGE: 10,      # 爆炸範圍道具的權重，例如從 20 降低到 10
+    ITEM_TYPE_SCORE: 40            # 分數道具的權重 (可以設為較常見)
+    # 如果你還有其他道具類型，也應該在這裡加入它們的權重
+}
+# 牆壁被摧毀時掉落道具的總體機率 (0.0 到 1.0)
+# 你可能已經在 DestructibleWall 中有一個 item_drop_chance，
+# 如果要在 settings.py 中統一控制，可以新增這個，然後在 DestructibleWall 中使用它
+WALL_ITEM_DROP_CHANCE = 0.8 # 例如，80% 的可破壞牆壁被炸後會掉落道具
 
 # Item settings
 SCORE_ITEM_VALUE = 50
