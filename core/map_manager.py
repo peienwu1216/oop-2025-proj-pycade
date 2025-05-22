@@ -46,7 +46,7 @@ class MapManager:
         #    參考你的 C++ 報告，可破壞障礙物內部有80%機率生成道具
         #    這裡我們先決定哪些位置是可破壞障礙物
         #    你的 C++ 報告中提到隨機生成障礙物是在困難地圖，我們這裡可以先用一個固定機率
-        destructible_wall_chance = 0.6 # !!! 你可以調整這個機率 !!!
+        destructible_wall_chance = settings.DESTRUCTIBLE_WALL_CHANCE
 
         for r in range(1, height - 1): # 不在最外層邊界生成
             for c in range(1, width - 1):
