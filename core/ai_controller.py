@@ -79,6 +79,8 @@ class AIController:
         self.last_known_tile = (-1,-1)
         self.decision_cycle_stuck_counter = 0
         self.stuck_threshold_decision_cycles = 5
+        self.has_made_contact_with_player = False
+        self.player_contact_distance_threshold = 2
         ai_log(f"[AI_INIT] AIController for Player ID: {id(self.ai_player)} initialized. Initial state: {self.current_state}. Debug Mode: {AI_DEBUG_MODE}")
         self.reset_state()
 
@@ -100,6 +102,7 @@ class AIController:
         self.player_initial_spawn_tile = getattr(self.game, 'player1_start_tile', (1,1))
         ai_log(f"[AI_RESET] Target player initial spawn tile set to: {self.player_initial_spawn_tile}")
         self.decision_cycle_stuck_counter = 0
+        self.has_made_contact_with_player = False # Reset on game reset
         current_ai_tile_tuple = self._get_ai_current_tile()
         self.last_known_tile = current_ai_tile_tuple if current_ai_tile_tuple else (-1,-1)
 
@@ -605,6 +608,12 @@ class AIController:
             self.change_state(AI_STATE_PLANNING_PATH_TO_PLAYER)
             return
 
+        if not self.has_made_contact_with_player:
+            dist_to_human = abs(ai_current_tile[0] - human_pos[0]) + abs(ai_current_tile[1] - human_pos[1])
+            if dist_to_human <= self.player_contact_distance_threshold:
+                ai_log(f"[AI_CONTACT] First contact made with player at distance {dist_to_human}. Strategic A* path display will be disabled.")
+                self.has_made_contact_with_player = True
+        
         # --- 策略 1: 檢查是否可以在當前位置或鄰近位置放置炸彈來攻擊 ---
         # 候選炸彈放置點：AI當前位置以及其周圍的空格子
         potential_bombing_spots = [ai_current_tile]
@@ -720,104 +729,168 @@ class AIController:
         if not ai_tile_now: return
 
         try:
-            current_game_time = pygame.time.get_ticks()
-            show_strategic_path = True # 預設顯示
+            tile_size = settings.TILE_SIZE
+            half_tile = tile_size // 2
 
-            # 條件1: 開局一段時間後不再顯示 A* 戰略路徑
-            # if hasattr(settings, 'AI_STRATEGIC_PATH_DISPLAY_DURATION'):
-            #     if (current_game_time - self.game_start_time) / 1000 > settings.AI_STRATEGIC_PATH_DISPLAY_DURATION:
-            #         show_strategic_path = False
-            
-            # 條件2: 或者當 AI 進入 ENGAGING_PLAYER 狀態後，也可以選擇不顯示總體戰略路徑
-            # (你可以選擇啟用這個條件，或者只用時間條件)
-            if self.current_state == AI_STATE_ENGAGING_PLAYER:
-                show_strategic_path = False
+            # Determine if the strategic A* path and its related elements should be shown
+            show_long_term_strategic_elements = not self.has_made_contact_with_player
 
-
-            # --- A* 戰略路徑 (深藍色線) ---
-            # 代表 AI 的長期目標路徑，用於清除障礙。
-            if show_strategic_path and self.astar_planned_path and \
+            # --- 1. A* Strategic Path (Long-term goal, e.g., to player spawn or key area) ---
+            # Color: Cyan, thicker, dashed (simulated with segments)
+            # Shown only if contact hasn't been made and a path exists.
+            if show_long_term_strategic_elements and self.astar_planned_path and \
                self.astar_path_current_segment_index < len(self.astar_planned_path):
-                astar_points_to_draw = []
                 
-                start_px_astar = ai_tile_now[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                start_py_astar = ai_tile_now[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                astar_points_to_draw = []
+                current_astar_target_pixel_pos = None
+
+                # Start from AI's current position for drawing continuity
+                start_px_astar = ai_tile_now[0] * tile_size + half_tile
+                start_py_astar = ai_tile_now[1] * tile_size + half_tile
                 astar_points_to_draw.append((start_px_astar, start_py_astar))
 
                 for i in range(self.astar_path_current_segment_index, len(self.astar_planned_path)):
                     node = self.astar_planned_path[i]
-                    px = node.x * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    py = node.y * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    astar_points_to_draw.append((px,py))
+                    px = node.x * tile_size + half_tile
+                    py = node.y * tile_size + half_tile
+                    astar_points_to_draw.append((px, py))
                     
                     if i == self.astar_path_current_segment_index:
-                         pygame.draw.circle(surface, (255, 165, 0, 220), (px,py), settings.TILE_SIZE//3 + 1, 3) 
+                        current_astar_target_pixel_pos = (px, py)
                 
                 if len(astar_points_to_draw) > 1:
-                     pygame.draw.lines(surface, (0, 0, 139, 180), False, astar_points_to_draw, 2) 
-                elif len(astar_points_to_draw) == 1 and astar_points_to_draw[0] != (start_px_astar, start_py_astar) :
-                    pygame.draw.circle(surface, (255,165,0, 200), astar_points_to_draw[0], settings.TILE_SIZE//3 + 3, 3)
+                    # Simulate dashed line by drawing segments
+                    dash_length = 8
+                    gap_length = 4
+                    is_drawing_dash = True
+                    points_for_dashed_line = []
+                    
+                    for i in range(len(astar_points_to_draw) - 1):
+                        p1 = pygame.math.Vector2(astar_points_to_draw[i])
+                        p2 = pygame.math.Vector2(astar_points_to_draw[i+1])
+                        segment_vector = p2 - p1
+                        segment_length = segment_vector.length()
+                        if segment_length == 0: continue
+                        
+                        segment_dir = segment_vector.normalize()
+                        current_pos_on_segment = 0
+                        
+                        temp_dash_points = []
+                        if is_drawing_dash: # Start with a dash from p1 if astar_points_to_draw[i] is the start of the visual line
+                             temp_dash_points.append(p1)
+
+                        while current_pos_on_segment < segment_length:
+                            if is_drawing_dash:
+                                step = min(dash_length, segment_length - current_pos_on_segment)
+                                next_point = p1 + segment_dir * (current_pos_on_segment + step)
+                                temp_dash_points.append(next_point)
+                                if len(temp_dash_points) == 2:
+                                     pygame.draw.aaline(surface, (0, 180, 220, 200), temp_dash_points[0], temp_dash_points[1], True) # Cyan-ish
+                                     temp_dash_points = []
+                                is_drawing_dash = False
+                            else:
+                                step = min(gap_length, segment_length - current_pos_on_segment)
+                                # For gap, just advance current_pos_on_segment
+                                if not is_drawing_dash and temp_dash_points: # Should not happen if logic is correct
+                                     temp_dash_points = []
+                                is_drawing_dash = True
+                                if is_drawing_dash: # Start next dash
+                                    temp_dash_points.append(p1 + segment_dir * (current_pos_on_segment + step) )
 
 
-            # --- 即時移動子路徑 (BFS 短途移動，紫紅色線) ---
-            # 代表 AI 當前正在執行的短程移動。
+                            current_pos_on_segment += step
+                        # Ensure the last segment dash/gap logic correctly transitions for the next line segment
+                        # For simplicity, if the last part was a dash, it's drawn. If a gap, it means the next p1 starts a dash.
+                        if len(temp_dash_points) == 2: # Draw any remaining dash segment
+                            pygame.draw.aaline(surface, (0, 180, 220, 200), temp_dash_points[0], temp_dash_points[1], True)
+
+
+                # Highlight current A* target node (the specific node AI is trying to clear/reach in its long plan)
+                if current_astar_target_pixel_pos:
+                    pygame.draw.circle(surface, (255, 165, 0, 220), current_astar_target_pixel_pos, tile_size // 3, 3) # Orange circle
+
+
+            # --- 2. BFS Short-Term Sub-Path (Immediate movement goal) ---
+            # Color: Bright Magenta, solid line
             if self.current_movement_sub_path and \
-               self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 : 
-                sub_path_points_to_draw = []
+               self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 : # Path has at least one more step
                 
-                start_px_sub = ai_tile_now[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                start_py_sub = ai_tile_now[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                sub_path_points_to_draw = []
+                # Start from AI's current pixel position for drawing continuity
+                start_px_sub = ai_tile_now[0] * tile_size + half_tile
+                start_py_sub = ai_tile_now[1] * tile_size + half_tile
                 sub_path_points_to_draw.append((start_px_sub, start_py_sub))
 
+                # Add all subsequent points in the current sub-path
                 for i in range(self.current_movement_sub_path_index + 1, len(self.current_movement_sub_path)):
                     tile_coords = self.current_movement_sub_path[i]
-                    px = tile_coords[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    py = tile_coords[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
+                    px = tile_coords[0] * tile_size + half_tile
+                    py = tile_coords[1] * tile_size + half_tile
                     sub_path_points_to_draw.append((px,py))
                 
                 if len(sub_path_points_to_draw) > 1: 
-                    pygame.draw.lines(surface, (138, 43, 226, 200), False, sub_path_points_to_draw, 3) 
+                    pygame.draw.aalines(surface, (220, 20, 180, 230), False, sub_path_points_to_draw, True) # Vibrant Magenta
+                    
+                    # Highlight the very next tile AI is moving to
                     next_sub_step_coords = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
-                    next_px = next_sub_step_coords[0] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    next_py = next_sub_step_coords[1] * settings.TILE_SIZE + settings.TILE_SIZE // 2
-                    pygame.draw.circle(surface, (0, 220, 220, 220), (next_px, next_py), settings.TILE_SIZE//5, 2) 
+                    next_px = next_sub_step_coords[0] * tile_size + half_tile
+                    next_py = next_sub_step_coords[1] * tile_size + half_tile
+                    # Pulsating effect for the immediate next step
+                    pulse_factor = abs(pygame.time.get_ticks() % 1000 - 500) / 500 # 0 to 1 to 0 over 1 sec
+                    radius = int(tile_size // 5 + pulse_factor * (tile_size//10) )
+                    pygame.draw.circle(surface, (50, 255, 255, 255), (next_px, next_py), radius, 0) # Bright Cyan filled circle
 
 
-            # --- 撤退點標記 (淺藍色半透明小方塊) ---
+            # --- 3. Tactical Markers ---
+
+            # Chosen Retreat Spot (when actively retreating)
+            # Color: Light Sky Blue, filled square with border
             if self.chosen_retreat_spot_coords and self.current_state == AI_STATE_TACTICAL_RETREAT_AND_WAIT:
-                # （之前已修改）使淺藍色撤退方塊變小並保持半透明
-                square_size = settings.TILE_SIZE // 2 
-                offset = (settings.TILE_SIZE - square_size) // 2 
+                rx, ry = self.chosen_retreat_spot_coords
+                rect_retreat = pygame.Rect(rx * tile_size + tile_size // 4, 
+                                           ry * tile_size + tile_size // 4,
+                                           half_tile, half_tile)
                 
-                rx_pixel = self.chosen_retreat_spot_coords[0] * settings.TILE_SIZE + offset
-                ry_pixel = self.chosen_retreat_spot_coords[1] * settings.TILE_SIZE + offset
-                
-                s = pygame.Surface((square_size, square_size), pygame.SRCALPHA)
-                pygame.draw.rect(s, (173, 216, 230, 120), s.get_rect())  
-                surface.blit(s, (rx_pixel, ry_pixel))
+                # Create a separate surface for alpha blending
+                s_retreat = pygame.Surface((half_tile, half_tile), pygame.SRCALPHA)
+                s_retreat.fill((135, 206, 250, 150)) # LightSkyBlue with alpha
+                surface.blit(s_retreat, (rect_retreat.x, rect_retreat.y))
+                pygame.draw.rect(surface, (70, 130, 180, 200), rect_retreat, 2) # SteelBlue border
 
-
-            # --- 炸彈放置點標記 (紅色目標圈) ---
+            # Chosen Bombing Spot (when about to bomb for clearance or engaging and has a spot)
+            # Color: Bright Red, thicker target reticle
             if self.chosen_bombing_spot_coords and \
                (self.current_state == AI_STATE_EXECUTING_PATH_CLEARANCE or \
-                (self.current_state == AI_STATE_ENGAGING_PLAYER and self.ai_just_placed_bomb)):
-                pygame.draw.circle(surface, (255,0,0,180), 
-                                   (self.chosen_bombing_spot_coords[0]*settings.TILE_SIZE+settings.TILE_SIZE//2, 
-                                    self.chosen_bombing_spot_coords[1]*settings.TILE_SIZE+settings.TILE_SIZE//2), 
-                                   settings.TILE_SIZE//3 -1, 3) 
+                (self.current_state == AI_STATE_ENGAGING_PLAYER and \
+                 (self.current_movement_sub_path and # Check if moving towards it OR already there
+                  len(self.current_movement_sub_path) > 0 and
+                  self.current_movement_sub_path[-1] == self.chosen_bombing_spot_coords or
+                  ai_tile_now == self.chosen_bombing_spot_coords) 
+                 )
+                ):
+                bx, by = self.chosen_bombing_spot_coords
+                center_bx, center_by = bx * tile_size + half_tile, by * tile_size + half_tile
+                pygame.draw.circle(surface, (255, 0, 0, 200), (center_bx, center_by), tile_size // 3, 3)
+                pygame.draw.line(surface, (255,0,0,200), (center_bx - tile_size//2.5, center_by), (center_bx + tile_size//2.5, center_by), 2)
+                pygame.draw.line(surface, (255,0,0,200), (center_bx, center_by - tile_size//2.5), (center_bx, center_by + tile_size//2.5), 2)
 
-            # --- A*路徑上要炸的牆 (黃色框) ---
-            # （2）！！！ 修改：只有在 show_strategic_path 為 True 時才顯示目標牆的黃色框 ！！！（2）
-            if show_strategic_path and self.target_destructible_wall_node_in_astar and \
+            # Target Destructible Wall (when A* path is active and wall is targeted for bombing)
+            # Color: Bright Yellow, pulsating thicker outline
+            if show_long_term_strategic_elements and self.target_destructible_wall_node_in_astar and \
                self.current_state == AI_STATE_EXECUTING_PATH_CLEARANCE : 
                 wall_node = self.target_destructible_wall_node_in_astar
-                pygame.draw.rect(surface, (255,255,0, 120), 
-                                 (wall_node.x*settings.TILE_SIZE, wall_node.y*settings.TILE_SIZE, 
-                                  settings.TILE_SIZE, settings.TILE_SIZE), 3) 
-            # （2）！！！ 修改結束 ！！！（2）
+                wall_rect = pygame.Rect(wall_node.x * tile_size, wall_node.y * tile_size, tile_size, tile_size)
+                
+                pulse_factor_wall = abs(pygame.time.get_ticks() % 600 - 300) / 300 # 0 to 1 to 0 over 0.6 sec
+                alpha_wall = int(150 + pulse_factor_wall * 100) # 150 to 250
+                thickness_wall = 2 + int(pulse_factor_wall * 2) # 2 to 4
+                
+                pygame.draw.rect(surface, (255, 255, 0, alpha_wall), wall_rect, thickness_wall)
         
         except AttributeError as e:
-            if 'TILE_SIZE' in str(e): pass 
-            else: ai_log(f"Debug Draw AttributeError: {e}") # 增加日誌以便追蹤其他 AttributeErrors
+            if 'TILE_SIZE' in str(e) or 'game_start_time' in str(e): # Handle if settings or game_start_time isn't ready
+                pass 
+            else: 
+                ai_log(f"Debug Draw AttributeError: {e}")
         except Exception as e: 
             ai_log(f"Error during debug_draw_path: {e}")
