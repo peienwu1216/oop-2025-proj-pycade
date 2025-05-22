@@ -63,7 +63,7 @@ class DestructibleWall(Wall): # 繼承自 Wall，因為它也是一種牆
         self.tile_x = x_tile # 儲存格子座標，方便掉落道具
         self.tile_y = y_tile
         self.is_destroyed = False
-        self.item_drop_chance = 0.8 # 80% 機率掉落道具 (參考你的 C++ 報告)
+        self.item_drop_chance = settings.WALL_ITEM_DROP_CHANCE
         # 你還定義了不同道具的具體機率，我們之後會在掉落時處理
 
     def take_damage(self): # 或者直接命名為 destroy()
