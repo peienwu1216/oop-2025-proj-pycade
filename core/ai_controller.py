@@ -249,8 +249,8 @@ class AIController:
             if is_safe_from_this_bomb and is_safe_from_other_dangers:
                 ai_log(f"        [RETREAT_FINDER] Found SAFE spot: ({curr_x},{curr_y}) with path_len {len(path)-1}")
                 safe_retreat_spots.append({'coords': (curr_x, curr_y), 'path_len': len(path) -1 })
-                if len(safe_retreat_spots) >= 5:
-                    ai_log(f"        [RETREAT_FINDER] Reached 5 safe spots. Breaking.")
+                if len(safe_retreat_spots) >= 10:
+                    ai_log(f"        [RETREAT_FINDER] Reached 10 safe spots. Breaking.")
                     break
 
             if depth < max_depth:
@@ -373,7 +373,7 @@ class AIController:
             path_to_bomb_spot = []
             is_already_at_spot = (ai_current_tile == bomb_spot_coords)
             if is_already_at_spot: path_to_bomb_spot = [ai_current_tile]
-            else: path_to_bomb_spot = self.bfs_find_direct_movement_path(ai_current_tile, bomb_spot_coords, max_depth=5)
+            else: path_to_bomb_spot = self.bfs_find_direct_movement_path(ai_current_tile, bomb_spot_coords, max_depth=10)
 
             if not path_to_bomb_spot: continue
 
