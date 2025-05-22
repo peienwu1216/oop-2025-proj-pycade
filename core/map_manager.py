@@ -60,6 +60,9 @@ class MapManager:
         # print("[DEBUG MAP GEN] Generated map layout:")
         # for row_str in string_layout:
         #     print(row_str)
+        print("[MapManager DEBUG] Final generated map_data in get_randomized_map_layout:") # 新增
+        for r_idx, row_str in enumerate(string_layout): # 新增
+            print(f"Row {r_idx:02d}: {row_str}") # 新增
         return string_layout
 
     def load_map_from_data(self, map_layout_data):
@@ -68,6 +71,10 @@ class MapManager:
         # 在 Game.setup_initial_state 中，solid_obstacles_group 和 all_sprites 也會被清空
 
         self.map_data = map_layout_data
+        print("[MapManager DEBUG] map_data loaded in load_map_from_data:") # 新增
+        for r_idx, row_str in enumerate(self.map_data): # 新增
+            print(f"Row {r_idx:02d}: {row_str}") # 新增
+
         self.tile_height = len(self.map_data)
         self.tile_width = len(self.map_data[0]) if self.tile_height > 0 else 0
 
