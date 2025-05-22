@@ -1,6 +1,11 @@
 # Pycade Bomber (瘋狂炸彈人 Pygame 複刻版)
 
+
+https://github.com/user-attachments/assets/637c5c2f-e8ec-4b28-8b56-794a8e54680e
+
+
 https://hackmd.io/@peienwu/SJr3Yhd-gl
+![Figure_1](https://github.com/user-attachments/assets/9977c2c9-3e9a-415c-8064-f582de16359a)
 
 本專案是物件導向程式設計 (OOP) 課程專案 (oop-2025-proj-pycade)，旨在使用 Pygame 函式庫複刻經典遊戲《瘋狂炸彈人》(Crazy Arcade/Bomberman)。目前的開發目標是完成一個功能相對完善、包含單人對戰 AI 的本地端可執行版本，並為未來可能的擴展（如更複雜的 AI 演算法、強化學習訓練、使用 Pygbag 進行網頁化部署）打下良好基礎。
 
