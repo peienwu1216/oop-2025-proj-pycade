@@ -713,7 +713,7 @@ class AIController:
             if best_evasion_path: self.set_current_movement_sub_path(best_evasion_path); ai_log(f"    New evasion sub-path set: {best_evasion_path}")
             else: ai_log("    EVADE: Cannot find any safe evasion path! AI trapped."); self.current_movement_sub_path = []; self.ai_player.is_moving = False
 
-    
+
     def debug_draw_path(self, surface):
         if not self.ai_player or not self.ai_player.is_alive: return
         ai_tile_now = self._get_ai_current_tile()
@@ -724,14 +724,14 @@ class AIController:
             show_strategic_path = True # 預設顯示
 
             # 條件1: 開局一段時間後不再顯示 A* 戰略路徑
-            if hasattr(settings, 'AI_STRATEGIC_PATH_DISPLAY_DURATION'):
-                if (current_game_time - self.game_start_time) / 1000 > settings.AI_STRATEGIC_PATH_DISPLAY_DURATION:
-                    show_strategic_path = False
+            # if hasattr(settings, 'AI_STRATEGIC_PATH_DISPLAY_DURATION'):
+            #     if (current_game_time - self.game_start_time) / 1000 > settings.AI_STRATEGIC_PATH_DISPLAY_DURATION:
+            #         show_strategic_path = False
             
             # 條件2: 或者當 AI 進入 ENGAGING_PLAYER 狀態後，也可以選擇不顯示總體戰略路徑
             # (你可以選擇啟用這個條件，或者只用時間條件)
-            # if self.current_state == AI_STATE_ENGAGING_PLAYER:
-            #     show_strategic_path = False
+            if self.current_state == AI_STATE_ENGAGING_PLAYER:
+                show_strategic_path = False
 
 
             # --- A* 戰略路徑 (深藍色線) ---
