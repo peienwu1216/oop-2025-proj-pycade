@@ -72,12 +72,14 @@ class DestructibleWall(Wall): # 繼承自 Wall，因為它也是一種牆
         """
         if not self.is_destroyed:
             self.is_destroyed = True
-            print(f"DestructibleWall at ({self.tile_x}, {self.tile_y}) destroyed.")
+            if self.game and hasattr(self.game, 'map_manager') and self.game.map_manager:
+                self.game.map_manager.update_tile_char_on_map(self.tile_x, self.tile_y, '.')
+                print(f"[DestructibleWall] Wall at ({self.tile_x}, {self.tile_y}) destroyed, MapManager.map_data updated.")
             
-            # 處理道具掉落
+            print(f"DestructibleWall at ({self.tile_x}, {self.tile_y}) destroyed.") # Original log
+            
             self.try_drop_item()
-
-            self.kill() # 從所有 Sprite Group 中移除自己
+            self.kill() 
 
     def try_drop_item(self):
         """

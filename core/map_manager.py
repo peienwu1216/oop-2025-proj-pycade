@@ -4,6 +4,7 @@ import settings
 from sprites.wall import Wall, DestructibleWall
 import random # ！！！需要 random 模組！！！
 
+
 class MapManager:
     def __init__(self, game):
         self.game = game
@@ -100,3 +101,17 @@ class MapManager:
         if not (0 <= tile_x < self.tile_width and 0 <= tile_y < self.tile_height):
             return True # 地圖外視為實心牆
         return self.map_data[tile_y][tile_x] == 'W' # 只有 'W' 是不可穿透的實心牆
+    
+    def update_tile_char_on_map(self, tile_x, tile_y, new_char):
+        """Updates the character representing a tile in the internal map_data."""
+        if 0 <= tile_y < self.tile_height and 0 <= tile_x < self.tile_width:
+            # map_data is a list of strings. Convert row to list, modify, then join back.
+            if isinstance(self.map_data[tile_y], str):
+                row_list = list(self.map_data[tile_y])
+                row_list[tile_x] = new_char
+                self.map_data[tile_y] = "".join(row_list)
+                print(f"[MapManager] Tile ({tile_x},{tile_y}) updated to '{new_char}' in map_data.")
+            else:
+                print(f"[MapManager_ERROR] map_data row {tile_y} is not a string. Cannot update.")
+        else:
+            print(f"[MapManager_ERROR] update_tile_char_on_map: Coords ({tile_x},{tile_y}) out of bounds.")
