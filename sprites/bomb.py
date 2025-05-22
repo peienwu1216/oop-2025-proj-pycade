@@ -36,6 +36,9 @@ class Bomb(GameObject):
         self.current_tile_x = x_tile # [SPS_BOMB_NO_CHANGE_NEEDED] 記錄炸彈所在的格子座標，這很好。
         self.current_tile_y = y_tile # [SPS_BOMB_NO_CHANGE_NEEDED] 記錄炸彈所在的格子座標，這很好。
 
+        self.is_solidified = False # 炸彈初始不是固態的，允許放置者離開
+        self.owner_has_left_tile = False # 標記擁有者是否已離開此格
+
         # For visual countdown (optional)
         try:
             self.font = pygame.font.Font(None, 20) 
@@ -55,6 +58,12 @@ class Bomb(GameObject):
         current_time = pygame.time.get_ticks()
         time_elapsed = current_time - self.spawn_time
 
+        if not self.owner_has_left_tile and self.placed_by_player:
+            if self.placed_by_player.tile_x != self.current_tile_x or \
+               self.placed_by_player.tile_y != self.current_tile_y:
+                self.owner_has_left_tile = True
+                self.is_solidified = True 
+        
         if not self.exploded and time_elapsed >= self.timer:
             self.explode() # 觸發爆炸
         
