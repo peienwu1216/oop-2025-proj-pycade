@@ -194,14 +194,29 @@ class AIController:
         q = deque([(from_tile_coords, [from_tile_coords], 0)])
         visited = {from_tile_coords}
         safe_retreat_spots = []
+        
+        nodes_processed_count = 0
+        max_nodes_to_log_details = 20 # 只詳細記錄前20個處理的節點
+
         while q:
             (curr_x, curr_y), path, depth = q.popleft()
-            if depth > max_depth: continue
+            if depth > max_depth: 
+                if nodes_processed_count <= max_nodes_to_log_details: # 新增條件
+                    ai_log(f"      [RETREAT_FINDER] BFS: ({curr_x},{curr_y}) depth {depth} > max_depth. Skipping.")
+                continue
             is_safe_from_this_bomb = not self._is_tile_in_hypothetical_blast(curr_x, curr_y, bomb_just_placed_at_coords[0], bomb_just_placed_at_coords[1], bomb_range)
             is_safe_from_other_dangers = not self.is_tile_dangerous(curr_x, curr_y, future_seconds=settings.BOMB_TIMER/1000 * 0.8)
+
+            if nodes_processed_count <= max_nodes_to_log_details: # 新增條件
+                ai_log(f"      [RETREAT_FINDER] BFS: Processing ({curr_x},{curr_y}), depth {depth}. SafeFromThisBomb: {is_safe_from_this_bomb}, SafeFromOthers: {is_safe_from_other_dangers}")
+
             if is_safe_from_this_bomb and is_safe_from_other_dangers:
+                ai_log(f"        [RETREAT_FINDER] Found SAFE spot: ({curr_x},{curr_y}) with path_len {len(path)}") # 新增
                 safe_retreat_spots.append({'coords': (curr_x, curr_y), 'path_len': len(path)})
-                if len(safe_retreat_spots) >= 5: break
+                if len(safe_retreat_spots) >= 5: 
+                    ai_log(f"        [RETREAT_FINDER] Reached 5 safe spots. Breaking.") # 新增
+                    break
+
             if depth < max_depth:
                 shuffled_directions = list(DIRECTIONS.values()); random.shuffle(shuffled_directions)
                 for dx, dy in shuffled_directions:
@@ -211,6 +226,8 @@ class AIController:
                         if node and node.is_empty_for_direct_movement():
                             if not self.is_tile_dangerous(next_x, next_y, future_seconds=0.2):
                                 visited.add((next_x, next_y)); q.append(((next_x, next_y), path + [(next_x, next_y)], depth + 1))
+        
+        ai_log(f"    [RETREAT_FINDER] find_safe_tiles_nearby_for_retreat finished. Found spots: {safe_retreat_spots}") # 新增
         if safe_retreat_spots:
             safe_retreat_spots.sort(key=lambda x: x['path_len'])
             return [spot['coords'] for spot in safe_retreat_spots]
