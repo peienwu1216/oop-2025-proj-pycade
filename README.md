@@ -1,7 +1,10 @@
 # Pycade Bomber (瘋狂炸彈人 Pygame 複刻版)
 
 
-https://github.com/user-attachments/assets/637c5c2f-e8ec-4b28-8b56-794a8e54680e
+
+https://github.com/user-attachments/assets/2d900586-47cd-45f3-9f28-1839af6a2398
+
+
 
 
 https://hackmd.io/@peienwu/SJr3Yhd-gl
