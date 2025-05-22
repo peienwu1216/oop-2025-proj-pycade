@@ -597,71 +597,99 @@ class AIController:
 
     def handle_engaging_player_state(self, ai_current_tile):
         ai_log(f"[AI_HANDLER] ENGAGING_PLAYER at {ai_current_tile}")
-        self.path_to_player_initial_spawn_clear = True # By definition of being in this state
+        self.path_to_player_initial_spawn_clear = True 
 
         human_pos = self._get_human_player_current_tile()
         if not human_pos:
-            ai_log("  ENGAGE: Human player not found. Switching to PLANNING.")
+            ai_log("  ENGAGE: Human player not found or not alive. Switching to PLANNING.")
             self.change_state(AI_STATE_PLANNING_PATH_TO_PLAYER)
             return
 
-        # --- 優先判斷是否應該在當前位置放置炸彈 ---
-        dist_to_human = abs(ai_current_tile[0] - human_pos[0]) + abs(ai_current_tile[1] - human_pos[1])
-        ai_log(f"  ENGAGE: AI at {ai_current_tile}, Human at {human_pos}, Dist: {dist_to_human}, Bomb Range+1: {self.ai_player.bomb_range + 1}")
+        # --- 策略 1: 檢查是否可以在當前位置或鄰近位置放置炸彈來攻擊 ---
+        # 候選炸彈放置點：AI當前位置以及其周圍的空格子
+        potential_bombing_spots = [ai_current_tile]
+        for dx, dy in DIRECTIONS.values():
+            adj_x, adj_y = ai_current_tile[0] + dx, ai_current_tile[1] + dy
+            adj_node = self._get_node_at_coords(adj_x, adj_y)
+            if adj_node and adj_node.is_empty_for_direct_movement() and not self.is_tile_dangerous(adj_x, adj_y, 0.1):
+                potential_bombing_spots.append((adj_x, adj_y))
+        
+        ai_log(f"  ENGAGE: Potential bombing spots to check: {potential_bombing_spots}")
 
-        if not self.ai_just_placed_bomb and \
-           self.ai_player.bombs_placed_count < self.ai_player.max_bombs and \
-           dist_to_human <= self.ai_player.bomb_range + 2:  # 放寬一點距離，例如炸彈範圍再加2格內都考慮
-            
-            ai_log(f"    ENGAGE: Close enough to human (dist {dist_to_human}). Considering bombing from current position {ai_current_tile}.")
-            
-            is_player_in_blast = self._is_tile_in_hypothetical_blast(
-                human_pos[0], human_pos[1], 
-                ai_current_tile[0], ai_current_tile[1], 
-                self.ai_player.bomb_range
-            )
-            ai_log(f"    ENGAGE: Is player {human_pos} in blast if bombed from {ai_current_tile} (range {self.ai_player.bomb_range})? {is_player_in_blast}")
+        best_bombing_action = None # Store a dictionary: {'bomb_spot': (x,y), 'retreat_spot': (x,y), 'path_to_bomb_spot': list}
 
-            if is_player_in_blast:
-                can_bomb_here, retreat_spot = self.can_place_bomb_and_retreat(ai_current_tile)
-                ai_log(f"    ENGAGE: Can place bomb at {ai_current_tile} and retreat to {retreat_spot}? {can_bomb_here}")
+        if not self.ai_just_placed_bomb and self.ai_player.bombs_placed_count < self.ai_player.max_bombs:
+            for spot_to_bomb_from in potential_bombing_spots:
+                dist_human_to_potential_bomb = abs(spot_to_bomb_from[0] - human_pos[0]) + abs(spot_to_bomb_from[1] - human_pos[1])
                 
-                if can_bomb_here:
-                    ai_log(f"    ENGAGE: CRITERIA MET. Attempting to bomb player at {human_pos} from {ai_current_tile}.")
-                    self.ai_player.place_bomb() 
+                # 只有當這個潛在炸彈點本身離玩家夠近時才考慮 (避免AI繞遠路去一個點放炸彈)
+                # 並且，這個炸彈點的炸彈能炸到玩家
+                # bomb_range + 1 意味著炸彈本身或緊鄰的格子
+                if dist_human_to_potential_bomb <= self.ai_player.bomb_range: # 玩家必須在炸彈本身的爆炸範圍內
+                    ai_log(f"    ENGAGE: Checking bombing from {spot_to_bomb_from} (dist to human from here: {dist_human_to_potential_bomb})")
+                    
+                    is_player_in_blast = self._is_tile_in_hypothetical_blast(
+                        human_pos[0], human_pos[1], 
+                        spot_to_bomb_from[0], spot_to_bomb_from[1], 
+                        self.ai_player.bomb_range
+                    )
+                    ai_log(f"      ENGAGE: Is player {human_pos} in blast if bombed from {spot_to_bomb_from}? {is_player_in_blast}")
+
+                    if is_player_in_blast:
+                        can_bomb_at_spot, retreat_spot = self.can_place_bomb_and_retreat(spot_to_bomb_from)
+                        ai_log(f"      ENGAGE: Can place bomb at {spot_to_bomb_from} and retreat to {retreat_spot}? {can_bomb_at_spot}")
+                        
+                        if can_bomb_at_spot:
+                            path_to_this_bomb_spot = []
+                            if spot_to_bomb_from == ai_current_tile:
+                                path_to_this_bomb_spot = [ai_current_tile] # 長度為1的路徑
+                            else:
+                                path_to_this_bomb_spot = self.bfs_find_direct_movement_path(ai_current_tile, spot_to_bomb_from, max_depth=3) # 短路徑到鄰近炸彈點
+
+                            if path_to_this_bomb_spot: # 確保能到達這個選定的炸彈放置點
+                                if best_bombing_action is None or len(path_to_this_bomb_spot) < len(best_bombing_action['path_to_bomb_spot']):
+                                    best_bombing_action = {
+                                        'bomb_spot': spot_to_bomb_from,
+                                        'retreat_spot': retreat_spot,
+                                        'path_to_bomb_spot': path_to_this_bomb_spot
+                                    }
+                                    ai_log(f"        ENGAGE: Found a good bombing action: {best_bombing_action}")
+            
+            if best_bombing_action:
+                ai_log(f"    ENGAGE: BEST BOMBING ACTION CHOSEN: {best_bombing_action}")
+                self.chosen_bombing_spot_coords = best_bombing_action['bomb_spot']
+                self.chosen_retreat_spot_coords = best_bombing_action['retreat_spot']
+
+                if ai_current_tile == self.chosen_bombing_spot_coords:
+                    ai_log(f"      AI is ALREADY at best bombing spot {self.chosen_bombing_spot_coords}. Placing bomb.")
+                    self.ai_player.place_bomb()
                     self.last_bomb_placed_time = pygame.time.get_ticks()
                     self.ai_just_placed_bomb = True
-                    self.chosen_retreat_spot_coords = retreat_spot 
-                    
                     retreat_path_tuples = self.bfs_find_direct_movement_path(ai_current_tile, self.chosen_retreat_spot_coords)
-                    if retreat_path_tuples:
-                        self.set_current_movement_sub_path(retreat_path_tuples)
-                    else:
-                        ai_log(f"    ENGAGE: [CRITICAL_BOMB_ENGAGE] Placed bomb but CANNOT find path to retreat spot {self.chosen_retreat_spot_coords}! AI might be trapped.")
-                    
+                    if retreat_path_tuples: self.set_current_movement_sub_path(retreat_path_tuples)
+                    else: ai_log(f"      [CRITICAL_BOMB_PLACE] Placed bomb but CANNOT find path to retreat spot {self.chosen_retreat_spot_coords}!")
                     self.change_state(AI_STATE_TACTICAL_RETREAT_AND_WAIT)
-                    return # 放置炸彈後，結束本次ENGAGING_PLAYER的處理
+                    return
+                else:
+                    ai_log(f"      Setting sub-path to chosen bombing spot: {best_bombing_action['path_to_bomb_spot']}")
+                    self.set_current_movement_sub_path(best_bombing_action['path_to_bomb_spot'])
+                    # 等待移動到炸彈點後，下一次 handle_engaging_player_state 會再次評估並可能放置炸彈
+                    return # 設定了移動到炸彈點的路徑，等待執行
 
-        # --- 如果沒有放置炸彈，再嘗試移動 ---
-        # 僅當AI不在執行上一個移動動畫的過程中，才規劃新的子路徑
-        if self.ai_player.action_timer > 0: # AI 正在移動動畫中，等待完成
-            # ai_log("  ENGAGE: AI is currently in action_timer, waiting for move animation to finish.")
+        # --- 如果沒有選擇放置炸彈，並且AI不在移動動畫中，再嘗試移動到玩家 ---
+        if self.ai_player.action_timer > 0: 
+            ai_log("  ENGAGE: AI is currently in action_timer (from previous bomb placement or move), waiting.")
             return
 
-        # 僅當沒有現存的移動子路徑時，才嘗試規劃新的
         if not self.current_movement_sub_path: 
-            ai_log(f"  ENGAGE: No current sub-path. Attempting to path to human at {human_pos}.")
-            path_to_human = self.bfs_find_direct_movement_path(ai_current_tile, human_pos, max_depth=10) # 限制追擊的BFS深度
-            if path_to_human and len(path_to_human) > 1: # 確保路徑至少有一步可走
+            ai_log(f"  ENGAGE: No bomb action taken & no current sub-path. Attempting to path to human at {human_pos}.")
+            path_to_human = self.bfs_find_direct_movement_path(ai_current_tile, human_pos, max_depth=10) 
+            
+            if path_to_human and len(path_to_human) > 1: 
                 self.set_current_movement_sub_path(path_to_human)
                 ai_log(f"  ENGAGE: New sub-path set to human: {path_to_human}")
-                # 設定子路徑後，讓主循環的 execute_next_move_on_sub_path 去執行移動
             else:
-                ai_log(f"  ENGAGE: Cannot find direct path to human at {human_pos} or path is trivial. AI may wait or stuck detection will trigger if no other action.")
-                # 如果找不到路徑，AI會保持原地，等待下一次決策或卡住檢測
-                # 這裡可以考慮一個更積極的行為，比如向玩家方向移動一格（如果安全），即使不能完全到達
-                # 或者嘗試在玩家附近放置預判炸彈（更複雜的邏輯）
-        # else: AI 正在執行已有的 current_movement_sub_path，由主 update 循環中的 execute_next_move_on_sub_path 處理
+                ai_log(f"  ENGAGE: Cannot find direct path to human at {human_pos} or path is trivial. AI may wait or stuck detection will trigger.")
 
     def handle_evading_danger_state(self, ai_current_tile):
         ai_log(f"[AI_HANDLER] EVADING_DANGER at {ai_current_tile}")
