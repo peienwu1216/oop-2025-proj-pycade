@@ -156,6 +156,16 @@ class Player(GameObject):
                 if obstacle.rect.colliderect(target_check_rect):
                     return False
         
+        if hasattr(self.game, 'players_group'):
+            for other_player in self.game.players_group:
+                if other_player is self: 
+                    continue 
+                if other_player.is_alive and \
+                   other_player.tile_x == target_tile_x and \
+                   other_player.tile_y == target_tile_y:
+                    # print(f"Player {id(self)} blocked by other player {id(other_player)} at ({target_tile_x},{target_tile_y})")
+                    return False 
+        
         # 3. 這裡的炸彈檢查是為了防止玩家重疊在炸彈上
         if hasattr(self.game, 'bombs_group'):
             for bomb in self.game.bombs_group:
@@ -242,6 +252,12 @@ class Player(GameObject):
             bomb_tile_x = self.tile_x; bomb_tile_y = self.tile_y
             can_place = True
             
+            if hasattr(self.game, 'players_group'):
+                for other_player in self.game.players_group:
+                    if other_player is not self and other_player.is_alive and \
+                       other_player.tile_x == bomb_tile_x and other_player.tile_y == bomb_tile_y:
+                        can_place = False; break
+
             # （10）！！！ 修改：放置炸彈前，除了檢查是否已有炸彈，也應檢查是否已有其他玩家 ！！！（10）
             # （這是一個保險措施，因為 attempt_move_to_tile 應該已經阻止了玩家重疊）
             if hasattr(self.game, 'players_group'):
