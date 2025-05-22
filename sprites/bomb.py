@@ -44,7 +44,7 @@ class Bomb(GameObject):
             self.font = pygame.font.Font(None, 20) 
         except pygame.error: 
             self.font = pygame.font.SysFont("arial", 20)
-        self.text_color = settings.WHITE
+        self.text_color = settings.RED
 
         # [SPS_BOMB_NO_CHANGE_NEEDED] 這個 print 仍然有效。
         # print(f"Bomb placed at tile ({x_tile}, {y_tile}) by Player object ID: {id(self.placed_by_player)}")
