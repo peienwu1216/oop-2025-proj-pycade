@@ -1,470 +1,408 @@
-# oop-2025-proj-pycade/core/ai_conservative.py
+# oop-2025-proj-pycade/core/ai_controller_conservative.py
 
 import pygame
-import settings # 假設 settings.py 包含 AI 行為相關參數
-import random
+import settings
 from collections import deque
-from .ai_controller_base import AIControllerBase, TileNode, DIRECTIONS, ai_base_log # 從基礎類別匯入
-
-# 為保守型 AI 定義特定的狀態 (如果需要，可以擴展基礎類別的狀態)
-# 例如，可以複用基礎類別的狀態名，但在 handle 方法中賦予不同的邏輯
-AI_STATE_CONSERVATIVE_IDLE = "CONSERVATIVE_IDLE"
-AI_STATE_CONSERVATIVE_EVADING = "CONSERVATIVE_EVADING"
-AI_STATE_CONSERVATIVE_SAFE_BOMBING = "CONSERVATIVE_SAFE_BOMBING" # 極度謹慎的轟炸
-AI_STATE_CONSERVATIVE_RETREAT = "CONSERVATIVE_RETREAT"
-# ... 其他可能需要的狀態
-
+import random
+from .ai_controller_base import AIControllerBase, ai_log, DIRECTIONS # 確保從正確的基底類別匯入
 class ConservativeAIController(AIControllerBase):
+    """
+    一個謹慎的 AI，主要行為是隨機安全漫遊，並伺機炸開障礙物以獲取道具。
+    它會極力避免與玩家直接衝突，並優先確保自身安全。
+    """
     def __init__(self, ai_player_sprite, game_instance):
         super().__init__(ai_player_sprite, game_instance)
-        ai_base_log(f"ConservativeAIController __init__ for Player ID: {id(ai_player_sprite)}")
+        
+        ai_log("ConservativeAIController (Roaming & Opportunistic) initialized.")
+        # 這個版本的「保守」體現在：低攻擊性、高安全性要求、優先漫遊和獲取資源
+        self.obstacle_bombing_chance = 0.2 # 每次決策時，考慮炸牆的基礎機率
+        self.evasion_urgency_seconds = 0.8
+        self.min_retreat_options_for_obstacle = 1 # 炸牆時至少需要的撤退點
+        self.retreat_search_depth = 7
+        
+        self.roaming_target_tile = None # 當前漫遊目標點
+        self.target_obstacle_to_bomb = None # 想要炸的牆
 
-        # 保守型 AI 特有的參數或狀態初始化
-        self.current_state = AI_STATE_CONSERVATIVE_IDLE # 初始狀態
-        self.aggression_level = 0.3 # 非常低的攻擊意願 (0.0 - 1.0)
-        self.evasion_urgency_threshold = 0.6 # 危險判斷的閾值，比通用型更敏感 (例如，更長的 future_seconds)
-        self.safe_retreat_depth_conservative = getattr(settings, "AI_CONSERVATIVE_RETREAT_DEPTH", 8) # 更深的撤退搜索
-        self.min_safe_bombing_retreat_options = getattr(settings, "AI_CONSERVATIVE_MIN_RETREAT_OPTIONS", 3) # 放置炸彈前需要更多安全撤退點
+        self.change_state("ROAMING") # 初始狀態為漫遊
 
-        # 可以覆寫或設定基礎類別中的一些與卡死檢測相關的閾值，使其更不容易卡住或更早放棄困難的路徑
-        self.stuck_threshold_decision_cycles_conservative = 3 # 更快判斷為卡住
-        self.oscillation_stuck_threshold_conservative = 2
+    def reset_state(self):
+        super().reset_state()
+        self.roaming_target_tile = None
+        self.target_obstacle_to_bomb = None
+        self.change_state("ROAMING")
+        ai_log(f"ConservativeAIController (Roaming) reset. Current state: {self.current_state}")
 
+    # --- 狀態處理邏輯 ---
 
-    def reset_state(self): # 或者 reset_state_conservative，如果 game.py 中這樣呼叫
-        super().reset_state_base() # 呼叫基礎類別的重置
-        self.current_state = AI_STATE_CONSERVATIVE_IDLE
-        ai_base_log(f"ConservativeAIController reset_state for Player ID: {id(self.ai_player)}.")
-        # 重置保守型特有的狀態
-        self.chosen_bombing_spot_coords = None # 從原始 AIController 複製
-        self.chosen_retreat_spot_coords = None # 從原始 AIController 複製
-        self.target_destructible_wall_node_in_astar = None # 從原始 AIController 複製
+    def handle_planning_path_state(self, ai_current_tile):
+        """
+        決策中樞：判斷是繼續漫遊、評估炸牆，還是有其他緊急事項。
+        這個版本主要由 ROAMING 狀態驅動，PLANNING_PATH 作為一個備用或重新評估的入口。
+        """
+        ai_log(f"CONSERVATIVE (Roaming): In PLANNING_PATH at {ai_current_tile}. Re-evaluating...")
+        # 預設行為是回到漫遊狀態
+        self.change_state("ROAMING")
 
-    def update(self):
-        # 呼叫基礎類別的 update 來處理通用的移動子路徑執行和卡死檢測更新
-        # super().update() # 注意：基礎 update 可能會執行移動，如果這裡要完全控制決策，則選擇性呼叫
+    def handle_roaming_state(self, ai_current_tile):
+        """主要狀態：安全地隨機漫遊，並尋找炸牆機會。"""
+        ai_log(f"CONSERVATIVE (Roaming): In ROAMING at {ai_current_tile}.")
 
-        current_time = pygame.time.get_ticks()
-        ai_current_tile = self._get_ai_current_tile()
-
-        if not ai_current_tile or not self.ai_player or not self.ai_player.is_alive:
-            if self.current_state != "DEAD_CONSERVATIVE": # 可以定義自己的 DEAD 狀態
-                self.change_state("DEAD_CONSERVATIVE")
+        # 1. 檢查是否有正在執行的移動路徑
+        if self.current_movement_sub_path:
+            # 如果有路徑，基底類別的 update() 會處理移動，這裡不用做什麼
+            # 等待路徑執行完畢，完成後 self.current_movement_sub_path 會變空
             return
 
-        # --- 通用邏輯 (從父類複製或在此處重寫，以適應保守型AI的決策頻率) ---
-        # 保險機制：重置 ai_just_placed_bomb 標誌 (這部分邏輯與原 AI 相同)
-        if self.ai_just_placed_bomb and self.last_bomb_placed_time > 0:
-            time_since_bomb_placed = current_time - self.last_bomb_placed_time
-            bomb_clear_timeout = settings.BOMB_TIMER + settings.EXPLOSION_DURATION + 1000
-            if time_since_bomb_placed > bomb_clear_timeout:
-                ai_base_log(f"[CONSERVATIVE_AI_BOMB_FLAG_RESET_TIMEOUT] ai_just_placed_bomb was True for too long. Forcing reset.")
-                self.ai_just_placed_bomb = False
-                self.last_bomb_placed_time = 0
-        # --- 卡死檢測更新 (與原 AI 類似) ---
-        # (這部分已移至 AIControllerBase 的 update，這裡可以選擇是否再次計算或依賴父類)
-        # 簡單起見，我們先假設父類的 update 會處理 is_moving 等，這裡專注決策
-        if not self.current_movement_sub_path and \
-           not (self.current_state == AI_STATE_CONSERVATIVE_RETREAT and self.ai_just_placed_bomb): # 注意狀態名
-            if self.last_known_tile == ai_current_tile:
-                self.decision_cycle_stuck_counter += 1
+        # 2. 如果漫遊路徑已走完，或沒有漫遊目標，則尋找下一個動作
+        self.roaming_target_tile = None # 清除舊目標
+
+        # 2a. 評估是否炸附近的牆
+        # (此處的 target_obstacle_to_bomb 應該是一個 TileNode 物件)
+        self.target_obstacle_to_bomb = self._find_nearby_worthwhile_obstacle(ai_current_tile)
+        if self.target_obstacle_to_bomb and random.random() < self.obstacle_bombing_chance:
+            ai_log(f"CONSERVATIVE (Roaming): Found obstacle {self.target_obstacle_to_bomb} to consider bombing.")
+            self.change_state("ASSESSING_OBSTACLE")
+            return
+
+        # 2b. 如果不炸牆，則尋找新的漫遊目標點
+        potential_roam_targets = self._find_safe_roaming_spots(ai_current_tile, count=5, depth=3)
+        if potential_roam_targets:
+            self.roaming_target_tile = random.choice(potential_roam_targets)
+            path_to_roam_target = self.bfs_find_direct_movement_path(ai_current_tile, self.roaming_target_tile)
+            
+            if path_to_roam_target and len(path_to_roam_target) > 1:
+                ai_log(f"CONSERVATIVE (Roaming): New roam target {self.roaming_target_tile}. Path: {path_to_roam_target}")
+                self.set_current_movement_sub_path(path_to_roam_target)
+                # 不需要切換狀態，繼續在 ROAMING 狀態下執行這個短路徑
             else:
-                self.decision_cycle_stuck_counter = 0
+                ai_log("CONSERVATIVE (Roaming): Could not find path to roam target. Staying idle briefly.")
+                self.roaming_target_tile = None # 清除無效目標
+                self.change_state("IDLE") # 短暫閒置
         else:
-            self.decision_cycle_stuck_counter = 0
-        self.last_known_tile = ai_current_tile
+            ai_log("CONSERVATIVE (Roaming): No safe roaming spots found. Staying idle briefly.")
+            self.change_state("IDLE")
 
-        is_oscillating = False
-        if len(self.movement_history) == self.movement_history.maxlen:
-            if self.movement_history[0] == self.movement_history[2] and \
-               self.movement_history[1] == self.movement_history[3] and \
-               self.movement_history[0] != self.movement_history[1] and \
-               ai_current_tile == self.movement_history[3]:
-                self.oscillation_stuck_counter += 1
-                is_oscillating = True
-            else:
-                self.oscillation_stuck_counter = 0
+    def handle_assessing_obstacle_state(self, ai_current_tile):
+        """評估是否真的要炸目標牆壁。"""
+        ai_log(f"CONSERVATIVE (Roaming): Assessing obstacle {self.target_obstacle_to_bomb} at {ai_current_tile}.")
+        if not self.target_obstacle_to_bomb:
+            self.change_state("ROAMING"); return
+
+        bomb_spot, retreat_spot = self._find_optimal_bombing_spot_for_obstacle(self.target_obstacle_to_bomb, ai_current_tile)
+
+        if bomb_spot and retreat_spot:
+            ai_log(f"CONSERVATIVE (Roaming): Plan to bomb obstacle: Bomb at {bomb_spot}, retreat to {retreat_spot}.")
+            self.chosen_bombing_spot_coords = bomb_spot
+            self.chosen_retreat_spot_coords = retreat_spot
+            self.change_state("MOVING_TO_BOMB_OBSTACLE")
         else:
-            self.oscillation_stuck_counter = 0
-        # --- 卡死檢測結束 ---
+            ai_log("CONSERVATIVE (Roaming): Cannot find safe way to bomb obstacle. Returning to roaming.")
+            self.target_obstacle_to_bomb = None
+            self.change_state("ROAMING")
+            
+    def handle_moving_to_bomb_obstacle_state(self, ai_current_tile):
+        """移動到準備炸牆的位置。"""
+        ai_log(f"CONSERVATIVE (Roaming): Moving to bomb spot {self.chosen_bombing_spot_coords}. At {ai_current_tile}.")
+        if self.current_movement_sub_path: return # 正在移動
 
-        # 決策時機判斷
-        is_decision_time = (current_time - self.last_decision_time >= self.ai_decision_interval)
-        is_urgent_evasion = self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=self.evasion_urgency_threshold) # 更敏感的危險偵測
+        # 已到達放置炸彈的地點
+        if ai_current_tile == self.chosen_bombing_spot_coords:
+            if self.ai_player.bombs_placed_count < self.ai_player.max_bombs:
+                ai_log("CONSERVATIVE (Roaming): At bombing spot. Placing bomb for obstacle.")
+                self.ai_player.place_bomb() # Player 物件會處理 ai_just_placed_bomb
+                # ai_just_placed_bomb 和 last_bomb_placed_time 會由 Player.place_bomb() 中的回呼設定
+                # 或者，如果 Player.place_bomb() 沒有設定這些，我們需要在這裡手動設定：
+                # self.ai_just_placed_bomb = True
+                # self.last_bomb_placed_time = pygame.time.get_ticks()
 
-        if is_urgent_evasion and self.current_state != AI_STATE_CONSERVATIVE_EVADING:
-            ai_base_log(f"[CONSERVATIVE_AI_DANGER] AI at {ai_current_tile} is in DANGER! Switching to EVADING.")
-            self.change_state(AI_STATE_CONSERVATIVE_EVADING)
-            self.last_decision_time = current_time # 立即重新決策
-            # 在 EVADING 狀態下，決策間隔可以縮短
-
-        if is_decision_time or self.current_state == AI_STATE_CONSERVATIVE_EVADING:
-            if self.current_state != AI_STATE_CONSERVATIVE_EVADING: # 正常決策週期
-                 self.last_decision_time = current_time
-
-            # 卡住或振盪達到閾值，則強制重新規劃 (保守型可能更傾向於放棄當前目標並尋找安全)
-            stuck_by_single_tile = self.decision_cycle_stuck_counter >= self.stuck_threshold_decision_cycles_conservative
-            stuck_by_oscillation = self.oscillation_stuck_counter >= self.oscillation_stuck_threshold_conservative
-            if stuck_by_single_tile or stuck_by_oscillation:
-                log_msg = "[CONSERVATIVE_AI_STUCK]"
-                if stuck_by_oscillation: log_msg += f" Oscillation at {ai_current_tile}."
-                else: log_msg += f" Stuck at {ai_current_tile} for {self.decision_cycle_stuck_counter} cycles."
-                ai_base_log(log_msg + " Forcing to IDLE/SAFE state.")
-                self.decision_cycle_stuck_counter = 0
-                self.oscillation_stuck_counter = 0
-                self.movement_history.clear()
-                self.current_movement_sub_path = [] # 清空子路徑
-                self.change_state(AI_STATE_CONSERVATIVE_IDLE) # 卡住時，保守型 AI 可能會先回到閒置/尋找安全狀態
-                # 立即處理新狀態
-                # return # 避免後續的移動執行干擾 (或者讓新的狀態處理邏輯在同一個 update tick 中執行)
-
-
-            # --- 狀態處理邏輯 ---
-            if self.current_state == AI_STATE_CONSERVATIVE_EVADING:
-                self.handle_evading_danger_state(ai_current_tile)
-            elif self.current_state == AI_STATE_CONSERVATIVE_IDLE:
-                self.handle_idle_state(ai_current_tile)
-            elif self.current_state == AI_STATE_CONSERVATIVE_SAFE_BOMBING:
-                self.handle_safe_bombing_state(ai_current_tile)
-            elif self.current_state == AI_STATE_CONSERVATIVE_RETREAT:
-                self.handle_retreat_state(ai_current_tile)
-            # ... 其他保守型 AI 的狀態處理
+                path_to_retreat = self.bfs_find_direct_movement_path(ai_current_tile, self.chosen_retreat_spot_coords)
+                if path_to_retreat and len(path_to_retreat) > 1:
+                    self.set_current_movement_sub_path(path_to_retreat)
+                self.change_state("TACTICAL_RETREAT_AND_WAIT")
             else:
-                ai_base_log(f"[CONSERVATIVE_AI_WARN] Unknown state: {self.current_state}. Defaulting to IDLE.")
-                self.change_state(AI_STATE_CONSERVATIVE_IDLE)
+                ai_log("CONSERVATIVE (Roaming): At bombing spot, but no bombs available. Returning to roaming.")
+                self.change_state("ROAMING")
+        else: # 如果路徑走完了但沒到目標點（例如路徑被阻擋），重新規劃
+            ai_log("CONSERVATIVE (Roaming): Path to bombing spot failed or ended prematurely. Re-assessing.")
+            self.change_state("ROAMING")
 
-        # --- 移動子路徑執行 (如果父類的 update 不執行這個，或者你想更精細控制) ---
-        # 這部分邏輯已在父類 AIControllerBase 的 update 方法中，理論上不需要重複
-        # 但如果子類需要更特殊的移動處理或時機，可以在這裡覆寫或擴展
-        if self.ai_player.action_timer <= 0: # 確保 AI 當前不是在執行移動動畫
-            sub_path_finished_or_failed = False
-            if self.current_movement_sub_path:
-                sub_path_finished_or_failed = self.execute_next_move_on_sub_path(ai_current_tile)
 
-            if sub_path_finished_or_failed: # 如果子路徑完成或失敗
-                # 保守型 AI 在子路徑完成後，可能不會立即進行下一個決策，而是重新評估周圍環境
-                self.last_decision_time = pygame.time.get_ticks() - self.ai_decision_interval - 1 # 允許下個 tick 重新決策
+    def handle_tactical_retreat_and_wait_state(self, ai_current_tile):
+        """放置炸彈後的撤退與等待。"""
+        ai_log(f"CONSERVATIVE (Roaming): Retreating/Waiting. At {ai_current_tile}. Target: {self.chosen_retreat_spot_coords}.")
+        if self.current_movement_sub_path: return
+        
+        if ai_current_tile == self.chosen_retreat_spot_coords:
+            if not self.is_bomb_still_active(self.last_bomb_placed_time):
+                self.ai_just_placed_bomb = False # 確保清除
+                self.target_obstacle_to_bomb = None # 清除炸過的目標
+                self.change_state("ROAMING") # 回到漫遊
+            return
 
-            if not self.current_movement_sub_path: # 如果沒有子路徑了
-                self.ai_player.is_moving = False
+        # 如果未在撤退點且無路徑，嘗試重新規劃到撤退點
+        if self.chosen_retreat_spot_coords:
+            path_to_retreat = self.bfs_find_direct_movement_path(ai_current_tile, self.chosen_retreat_spot_coords)
+            if path_to_retreat and len(path_to_retreat) > 1:
+                self.set_current_movement_sub_path(path_to_retreat)
+            else: # 無法到達預期撤退點，緊急躲避
+                ai_log("CONSERVATIVE (Roaming): CRITICAL - Cannot reach chosen retreat spot. Evading.")
+                self.change_state("EVADING_DANGER")
+        else: # 沒有設定撤退點，不應該發生
+            ai_log("CONSERVATIVE (Roaming): ERROR - No retreat spot set in TACTICAL_RETREAT. Evading.")
+            self.change_state("EVADING_DANGER")
+            
+    def handle_evading_danger_state(self, ai_current_tile):
+        """使用更敏感的參數進行逃跑。"""
+        ai_log(f"CONSERVATIVE (Roaming): EVADING DANGER at {ai_current_tile} with high urgency.")
+        
+        if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], self.evasion_urgency_seconds):
+            ai_log("CONSERVATIVE (Roaming): Danger evaded. Returning to roaming.")
+            self.change_state("ROAMING") # 逃離危險後，回到漫遊
+            return
 
+        target_is_dangerous = False
+        if self.current_movement_sub_path:
+            if self.is_tile_dangerous(self.current_movement_sub_path[-1][0], self.current_movement_sub_path[-1][1], 0.2):
+                target_is_dangerous = True
+
+        if not self.current_movement_sub_path or target_is_dangerous:
+            safe_spots = self.find_safe_tiles_nearby_for_retreat(ai_current_tile, ai_current_tile, 0, self.retreat_search_depth)
+            if safe_spots:
+                # 尋找一個可達的安全點
+                for spot in safe_spots:
+                    path = self.bfs_find_direct_movement_path(ai_current_tile, spot)
+                    if path and len(path) > 1:
+                        self.set_current_movement_sub_path(path)
+                        return
+            ai_log("CONSERVATIVE (Roaming): CRITICAL - No evasion path found!")
+            # 如果找不到路，AI 會卡在這裡，直到stuck detection觸發或情況改變
 
     def handle_idle_state(self, ai_current_tile):
-        ai_base_log(f"[CONSERVATIVE_AI_IDLE] at {ai_current_tile}. Assessing situation.")
-        # 1. 檢查自身是否安全，不安全則立刻轉到 EVADING
-        if self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=self.evasion_urgency_threshold * 1.5): # 更長遠的預判
-            self.change_state(AI_STATE_CONSERVATIVE_EVADING)
-            return
-
-        # 2. 尋找一個更安全的位置移動 (如果當前位置不夠好，例如太開闊或靠近潛在危險源)
-        #    可以使用 find_safe_tiles_nearby_for_retreat 但目標是找到一個"更優"的安全點，而不僅僅是躲避特定炸彈
-
-        # 3. 非常謹慎地考慮是否需要攻擊或炸牆
-        #    只有在極端有利或必要時才行動
-        human_pos = self._get_human_player_current_tile()
-        if human_pos and random.random() < self.aggression_level / 5: # 極低的機率考慮攻擊
-             # 檢查是否可以進行一次非常安全的攻擊 (例如玩家被困)
-             # ... (這裡可以加入類似原 AI engage player 的邏輯，但條件非常苛刻)
-             pass
-
-        # 4. 如果無事可做，可以小範圍隨機安全移動，或者尋找一個角落待著
-        if not self.current_movement_sub_path: # 確保沒有正在執行的移動
-            safe_random_moves = []
-            for dx, dy in DIRECTIONS.values():
-                next_x, next_y = ai_current_tile[0] + dx, ai_current_tile[1] + dy
-                node = self._get_node_at_coords(next_x, next_y)
-                if node and node.is_empty_for_direct_movement() and \
-                   not self.is_tile_dangerous(next_x, next_y, future_seconds=self.evasion_urgency_threshold * 2):
-                    safe_random_moves.append((next_x, next_y))
-
-            if safe_random_moves:
-                target_move = random.choice(safe_random_moves)
-                self.set_current_movement_sub_path([ai_current_tile, target_move])
-                ai_base_log(f"    [CONSERVATIVE_IDLE] Making a safe random move to {target_move}")
-            else:
-                ai_base_log(f"    [CONSERVATIVE_IDLE] No safe random moves. Staying put.")
-                self.ai_player.is_moving = False # 確保動畫停止
-
-    def handle_evading_danger_state(self, ai_current_tile):
-        ai_base_log(f"[CONSERVATIVE_AI_EVADE] at {ai_current_tile}")
-        # 檢查是否仍然危險
-        if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=self.evasion_urgency_threshold):
-            ai_base_log(f"    [CONSERVATIVE_EVADE] Tile {ai_current_tile} now considered safe. Switching to IDLE.")
-            self.current_movement_sub_path = [] # 清空之前的逃跑路徑
-            self.change_state(AI_STATE_CONSERVATIVE_IDLE)
-            return
-
-        # 如果沒有逃跑路徑，或者當前逃跑路徑的目標點也變得危險，則重新尋找
-        path_target_is_dangerous = False
-        if self.current_movement_sub_path and len(self.current_movement_sub_path) > 0 :
-            final_target_in_sub_path = self.current_movement_sub_path[-1]
-            if self.is_tile_dangerous(final_target_in_sub_path[0], final_target_in_sub_path[1], future_seconds=0.1): # 短期預測目標點
-                 path_target_is_dangerous = True
-                 ai_base_log(f"    [CONSERVATIVE_EVADE] Current sub-path target {final_target_in_sub_path} is also dangerous. Re-planning evasion.")
+        """短暫閒置，然後重新進入漫遊規劃。"""
+        ai_log(f"CONSERVATIVE (Roaming): Briefly idling at {ai_current_tile}.")
+        # 停留一小段時間後會自動因為決策計時器而重新進入 ROAMING (透過 PLANNING_PATH 中轉)
+        # 為了確保它不會卡在 IDLE太久，可以強制一個短暫的延遲後切換
+        if pygame.time.get_ticks() - self.state_start_time > 1000: # 閒置超過1秒
+            self.change_state("ROAMING")
 
 
-        if not self.current_movement_sub_path or \
-           (self.current_movement_sub_path and ai_current_tile == self.current_movement_sub_path[-1]) or \
-           path_target_is_dangerous:
+    # --- 特定輔助函式 ---
+    def _find_nearby_worthwhile_obstacle(self, ai_current_tile, search_radius=3):
+        """尋找附近是否有值得炸的可破壞牆壁。"""
+        for r_offset in range(-search_radius, search_radius + 1):
+            for c_offset in range(-search_radius, search_radius + 1):
+                if abs(r_offset) + abs(c_offset) > search_radius : continue # 曼哈頓距離
+                if r_offset == 0 and c_offset == 0: continue
 
-            ai_base_log("    [CONSERVATIVE_EVADE] Finding new evasion path.")
-            # 使用基礎類別的 find_safe_tiles_nearby_for_retreat，但可能使用更嚴格的參數
-            # bomb_range 0 表示一般性危險，不針對特定自己放的炸彈
-            safe_options_coords = self.find_safe_tiles_nearby_for_retreat_conservative(ai_current_tile, ai_current_tile, 0, max_depth=self.safe_retreat_depth_conservative)
+                check_x, check_y = ai_current_tile[0] + c_offset, ai_current_tile[1] + r_offset
+                node = self._get_node_at_coords(check_x, check_y)
+                if node and node.is_destructible_box():
+                    # 簡單起見，第一個找到的就認為值得 (未來可以加入更複雜的價值判斷)
+                    return node
+        return None
 
-            best_evasion_path_coords = []
-            if safe_options_coords:
-                # 優先選擇最近的安全點
-                for safe_spot_coord in safe_options_coords: # find_safe_tiles_nearby_for_retreat 應該已經排序過
-                    evasion_path_tuples = self.bfs_find_direct_movement_path(ai_current_tile, safe_spot_coord, max_depth=self.safe_retreat_depth_conservative)
-                    if evasion_path_tuples and len(evasion_path_tuples) > 1: # 確保不是原地踏步
-                        best_evasion_path_coords = evasion_path_tuples
-                        break # 找到第一個可達的安全點路徑就用它
+    def _find_optimal_bombing_spot_for_obstacle(self, wall_node, ai_current_tile):
+        """為炸特定牆壁尋找最佳放置點和撤退點。"""
+        # (這部分邏輯與之前的 _find_optimal_bombing_spot_conservative 類似，但目標明確是牆)
+        for dx_wall_offset, dy_wall_offset in DIRECTIONS.values():
+            bomb_spot_x = wall_node.x + dx_wall_offset
+            bomb_spot_y = wall_node.y + dy_wall_offset
+            bomb_spot_coords = (bomb_spot_x, bomb_spot_y)
+            
+            bomb_spot_node = self._get_node_at_coords(bomb_spot_x, bomb_spot_y)
+            if not (bomb_spot_node and bomb_spot_node.is_empty_for_direct_movement()):
+                continue # 放置點必須是空格
 
-            if best_evasion_path_coords:
-                self.set_current_movement_sub_path(best_evasion_path_coords)
-                ai_base_log(f"    [CONSERVATIVE_EVADE] New evasion sub-path set: {best_evasion_path_coords}")
-            else:
-                ai_base_log("    [CONSERVATIVE_EVADE] CRITICAL: Cannot find ANY safe evasion path! AI may be trapped.")
-                self.current_movement_sub_path = [] # 清空路徑
-                self.ai_player.is_moving = False # 停止移動動畫
-                # 在這種情況下，AI 可能會原地不動，等待運氣或死亡
-
-    # (保守型 AI 可能很少進入此狀態，或者此狀態的邏輯會非常謹慎)
-    def handle_safe_bombing_state(self, ai_current_tile):
-        ai_base_log(f"[CONSERVATIVE_AI_SAFE_BOMBING] at {ai_current_tile}.")
-        # 類似原始 AI 的 EXECUTING_PATH_CLEARANCE 或 ENGAGING_PLAYER 中的放置炸彈邏輯
-        # 但條件更嚴格：
-        # 1. 只有在目標 (牆壁或被困的玩家) 價值很高時才考慮
-        # 2. 必須有多個非常安全的撤退點
-        # 3. 放置炸彈本身不能讓自己立即陷入危險
-        # ... (此處省略詳細實現，可以參考原始 AI 的 _find_optimal_bombing_and_retreat_spot 和 can_place_bomb_and_retreat，但要調整參數)
-
-        # 如果決定放置炸彈:
-        # self.ai_player.place_bomb()
-        # self.ai_just_placed_bomb = True
-        # self.last_bomb_placed_time = pygame.time.get_ticks()
-        # # 設定撤退路徑
-        # self.set_current_movement_sub_path(pathToRetreat)
-        # self.change_state(AI_STATE_CONSERVATIVE_RETREAT)
-        # return
-
-        # 如果不滿足轟炸條件，則轉回 IDLE
-        ai_base_log("    [CONSERVATIVE_SAFE_BOMBING] Conditions not met for safe bombing. Reverting to IDLE.")
-        self.change_state(AI_STATE_CONSERVATIVE_IDLE)
-
-
-    def handle_retreat_state(self, ai_current_tile):
-        ai_base_log(f"[CONSERVATIVE_AI_RETREAT] at {ai_current_tile}. Target: {self.chosen_retreat_spot_coords}")
-        # 此邏輯與原始 AIController 的 TACTICAL_RETREAT_AND_WAIT 非常相似
-        if self.current_movement_sub_path: # 仍在執行撤退子路徑
-            ai_base_log("    Still executing retreat sub-path.")
-            return
-
-        if ai_current_tile == self.chosen_retreat_spot_coords:
-            ai_base_log(f"    AI at chosen retreat spot {self.chosen_retreat_spot_coords}. Waiting for bomb to clear.")
-            if not self.is_bomb_still_active(self.last_bomb_placed_time):
-                ai_base_log(f"      Bomb (placed at {self.last_bomb_placed_time}) has cleared.")
-                self.ai_just_placed_bomb = False
-                self.chosen_bombing_spot_coords = None
-                self.chosen_retreat_spot_coords = None
-                # 炸彈清除後，保守型 AI 會回到 IDLE 狀態重新評估
-                self.change_state(AI_STATE_CONSERVATIVE_IDLE)
-            else:
-                ai_base_log(f"      Bomb still active. Waiting at {self.chosen_retreat_spot_coords}.")
-        else: # 未到達預期撤退點，但子路徑已空 (可能被中斷或初始路徑失敗)
-            ai_base_log(f"    Not at chosen retreat spot {self.chosen_retreat_spot_coords} AND no sub-path. Re-pathing to retreat spot.")
-            if self.chosen_retreat_spot_coords:
-                retreat_path_tuples = self.bfs_find_direct_movement_path(ai_current_tile, self.chosen_retreat_spot_coords, max_depth=self.safe_retreat_depth_conservative)
-                if retreat_path_tuples and len(retreat_path_tuples) > 1:
-                    self.set_current_movement_sub_path(retreat_path_tuples)
-                else: # 無法路徑到預期撤退點
-                    ai_base_log(f"      [CONSERVATIVE_RETREAT_CRITICAL] Cannot BFS to chosen retreat spot {self.chosen_retreat_spot_coords}! Bomb placed. Switching to EVADING.")
-                    self.change_state(AI_STATE_CONSERVATIVE_EVADING) # 緊急躲避
-            else: # 沒有設定撤退點，這是一個邏輯錯誤，應該轉到更安全的狀態
-                ai_base_log(f"    [CONSERVATIVE_RETREAT_ERROR] No chosen_retreat_spot defined. Switching to EVADING.")
-                self.change_state(AI_STATE_CONSERVATIVE_EVADING)
-
-    # 保守型 AI 特有的尋找安全點方法，可能比基礎類別的更嚴格
-    def find_safe_tiles_nearby_for_retreat_conservative(self, from_tile_coords, bomb_just_placed_at_coords, bomb_range, max_depth=8, future_seconds_multiplier=1.5):
-        ai_base_log(f"    [CONSERVATIVE_RETREAT_FINDER] from_tile={from_tile_coords}, bomb_at={bomb_just_placed_at_coords}, range={bomb_range}, depth={max_depth}")
-        q = deque([(from_tile_coords, [from_tile_coords], 0)])
-        visited = {from_tile_coords}
-        safe_retreat_spots = []
-
-        danger_check_future_seconds = settings.AI_RETREAT_SPOT_OTHER_DANGER_FUTURE_SECONDS * future_seconds_multiplier
-
-        while q:
-            (curr_x, curr_y), path, depth = q.popleft()
-
-            if depth > max_depth:
+            # 確保能從當前位置走到放置點
+            path_to_bomb_spot = self.bfs_find_direct_movement_path(ai_current_tile, bomb_spot_coords, max_depth=5)
+            if not (path_to_bomb_spot and len(path_to_bomb_spot) > 0): # 即使是原地放，長度也是1
                 continue
 
-            is_safe_from_this_bomb = True # 如果 bomb_range 是 0 (一般躲避)，則此項為 True
-            if bomb_range > 0 : # 僅當是躲避特定炸彈時才檢查
-                is_safe_from_this_bomb = not self._is_tile_in_hypothetical_blast(curr_x, curr_y, bomb_just_placed_at_coords[0], bomb_just_placed_at_coords[1], bomb_range)
+            # 檢查從該放置點是否有足夠安全的撤退路線
+            retreat_spots = self.find_safe_tiles_nearby_for_retreat(bomb_spot_coords, bomb_spot_coords, self.ai_player.bomb_range, self.retreat_search_depth)
+            if len(retreat_spots) >= self.min_retreat_options_for_obstacle:
+                best_retreat_spot = retreat_spots[0] # 通常 find_safe_tiles... 會排序
+                # 確保撤退點可達
+                if self.bfs_find_direct_movement_path(bomb_spot_coords, best_retreat_spot, max_depth=self.retreat_search_depth):
+                    return bomb_spot_coords, best_retreat_spot
+        return None, None
 
-            is_safe_from_other_dangers = not self.is_tile_dangerous(curr_x, curr_y, future_seconds=danger_check_future_seconds)
+    def _find_safe_roaming_spots(self, ai_current_tile, count=1, depth=3):
+        """尋找附近幾個隨機、安全、可達的空格子作為漫遊目標。"""
+        q = deque([(ai_current_tile, [ai_current_tile], 0)])
+        visited = {ai_current_tile}
+        potential_spots = []
 
-            if is_safe_from_this_bomb and is_safe_from_other_dangers:
-                safe_retreat_spots.append({'coords': (curr_x, curr_y), 'path_len': len(path) -1, 'depth': depth})
-                if len(safe_retreat_spots) >= 15: # 尋找更多選項
-                    break
+        while q and len(potential_spots) < count * 5: # 找多一點候選
+            (curr_x, curr_y), path, d = q.popleft()
 
-            if depth < max_depth:
+            if d > 0 and d <= depth : # 不選擇起始點，且在深度範圍內
+                if not self.is_tile_dangerous(curr_x, curr_y, future_seconds=self.evasion_urgency_seconds):
+                    potential_spots.append((curr_x, curr_y))
+            
+            if d < depth:
                 shuffled_directions = list(DIRECTIONS.values()); random.shuffle(shuffled_directions)
                 for dx, dy in shuffled_directions:
                     next_x, next_y = curr_x + dx, curr_y + dy
-                    if (next_x, next_y) not in visited:
+                    next_coords = (next_x, next_y)
+                    if next_coords not in visited:
                         node = self._get_node_at_coords(next_x, next_y)
                         if node and node.is_empty_for_direct_movement():
-                            # 預檢查下一步是否會立即進入危險 (短期預判)
-                            if not self.is_tile_dangerous(next_x, next_y, future_seconds=0.1):
-                                visited.add((next_x, next_y))
-                                q.append(((next_x, next_y), path + [(next_x, next_y)], depth + 1))
-
-        if safe_retreat_spots:
-            # 保守型 AI 可能更喜歡 "更深" (更遠離起始點) 且路徑也較長的安全點
-            safe_retreat_spots.sort(key=lambda x: (-x['depth'], x['path_len'])) # 優先深度，其次路徑長度
-            return [spot['coords'] for spot in safe_retreat_spots]
-        return []
-    
-    def debug_draw_path(self, surface):
-        # 首先，呼叫父類別的 debug_draw_path (如果它包含了通用的繪圖邏輯)
-        # 如果父類別的 debug_draw_path 是空的，或者您想完全自訂，則可以不呼叫 super()
-        # 假設 AIControllerBase 已經繪製了 astar_planned_path, current_movement_sub_path 等基礎路徑
-        # 我們可以調整其繪製的顏色，或者在這裡重新繪製以使用保守型特定的顏色
+                             if not self.is_tile_dangerous(next_x, next_y, future_seconds=0.2): # 短期檢查路徑上的安全
+                                visited.add(next_coords)
+                                q.append((next_coords, path + [next_coords], d + 1))
         
-        ai_tile_now = self._get_ai_current_tile()
-        if not ai_tile_now or not self.ai_player or not self.ai_player.is_alive:
+        if not potential_spots: return []
+        return random.sample(potential_spots, min(len(potential_spots), count))
+    
+    # In ai_controller_base.py (AIControllerBase class)
+
+    def debug_draw_path(self, surface):
+        """
+        在螢幕上繪製 AI 的詳細除錯資訊，包括路徑、目標和狀態。
+        此版本移除了在 AI 頭上顯示狀態文字的功能。
+        """
+        if not self.ai_player or not self.ai_player.is_alive:
+            return
+        
+        ai_current_tile_coords = self._get_ai_current_tile()
+        if not ai_current_tile_coords:
             return
 
         try:
             tile_size = settings.TILE_SIZE
             half_tile = tile_size // 2
+            # font_size = tile_size // 2 # 移除了文字相關的字型大小設定
+            
+            # debug_font = None # 移除了字型載入
+            # try:
+            #     debug_font = pygame.font.Font(None, font_size)
+            # except:
+            #     debug_font = pygame.font.SysFont("arial", font_size - 2)
 
-            # --- 1. 重新繪製或調整基礎路徑的視覺效果 (可選) ---
-            # 如果希望保守型的路徑顏色不同，可以在這裡覆蓋父類的繪製
-            # 或者在父類中提供顏色參數
+            # --- 顏色定義 ---
+            COLOR_AI_POS = (0, 0, 255, 100)  # AI 當前位置 (藍色半透明)
+            COLOR_ASTAR_PATH = (0, 128, 255, 180) # A* 長期路徑 (淺藍色)
+            COLOR_SUB_PATH = (0, 255, 0, 220)     # 當前 BFS 短路徑 (綠色)
+            COLOR_NEXT_STEP = (255, 255, 0, 255)  # BFS 下一步 (黃色)
+            COLOR_BOMBING_SPOT = (255, 0, 0, 200) # 轟炸目標點 (紅色)
+            COLOR_RETREAT_SPOT = (0, 200, 0, 200) # 撤退目標點 (深綠色)
+            COLOR_TARGET_OBSTACLE = (255, 165, 0, 180) # 目標牆壁 (橙色)
+            COLOR_DANGEROUS_TILE = (200, 0, 0, 70) # 感知到的危險格子 (深紅色半透明)
+            # COLOR_TEXT = settings.BLACK # 移除了文字顏色
+            # COLOR_AI_STATE_BG = (200, 200, 200, 180) # 移除了文字背景色
 
-            # 繪製 A* 規劃路徑 (如果存在且需要顯示)
-            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
-            show_long_term_strategic_elements_conservative = (
-                self.current_state == AI_STATE_CONSERVATIVE_IDLE or
-                (hasattr(self, 'target_destructible_wall_node_in_astar') and self.target_destructible_wall_node_in_astar is not None) or # 如果保守型有炸牆目標
-                (hasattr(self, 'player_initial_spawn_tile') and self.astar_planned_path and len(self.astar_planned_path) > 0 and self.astar_planned_path[-1].x == self.player_initial_spawn_tile[0] and self.astar_planned_path[-1].y == self.player_initial_spawn_tile[1]) # 如果目標是玩家出生點
-            )
+            # 1. 標記 AI 當前位置
+            ai_rect_surface = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+            ai_rect_surface.fill(COLOR_AI_POS)
+            surface.blit(ai_rect_surface, (ai_current_tile_coords[0] * tile_size, ai_current_tile_coords[1] * tile_size))
+            pygame.draw.rect(surface, (0,0,200), (ai_current_tile_coords[0] * tile_size, ai_current_tile_coords[1] * tile_size, tile_size, tile_size), 1)
 
-            if show_long_term_strategic_elements_conservative and self.astar_planned_path and \
-               self.astar_path_current_segment_index < len(self.astar_planned_path):
-                astar_points_to_draw = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
-                current_astar_target_pixel_pos = None
+
+            # 2. 繪製 A* 總體規劃路徑 (如果存在)
+            if self.astar_planned_path and self.astar_path_current_segment_index < len(self.astar_planned_path):
+                astar_points = [(ai_current_tile_coords[0] * tile_size + half_tile, ai_current_tile_coords[1] * tile_size + half_tile)]
                 for i in range(self.astar_path_current_segment_index, len(self.astar_planned_path)):
                     node = self.astar_planned_path[i]
-                    px, py = node.x * tile_size + half_tile, node.y * tile_size + half_tile
-                    astar_points_to_draw.append((px, py))
-                    if i == self.astar_path_current_segment_index:
-                        current_astar_target_pixel_pos = (px, py)
+                    astar_points.append((node.x * tile_size + half_tile, node.y * tile_size + half_tile))
                 
-                if len(astar_points_to_draw) > 1:
-                    # 保守型 A* 路徑用不同顏色，例如深藍色
-                    for i in range(len(astar_points_to_draw) - 1):
-                        # 虛線效果
-                        if i % 2 == 0 : pygame.draw.aaline(surface, (0, 0, 139, 180), astar_points_to_draw[i], astar_points_to_draw[i+1], True) # 深藍色
+                if len(astar_points) > 1:
+                    pygame.draw.lines(surface, COLOR_ASTAR_PATH, False, astar_points, 2)
                 
-                if current_astar_target_pixel_pos:
-                    pygame.draw.circle(surface, (0, 100, 200, 200), current_astar_target_pixel_pos, tile_size // 3, 2) # 標記 A* 的下一個主要目標點
+                final_astar_target = self.astar_planned_path[-1]
+                pygame.draw.circle(surface, COLOR_ASTAR_PATH, 
+                                   (final_astar_target.x * tile_size + half_tile, final_astar_target.y * tile_size + half_tile), 
+                                   tile_size // 4, 2)
+                pygame.draw.line(surface, COLOR_ASTAR_PATH, 
+                                 (final_astar_target.x * tile_size + half_tile - 5, final_astar_target.y * tile_size + half_tile - 5),
+                                 (final_astar_target.x * tile_size + half_tile + 5, final_astar_target.y * tile_size + half_tile + 5), 2)
+                pygame.draw.line(surface, COLOR_ASTAR_PATH,
+                                 (final_astar_target.x * tile_size + half_tile - 5, final_astar_target.y * tile_size + half_tile + 5),
+                                 (final_astar_target.x * tile_size + half_tile + 5, final_astar_target.y * tile_size + half_tile - 5), 2)
 
 
-            # 繪製當前移動子路徑 (如果存在)
-            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
-            if self.current_movement_sub_path and len(self.current_movement_sub_path) > 1 and \
-               self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 :
-                sub_path_points_to_draw = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
-                for i in range(self.current_movement_sub_path_index + 1, len(self.current_movement_sub_path)):
+            # 3. 繪製當前移動子路徑 (BFS Path)
+            if self.current_movement_sub_path and len(self.current_movement_sub_path) > self.current_movement_sub_path_index:
+                sub_path_points = []
+                sub_path_points.append((ai_current_tile_coords[0] * tile_size + half_tile, ai_current_tile_coords[1] * tile_size + half_tile))
+                for i in range(self.current_movement_sub_path_index +1, len(self.current_movement_sub_path)):
                     tile_coords = self.current_movement_sub_path[i]
-                    px, py = tile_coords[0] * tile_size + half_tile, tile_coords[1] * tile_size + half_tile
-                    sub_path_points_to_draw.append((px,py))
-                
-                if len(sub_path_points_to_draw) > 1:
-                    # 保守型子路徑用不同顏色，例如綠色 (代表安全移動)
-                    color_sub_path = (0, 180, 0, 200) # 綠色
-                    if self.current_state == AI_STATE_CONSERVATIVE_EVADING:
-                        color_sub_path = (255,165,0, 220) # 逃跑時用橙色
-                    pygame.draw.aalines(surface, color_sub_path, False, sub_path_points_to_draw, True)
-                    
-                    next_sub_step_coords = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
-                    next_px, next_py = next_sub_step_coords[0] * tile_size + half_tile, next_sub_step_coords[1] * tile_size + half_tile
-                    pulse_factor = abs(pygame.time.get_ticks() % 800 - 400) / 400 # 脈衝慢一點
-                    radius = int(tile_size // 6 + pulse_factor * (tile_size//12))
-                    pygame.draw.circle(surface, color_sub_path, (next_px, next_py), radius, 0)
+                    sub_path_points.append((tile_coords[0] * tile_size + half_tile, tile_coords[1] * tile_size + half_tile))
+
+                if len(sub_path_points) > 1:
+                    pygame.draw.lines(surface, COLOR_SUB_PATH, False, sub_path_points, 3)
+
+                    # 4. 標記下一個移動目標點 (脈衝效果)
+                    # 確保不會因為 current_movement_sub_path_index 越界而報錯
+                    if self.current_movement_sub_path_index + 1 < len(self.current_movement_sub_path):
+                        next_step_coords = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
+                        next_px = next_step_coords[0] * tile_size + half_tile
+                        next_py = next_step_coords[1] * tile_size + half_tile
+                        
+                        pulse_progress = (pygame.time.get_ticks() % 1000) / 1000.0
+                        current_radius = int(half_tile * 0.3 + (half_tile * 0.2 * abs(0.5 - pulse_progress) * 2))
+                        current_alpha = int(150 + 105 * abs(0.5 - pulse_progress) * 2)
+                        
+                        pulse_surface = pygame.Surface((current_radius * 2, current_radius * 2), pygame.SRCALPHA)
+                        pygame.draw.circle(pulse_surface, (*COLOR_NEXT_STEP[:3], current_alpha), (current_radius, current_radius), current_radius)
+                        surface.blit(pulse_surface, (next_px - current_radius, next_py - current_radius))
 
 
-            # --- 2. 保守型 AI 特有的視覺化元素 ---
-
-            # 標記感知到的"高度"危險格子 (比 is_tile_dangerous 更敏感或更長遠的預判)
-            # 這部分可以根據 ConservativeAIController 內部的危險評估邏輯來繪製
-            # 例如，如果它有一個 "imminent_danger_tiles" 列表
-            if hasattr(self, 'evasion_urgency_threshold'): # 假設保守型有此屬性
-                for r_offset in range(-4, 5): # 檢查更大範圍
-                    for c_offset in range(-4, 5):
-                        check_x, check_y = ai_tile_now[0] + c_offset, ai_tile_now[1] + r_offset
-                        if 0 <= check_x < self.map_manager.tile_width and 0 <= check_y < self.map_manager.tile_height:
-                            # 使用保守型AI更敏感的危險判斷標準
-                            if self.is_tile_dangerous(check_x, check_y, future_seconds=self.evasion_urgency_threshold):
-                                rect_high_danger = pygame.Rect(check_x * tile_size, check_y * tile_size, tile_size, tile_size)
-                                s_high_danger = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
-                                s_high_danger.fill((255, 0, 0, 70)) # 更深的紅色半透明
-                                surface.blit(s_high_danger, rect_high_danger.topleft)
-                                # 可以在格子中間畫一個小叉叉
-                                pygame.draw.line(surface, (139,0,0, 100), rect_high_danger.topleft, rect_high_danger.bottomright, 1)
-                                pygame.draw.line(surface, (139,0,0, 100), rect_high_danger.topright, rect_high_danger.bottomleft, 1)
-
-
-            # 標記選擇的撤退點 (如果正在撤退或剛放置炸彈)
-            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似，但顏色可以調整)
-            if hasattr(self, 'chosen_retreat_spot_coords') and self.chosen_retreat_spot_coords and \
-               (self.current_state == AI_STATE_CONSERVATIVE_RETREAT or (hasattr(self,'ai_just_placed_bomb') and self.ai_just_placed_bomb)):
-                rx, ry = self.chosen_retreat_spot_coords
-                rect_retreat = pygame.Rect(rx * tile_size + 2, ry * tile_size + 2, tile_size - 4, tile_size - 4) # 稍微小一點的框
-                s_retreat_conservative = pygame.Surface((tile_size-4, tile_size-4), pygame.SRCALPHA)
-                s_retreat_conservative.fill((0, 255, 0, 100)) # 淺綠色半透明代表安全目標
-                surface.blit(s_retreat_conservative, (rect_retreat.x, rect_retreat.y))
-                pygame.draw.rect(surface, (0, 128, 0, 180), rect_retreat, 2) # 深綠色邊框
-
-
-            # 標記選擇的轟炸點 (如果保守型 AI 罕見地決定轟炸)
-            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
-            if hasattr(self, 'chosen_bombing_spot_coords') and self.chosen_bombing_spot_coords and \
-               (self.current_state == AI_STATE_CONSERVATIVE_SAFE_BOMBING or \
-                ( (self.current_movement_sub_path and self.current_movement_sub_path[-1] == self.chosen_bombing_spot_coords) or \
-                  ai_tile_now == self.chosen_bombing_spot_coords ) ) : # 確保目標是這個轟炸點
+            # 5. 標記特殊目標點
+            if hasattr(self, 'chosen_bombing_spot_coords') and self.chosen_bombing_spot_coords:
                 bx, by = self.chosen_bombing_spot_coords
-                center_bx, center_by = bx * tile_size + half_tile, by * tile_size + half_tile
-                # 保守型的轟炸點標記可以不那麼顯眼
-                pygame.draw.circle(surface, (255, 100, 0, 150), (center_bx, center_by), tile_size // 4, 2) # 橙色細圓圈
-                # 可以畫一個小標靶圖案
-                pygame.draw.line(surface, (200,80,0,150), (center_bx - tile_size//3, center_by), (center_bx + tile_size//3, center_by), 1)
-                pygame.draw.line(surface, (200,80,0,150), (center_bx, center_by - tile_size//3), (center_bx, center_by + tile_size//3), 1)
+                bomb_spot_center_px = bx * tile_size + half_tile
+                bomb_spot_center_py = by * tile_size + half_tile
+                pygame.draw.circle(surface, COLOR_BOMBING_SPOT, (bomb_spot_center_px, bomb_spot_center_py), half_tile // 2, 0)
+                pygame.draw.circle(surface, settings.BLACK, (bomb_spot_center_px, bomb_spot_center_py), half_tile // 2, 1)
+                pygame.draw.line(surface, settings.BLACK, 
+                                 (bomb_spot_center_px, bomb_spot_center_py - half_tile//2 - 2), 
+                                 (bomb_spot_center_px, bomb_spot_center_py - half_tile//2 + 3), 2)
 
-            # 標記目標可破壞牆壁 (如果保守型 AI 決定炸牆)
-            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
-            if hasattr(self, 'target_destructible_wall_node_in_astar') and self.target_destructible_wall_node_in_astar and \
-               self.current_state == AI_STATE_CONSERVATIVE_SAFE_BOMBING: # 假設炸牆也在這個狀態下
-                wall_node = self.target_destructible_wall_node_in_astar
-                wall_rect = pygame.Rect(wall_node.x * tile_size, wall_node.y * tile_size, tile_size, tile_size)
-                pulse_factor_wall = abs(pygame.time.get_ticks() % 700 - 350) / 350 # 脈衝更慢
-                alpha_wall = int(100 + pulse_factor_wall * 80)
-                thickness_wall = 1 + int(pulse_factor_wall * 1) # 更細的框
-                s_wall_conservative = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
-                pygame.draw.rect(s_wall_conservative, (200, 200, 0, alpha_wall), (0,0,tile_size,tile_size), thickness_wall) # 暗黃色
-                surface.blit(s_wall_conservative, (wall_rect.x, wall_rect.y))
+            if hasattr(self, 'chosen_retreat_spot_coords') and self.chosen_retreat_spot_coords and \
+               (self.current_state == "TACTICAL_RETREAT_AND_WAIT" or self.current_state == "EVADING_DANGER" or self.ai_just_placed_bomb):
+                rx, ry = self.chosen_retreat_spot_coords
+                pygame.draw.rect(surface, COLOR_RETREAT_SPOT, (rx * tile_size + 4, ry * tile_size + 4, tile_size - 8, tile_size - 8), 0, border_radius=3)
+                pygame.draw.rect(surface, settings.BLACK, (rx * tile_size + 4, ry * tile_size + 4, tile_size - 8, tile_size - 8), 1, border_radius=3)
+
+            target_obstacle = getattr(self, 'target_obstacle_to_bomb', None) or \
+                              getattr(self, 'target_destructible_wall_node_in_astar', None)
+            if target_obstacle:
+                ox, oy = target_obstacle.x, target_obstacle.y
+                obstacle_rect_surface = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+                obstacle_rect_surface.fill((*COLOR_TARGET_OBSTACLE[:3], 100))
+                surface.blit(obstacle_rect_surface, (ox * tile_size, oy * tile_size))
+                pygame.draw.rect(surface, COLOR_TARGET_OBSTACLE, (ox * tile_size, oy * tile_size, tile_size, tile_size), 2)
+
+
+            # 6. 標記 AI 感知到的危險格子
+            if self.current_state == "EVADING_DANGER" or (pygame.time.get_ticks() // 500) % 2 == 0:
+                for r_offset in range(-3, 4):
+                    for c_offset in range(-3, 4):
+                        check_x, check_y = ai_current_tile_coords[0] + c_offset, ai_current_tile_coords[1] + r_offset
+                        if 0 <= check_x < self.map_manager.tile_width and 0 <= check_y < self.map_manager.tile_height:
+                            if self.is_tile_dangerous(check_x, check_y, future_seconds=self.evasion_urgency_seconds if hasattr(self, 'evasion_urgency_seconds') else 0.5):
+                                danger_tile_surface = pygame.Surface((tile_size,tile_size), pygame.SRCALPHA)
+                                danger_tile_surface.fill(COLOR_DANGEROUS_TILE)
+                                surface.blit(danger_tile_surface, (check_x*tile_size, check_y*tile_size))
+            
+            # 7. 在 AI 頭上顯示當前狀態 (這一段被移除了)
+            # if debug_font:
+            #     state_text = f"{self.current_state}"
+            #     text_surface = debug_font.render(state_text, True, COLOR_TEXT)
+            #     text_rect = text_surface.get_rect(center=(ai_current_tile_coords[0] * tile_size + half_tile, 
+            #                                               ai_current_tile_coords[1] * tile_size - font_size // 2))
+                
+            #     bg_rect = text_rect.inflate(6, 4)
+            #     bg_surface = pygame.Surface(bg_rect.size, pygame.SRCALPHA)
+            #     bg_surface.fill(COLOR_AI_STATE_BG)
+            #     surface.blit(bg_surface, bg_rect.topleft)
+            #     surface.blit(text_surface, text_rect)
 
         except AttributeError as e:
-            # 避免因為 settings.TILE_SIZE 還沒準備好等問題導致崩潰
-            if 'TILE_SIZE' in str(e) or 'game' in str(e) or 'map_manager' in str(e): # 常見的初始化問題
-                pass # 在遊戲剛開始，資源尚未完全加載時，可以忽略
+            if 'TILE_SIZE' in str(e) or 'game' in str(e) or 'map_manager' in str(e):
+                pass 
             else:
-                ai_base_log(f"ConservativeAI Debug Draw AttributeError: {e}")
+                ai_log(f"Debug Draw AttributeError: {e}")
         except Exception as e:
-            ai_base_log(f"Error during ConservativeAI debug_draw_path: {e}")
+            ai_log(f"Error during AI debug_draw_path: {e}")
