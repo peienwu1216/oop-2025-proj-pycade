@@ -1,6 +1,6 @@
 [
     {
-        "name": "facebook",
+        "name": "Benson",
         "score": 320,
         "ai_defeated": "item_focused",
         "date": "2025-05-23 21:56"
@@ -13,7 +13,7 @@
     },
     {
         "name": "Bryan",
-        "score": 120,
+        "score": 540,
         "ai_defeated": "item_focused",
         "date": "2025-05-23 21:39"
     },
@@ -24,7 +24,7 @@
         "date": "2025-05-23 21:40"
     },
     {
-        "name": "ins",
+        "name": "Daniel",
         "score": 20,
         "ai_defeated": "conservative",
         "date": "2025-05-23 21:42"
