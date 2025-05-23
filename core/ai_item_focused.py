@@ -183,7 +183,7 @@ class ItemFocusedAIController(AIControllerBase):
         if self.is_tile_dangerous(item_tile_x, item_tile_y, future_seconds=self.danger_avoidance_for_item_future):
             value_after_distance *= 0.1 
             ai_base_log(f"    Item {item_type} at dangerous spot ({item_tile_x},{item_tile_y}), value heavily reduced.")
-        ai_base_log(f"    Evaluating item: {item_type}, base_val: {base_value}, path_len: {path_len:.1f}, final_val: {value_after_distance:.2f}")
+        ai_base_log(f"    Evaluating item: {item_type}, base_val: {base_value}, path_len: {path_len_to_item:.1f}, final_val: {value_after_distance:.2f}")
         return value_after_distance
 
     def _find_best_item_target(self, ai_current_tile):
