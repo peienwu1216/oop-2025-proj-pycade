@@ -118,7 +118,7 @@ EXPLOSION_COLOR = (255, 165, 0)
 
 # AI Settings
 AI_MOVE_DELAY = 200       
-AI_OPPONENT_ARCHETYPE = "aggressive" # 可以是 "original", "conservative", "aggressive", "item_focused"
+AI_OPPONENT_ARCHETYPE = "item_focused" # 可以是 "original", "conservative", "aggressive", "item_focused"
 
 AI_ENGAGE_MIN_DIST_TO_PLAYER_FOR_DIRECT_PATH = 2 # 在 ENGAGE 狀態下，如果與玩家距離小於此值，AI會重新考慮直接走向玩家的策略
 AI_EVASION_SAFETY_CHECK_FUTURE_SECONDS = 0.3  # EVADING_DANGER 狀態下，判斷當前格子是否"真的"安全時的預判時間
@@ -134,5 +134,3 @@ AI_OSCILLATION_STUCK_THRESHOLD = 3 # 振盪多少次後認為卡住
 AI_CONSERVATIVE_RETREAT_DEPTH = 8
 AI_CONSERVATIVE_MIN_RETREAT_OPTIONS = 3
 AI_CONSERVATIVE_EVASION_URGENCY_MULTIPLIER = 1.5 # 用於 is_tile_dangerous 的 future_seconds
-
- # Aggressive 狀態下，AI 在巡邏時等待玩家的時間 (毫秒)
