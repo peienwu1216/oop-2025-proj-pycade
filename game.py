@@ -7,7 +7,7 @@ from sprites.player import Player # Player 類別現在使用新的移動系統
 
 # AI 控制器匯入
 from core.ai_controller import AIController as OriginalAIController # 您目前的 AI，作為 "original" 或 "balanced"
-from core.ai_controller_conservative import ConservativeAIController # 未來階段會建立
+from core.ai_conservative import ConservativeAIController # 未來階段會建立
 # from core.ai_controller_aggressive import AggressiveAIController   # 未來階段會建立
 # from core.ai_controller_item_focused import ItemFocusedAIController # 未來階段會建立
 
@@ -106,7 +106,7 @@ class Game:
             print("[Game Setup] Initializing OriginalAIController.")
         # --- 未來擴展點 ---
         elif self.ai_archetype == "conservative":
-            from core.ai_controller_conservative import ConservativeAIController # 假設您已創建此文件
+            from core.ai_conservative import ConservativeAIController # 假設您已創建此文件
             ai_controller_class = ConservativeAIController
             print("[Game Setup] Initializing ConservativeAIController.")
         # elif self.ai_archetype == "aggressive":

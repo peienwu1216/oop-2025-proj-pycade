@@ -328,3 +328,143 @@ class ConservativeAIController(AIControllerBase):
             safe_retreat_spots.sort(key=lambda x: (-x['depth'], x['path_len'])) # 優先深度，其次路徑長度
             return [spot['coords'] for spot in safe_retreat_spots]
         return []
+    
+    def debug_draw_path(self, surface):
+        # 首先，呼叫父類別的 debug_draw_path (如果它包含了通用的繪圖邏輯)
+        # 如果父類別的 debug_draw_path 是空的，或者您想完全自訂，則可以不呼叫 super()
+        # 假設 AIControllerBase 已經繪製了 astar_planned_path, current_movement_sub_path 等基礎路徑
+        # 我們可以調整其繪製的顏色，或者在這裡重新繪製以使用保守型特定的顏色
+        
+        ai_tile_now = self._get_ai_current_tile()
+        if not ai_tile_now or not self.ai_player or not self.ai_player.is_alive:
+            return
+
+        try:
+            tile_size = settings.TILE_SIZE
+            half_tile = tile_size // 2
+
+            # --- 1. 重新繪製或調整基礎路徑的視覺效果 (可選) ---
+            # 如果希望保守型的路徑顏色不同，可以在這裡覆蓋父類的繪製
+            # 或者在父類中提供顏色參數
+
+            # 繪製 A* 規劃路徑 (如果存在且需要顯示)
+            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
+            show_long_term_strategic_elements_conservative = (
+                self.current_state == AI_STATE_CONSERVATIVE_IDLE or
+                (hasattr(self, 'target_destructible_wall_node_in_astar') and self.target_destructible_wall_node_in_astar is not None) or # 如果保守型有炸牆目標
+                (hasattr(self, 'player_initial_spawn_tile') and self.astar_planned_path and len(self.astar_planned_path) > 0 and self.astar_planned_path[-1].x == self.player_initial_spawn_tile[0] and self.astar_planned_path[-1].y == self.player_initial_spawn_tile[1]) # 如果目標是玩家出生點
+            )
+
+            if show_long_term_strategic_elements_conservative and self.astar_planned_path and \
+               self.astar_path_current_segment_index < len(self.astar_planned_path):
+                astar_points_to_draw = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
+                current_astar_target_pixel_pos = None
+                for i in range(self.astar_path_current_segment_index, len(self.astar_planned_path)):
+                    node = self.astar_planned_path[i]
+                    px, py = node.x * tile_size + half_tile, node.y * tile_size + half_tile
+                    astar_points_to_draw.append((px, py))
+                    if i == self.astar_path_current_segment_index:
+                        current_astar_target_pixel_pos = (px, py)
+                
+                if len(astar_points_to_draw) > 1:
+                    # 保守型 A* 路徑用不同顏色，例如深藍色
+                    for i in range(len(astar_points_to_draw) - 1):
+                        # 虛線效果
+                        if i % 2 == 0 : pygame.draw.aaline(surface, (0, 0, 139, 180), astar_points_to_draw[i], astar_points_to_draw[i+1], True) # 深藍色
+                
+                if current_astar_target_pixel_pos:
+                    pygame.draw.circle(surface, (0, 100, 200, 200), current_astar_target_pixel_pos, tile_size // 3, 2) # 標記 A* 的下一個主要目標點
+
+
+            # 繪製當前移動子路徑 (如果存在)
+            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
+            if self.current_movement_sub_path and len(self.current_movement_sub_path) > 1 and \
+               self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 :
+                sub_path_points_to_draw = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
+                for i in range(self.current_movement_sub_path_index + 1, len(self.current_movement_sub_path)):
+                    tile_coords = self.current_movement_sub_path[i]
+                    px, py = tile_coords[0] * tile_size + half_tile, tile_coords[1] * tile_size + half_tile
+                    sub_path_points_to_draw.append((px,py))
+                
+                if len(sub_path_points_to_draw) > 1:
+                    # 保守型子路徑用不同顏色，例如綠色 (代表安全移動)
+                    color_sub_path = (0, 180, 0, 200) # 綠色
+                    if self.current_state == AI_STATE_CONSERVATIVE_EVADING:
+                        color_sub_path = (255,165,0, 220) # 逃跑時用橙色
+                    pygame.draw.aalines(surface, color_sub_path, False, sub_path_points_to_draw, True)
+                    
+                    next_sub_step_coords = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
+                    next_px, next_py = next_sub_step_coords[0] * tile_size + half_tile, next_sub_step_coords[1] * tile_size + half_tile
+                    pulse_factor = abs(pygame.time.get_ticks() % 800 - 400) / 400 # 脈衝慢一點
+                    radius = int(tile_size // 6 + pulse_factor * (tile_size//12))
+                    pygame.draw.circle(surface, color_sub_path, (next_px, next_py), radius, 0)
+
+
+            # --- 2. 保守型 AI 特有的視覺化元素 ---
+
+            # 標記感知到的"高度"危險格子 (比 is_tile_dangerous 更敏感或更長遠的預判)
+            # 這部分可以根據 ConservativeAIController 內部的危險評估邏輯來繪製
+            # 例如，如果它有一個 "imminent_danger_tiles" 列表
+            if hasattr(self, 'evasion_urgency_threshold'): # 假設保守型有此屬性
+                for r_offset in range(-4, 5): # 檢查更大範圍
+                    for c_offset in range(-4, 5):
+                        check_x, check_y = ai_tile_now[0] + c_offset, ai_tile_now[1] + r_offset
+                        if 0 <= check_x < self.map_manager.tile_width and 0 <= check_y < self.map_manager.tile_height:
+                            # 使用保守型AI更敏感的危險判斷標準
+                            if self.is_tile_dangerous(check_x, check_y, future_seconds=self.evasion_urgency_threshold):
+                                rect_high_danger = pygame.Rect(check_x * tile_size, check_y * tile_size, tile_size, tile_size)
+                                s_high_danger = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+                                s_high_danger.fill((255, 0, 0, 70)) # 更深的紅色半透明
+                                surface.blit(s_high_danger, rect_high_danger.topleft)
+                                # 可以在格子中間畫一個小叉叉
+                                pygame.draw.line(surface, (139,0,0, 100), rect_high_danger.topleft, rect_high_danger.bottomright, 1)
+                                pygame.draw.line(surface, (139,0,0, 100), rect_high_danger.topright, rect_high_danger.bottomleft, 1)
+
+
+            # 標記選擇的撤退點 (如果正在撤退或剛放置炸彈)
+            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似，但顏色可以調整)
+            if hasattr(self, 'chosen_retreat_spot_coords') and self.chosen_retreat_spot_coords and \
+               (self.current_state == AI_STATE_CONSERVATIVE_RETREAT or (hasattr(self,'ai_just_placed_bomb') and self.ai_just_placed_bomb)):
+                rx, ry = self.chosen_retreat_spot_coords
+                rect_retreat = pygame.Rect(rx * tile_size + 2, ry * tile_size + 2, tile_size - 4, tile_size - 4) # 稍微小一點的框
+                s_retreat_conservative = pygame.Surface((tile_size-4, tile_size-4), pygame.SRCALPHA)
+                s_retreat_conservative.fill((0, 255, 0, 100)) # 淺綠色半透明代表安全目標
+                surface.blit(s_retreat_conservative, (rect_retreat.x, rect_retreat.y))
+                pygame.draw.rect(surface, (0, 128, 0, 180), rect_retreat, 2) # 深綠色邊框
+
+
+            # 標記選擇的轟炸點 (如果保守型 AI 罕見地決定轟炸)
+            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
+            if hasattr(self, 'chosen_bombing_spot_coords') and self.chosen_bombing_spot_coords and \
+               (self.current_state == AI_STATE_CONSERVATIVE_SAFE_BOMBING or \
+                ( (self.current_movement_sub_path and self.current_movement_sub_path[-1] == self.chosen_bombing_spot_coords) or \
+                  ai_tile_now == self.chosen_bombing_spot_coords ) ) : # 確保目標是這個轟炸點
+                bx, by = self.chosen_bombing_spot_coords
+                center_bx, center_by = bx * tile_size + half_tile, by * tile_size + half_tile
+                # 保守型的轟炸點標記可以不那麼顯眼
+                pygame.draw.circle(surface, (255, 100, 0, 150), (center_bx, center_by), tile_size // 4, 2) # 橙色細圓圈
+                # 可以畫一個小標靶圖案
+                pygame.draw.line(surface, (200,80,0,150), (center_bx - tile_size//3, center_by), (center_bx + tile_size//3, center_by), 1)
+                pygame.draw.line(surface, (200,80,0,150), (center_bx, center_by - tile_size//3), (center_bx, center_by + tile_size//3), 1)
+
+            # 標記目標可破壞牆壁 (如果保守型 AI 決定炸牆)
+            # (這段邏輯與您原始 AIController 中的 debug_draw_path 相似)
+            if hasattr(self, 'target_destructible_wall_node_in_astar') and self.target_destructible_wall_node_in_astar and \
+               self.current_state == AI_STATE_CONSERVATIVE_SAFE_BOMBING: # 假設炸牆也在這個狀態下
+                wall_node = self.target_destructible_wall_node_in_astar
+                wall_rect = pygame.Rect(wall_node.x * tile_size, wall_node.y * tile_size, tile_size, tile_size)
+                pulse_factor_wall = abs(pygame.time.get_ticks() % 700 - 350) / 350 # 脈衝更慢
+                alpha_wall = int(100 + pulse_factor_wall * 80)
+                thickness_wall = 1 + int(pulse_factor_wall * 1) # 更細的框
+                s_wall_conservative = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+                pygame.draw.rect(s_wall_conservative, (200, 200, 0, alpha_wall), (0,0,tile_size,tile_size), thickness_wall) # 暗黃色
+                surface.blit(s_wall_conservative, (wall_rect.x, wall_rect.y))
+
+        except AttributeError as e:
+            # 避免因為 settings.TILE_SIZE 還沒準備好等問題導致崩潰
+            if 'TILE_SIZE' in str(e) or 'game' in str(e) or 'map_manager' in str(e): # 常見的初始化問題
+                pass # 在遊戲剛開始，資源尚未完全加載時，可以忽略
+            else:
+                ai_base_log(f"ConservativeAI Debug Draw AttributeError: {e}")
+        except Exception as e:
+            ai_base_log(f"Error during ConservativeAI debug_draw_path: {e}")
