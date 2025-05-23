@@ -1,547 +1,454 @@
 # oop-2025-proj-pycade/core/ai_item_focused.py
 
 import pygame
-import settings # 假設 settings.py 包含 AI 行為相關參數
+import settings
 import random
-from .ai_controller_base import AIControllerBase, TileNode, DIRECTIONS, ai_base_log # 從基礎類別匯入
-# 假設 Item 類別可以從 sprites.item 匯入，用於判斷道具類型等
-from sprites.item import Item # 根據您的專案結構調整
+from collections import deque
+from .ai_controller_base import AIControllerBase, TileNode, DIRECTIONS, ai_base_log
 
 # 道具優先型 AI 的狀態
-AI_STATE_ITEM_SCANNING = "ITEM_SCANNING" # 掃描地圖尋找道具
-AI_STATE_ITEM_PLANNING_PATH = "ITEM_PLANNING_PATH" # 規劃到目標道具的路徑
-AI_STATE_ITEM_MOVING_TO_TARGET = "ITEM_MOVING_TO_TARGET" # 正在前往道具
-AI_STATE_ITEM_NO_TARGET_IDLE = "ITEM_NO_TARGET_IDLE" # 沒有道具目標時的閒置/安全巡邏
-AI_STATE_ITEM_EVADING = "ITEM_EVADING" # 躲避危險 (與其他 AI 類似，但可能因道具目標而調整)
-AI_STATE_ITEM_RETREAT_AFTER_BOMB = "ITEM_RETREAT_AFTER_BOMB" # 如果為了拿道具而放炸彈後的撤退
+AI_STATE_ITEM_SCANNING = "ITEM_SCANNING"
+AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM = "ITEM_MOVING_TO_ACCESSIBLE_ITEM"
+AI_STATE_ITEM_PLANNING_BOMB_FOR_ITEM = "ITEM_PLANNING_BOMB_FOR_ITEM"
+AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM = "ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM"
+AI_STATE_ITEM_BOMBING_FOR_ITEM = "ITEM_BOMBING_FOR_ITEM"
+AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM = "ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM"
+AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE = "ITEM_NO_VIABLE_TARGET_IDLE"
+AI_STATE_ITEM_EVADING_DANGER = "ITEM_EVADING_DANGER"
+AI_STATE_ITEM_DEAD = "DEAD_ITEM_FOCUSED"
 
 class ItemFocusedAIController(AIControllerBase):
     def __init__(self, ai_player_sprite, game_instance):
         super().__init__(ai_player_sprite, game_instance)
         ai_base_log(f"ItemFocusedAIController __init__ for Player ID: {id(ai_player_sprite)}")
 
+        # （1）！！！確保所有 AI_STATE_ITEM_... 常數在此檔案開頭已定義！！！
+        # （已經在檔案開頭定義了）
+
         self.current_state = AI_STATE_ITEM_SCANNING
-        self.item_priority_threshold = getattr(settings, "AI_ITEM_PRIORITY_THRESHOLD", 0.5) # 道具吸引力閾值
-        self.max_item_search_depth_astar = getattr(settings, "AI_ITEM_ASTAR_DEPTH", 20) # A*搜索道具的最大深度
-        self.max_item_search_depth_bfs = getattr(settings, "AI_ITEM_BFS_DEPTH", 10) # BFS 搜索道具的最大深度
+        
+        self.item_value_threshold = getattr(settings, "AI_ITEM_VALUE_THRESHOLD", 10) 
+        self.item_scan_interval = getattr(settings, "AI_ITEM_SCAN_INTERVAL", 1200) 
+        self.bfs_max_depth_direct_item = getattr(settings, "AI_ITEM_BFS_MAX_DEPTH_DIRECT", 18) 
+        self.astar_max_depth_item = getattr(settings, "AI_ITEM_ASTAR_MAX_DEPTH", 35)
+        self.bombing_cost_for_item = getattr(settings, "AI_ITEM_BOMBING_COST", 20) 
+        self.danger_avoidance_for_item_future = getattr(settings, "AI_ITEM_DANGER_FUTURE_SEC", 0.7)
 
-        self.current_target_item = None # (item_sprite, item_tile_coords)
+        self.stuck_threshold_decision_cycles_item = getattr(settings, "AI_ITEM_STUCK_CYCLES", 10) 
+        self.oscillation_stuck_threshold_item = getattr(settings, "AI_ITEM_OSCILLATION_CYCLES", 5)
+
+        self.current_target_item_info = None
+        self.chosen_bombing_spot_coords = None
+        self.chosen_retreat_spot_coords = None
+        self.wall_to_clear_for_item = None
+        
         self.last_scan_time = 0
-        self.scan_interval = getattr(settings, "AI_ITEM_SCAN_INTERVAL", 2000) # 每隔多久重新掃描一次道具 (毫秒)
+        try:
+            self.hud_font = pygame.font.Font(None, 18) 
+        except Exception:
+            self.hud_font = pygame.font.SysFont("arial", 18)
+        self.reset_state()
 
-        # 卡死檢測參數可以有自己的設定
-        self.stuck_threshold_decision_cycles_item = getattr(settings, "AI_ITEM_STUCK_CYCLES", 5)
-        self.oscillation_stuck_threshold_item = getattr(settings, "AI_ITEM_OSCILLATION_CYCLES", 3)
-
-
-    def reset_state(self): # 或 reset_state_item_focused
+    def reset_state(self):
         super().reset_state_base()
         self.current_state = AI_STATE_ITEM_SCANNING
         ai_base_log(f"ItemFocusedAIController reset_state for Player ID: {id(self.ai_player)}.")
-        self.current_target_item = None
-        self.last_scan_time = 0 # 確保重置後立即掃描
+        self._reset_item_specific_targets()
+        self.last_scan_time = pygame.time.get_ticks() - self.item_scan_interval 
+
+    def _reset_item_specific_targets(self):
+        ai_base_log("    Resettings item-specific targets.")
+        self.current_target_item_info = None
+        self.astar_planned_path = [] 
+        self.current_movement_sub_path = [] 
         self.chosen_bombing_spot_coords = None
         self.chosen_retreat_spot_coords = None
-        self.target_destructible_wall_node_in_astar = None
-
+        self.wall_to_clear_for_item = None
 
     def update(self):
         current_time = pygame.time.get_ticks()
         ai_current_tile = self._get_ai_current_tile()
 
         if not ai_current_tile or not self.ai_player or not self.ai_player.is_alive:
-            if self.current_state != "DEAD_ITEM_FOCUSED":
-                self.change_state("DEAD_ITEM_FOCUSED")
+            if self.current_state != AI_STATE_ITEM_DEAD: self.change_state(AI_STATE_ITEM_DEAD)
             return
 
-        # --- 卡死檢測更新 (與其他 AI 類似) ---
-        if not self.current_movement_sub_path and \
-           not (self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMB and self.ai_just_placed_bomb):
-            if self.last_known_tile == ai_current_tile:
-                self.decision_cycle_stuck_counter += 1
-            else:
-                self.decision_cycle_stuck_counter = 0
-        else:
-            self.decision_cycle_stuck_counter = 0
-        self.last_known_tile = ai_current_tile
-        # (振盪檢測邏輯...)
-        is_oscillating = False # 假設的振盪檢測結果
-        if len(self.movement_history) == self.movement_history.maxlen:
-            if self.movement_history[0] == self.movement_history[2] and \
-               self.movement_history[1] == self.movement_history[3] and \
-               self.movement_history[0] != self.movement_history[1] and \
-               ai_current_tile == self.movement_history[3]:
-                self.oscillation_stuck_counter += 1
-                is_oscillating = True
-            else:
-                self.oscillation_stuck_counter = 0
-        else:
-            self.oscillation_stuck_counter = 0
-        # --- 卡死檢測結束 ---
+        if self.ai_just_placed_bomb and self.last_bomb_placed_time > 0:
+            if current_time - self.last_bomb_placed_time > (settings.BOMB_TIMER + settings.EXPLOSION_DURATION + 1000):
+                self.ai_just_placed_bomb = False; self.last_bomb_placed_time = 0
+        
+        stuck_or_oscillating = self._update_and_check_stuck_conditions(ai_current_tile, self.stuck_threshold_decision_cycles_item, self.oscillation_stuck_threshold_item)
 
         is_decision_time = (current_time - self.last_decision_time >= self.ai_decision_interval)
-        is_immediately_dangerous = self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=0.25) # 道具型也需要快速反應危險
+        is_immediately_dangerous = self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=self.danger_avoidance_for_item_future / 2.5) 
 
-        if is_immediately_dangerous and self.current_state != AI_STATE_ITEM_EVADING:
-            ai_base_log(f"[ITEM_AI_DANGER] AI at {ai_current_tile} is in IMMEDIATE DANGER! Switching to EVADING.")
-            # 如果正在追逐道具，可能需要暫時放棄
-            # self.current_target_item = None # 或者不清空，等安全了再繼續
-            # self.astar_planned_path = []
-            self.change_state(AI_STATE_ITEM_EVADING)
-            self.last_decision_time = current_time
+        if is_immediately_dangerous and self.current_state != AI_STATE_ITEM_EVADING_DANGER:
+            ai_base_log(f"[ITEM_AI_DANGER] at {ai_current_tile}! Switching to EVADING.")
+            self.change_state(AI_STATE_ITEM_EVADING_DANGER) 
+            self.last_decision_time = current_time 
 
-        if is_decision_time or self.current_state == AI_STATE_ITEM_EVADING or \
-           (self.current_state == AI_STATE_ITEM_SCANNING and current_time - self.last_scan_time > self.scan_interval): # 定期掃描
+        if stuck_or_oscillating and self.current_state != AI_STATE_ITEM_EVADING_DANGER :
+            ai_base_log(f"[ITEM_AI_STUCK_RESET] Stuck/Oscillating ({self.decision_cycle_stuck_counter}/{self.oscillation_stuck_counter}). Clearing targets and re-scanning.")
+            self.change_state(AI_STATE_ITEM_SCANNING) 
+            self.last_decision_time = current_time 
 
-            if self.current_state != AI_STATE_ITEM_EVADING:
-                self.last_decision_time = current_time
+        elif is_decision_time or self.current_state == AI_STATE_ITEM_EVADING_DANGER or \
+            (self.current_state == AI_STATE_ITEM_SCANNING and current_time - self.last_scan_time >= self.item_scan_interval):
+            
+            if self.current_state != AI_STATE_ITEM_EVADING_DANGER: self.last_decision_time = current_time
+            if self.current_state == AI_STATE_ITEM_SCANNING and (current_time - self.last_scan_time >= self.item_scan_interval):
+                 self.last_scan_time = current_time
 
-            if self.current_state == AI_STATE_ITEM_SCANNING and current_time - self.last_scan_time > self.scan_interval:
-                self.last_scan_time = current_time # 更新掃描時間
-
-            stuck_by_single_tile = self.decision_cycle_stuck_counter >= self.stuck_threshold_decision_cycles_item
-            stuck_by_oscillation = self.oscillation_stuck_counter >= self.oscillation_stuck_threshold_item
-            if stuck_by_single_tile or stuck_by_oscillation:
-                log_msg = "[ITEM_AI_STUCK]"
-                # (與其他AI類似的卡死日誌和處理)
-                ai_base_log(log_msg + " Clearing target item and re-scanning.")
-                self.decision_cycle_stuck_counter = 0; self.oscillation_stuck_counter = 0
-                self.movement_history.clear(); self.current_movement_sub_path = []
-                self.current_target_item = None; self.astar_planned_path = []
-                self.change_state(AI_STATE_ITEM_SCANNING) # 卡住時，重新掃描道具
-
-            # --- 狀態處理邏輯 ---
-            if self.current_state == AI_STATE_ITEM_EVADING:
+            if self.current_state == AI_STATE_ITEM_EVADING_DANGER:
                 self.handle_evading_danger_state(ai_current_tile)
             elif self.current_state == AI_STATE_ITEM_SCANNING:
                 self.handle_scanning_state(ai_current_tile)
-            elif self.current_state == AI_STATE_ITEM_PLANNING_PATH:
-                self.handle_planning_path_state(ai_current_tile)
-            elif self.current_state == AI_STATE_ITEM_MOVING_TO_TARGET:
-                self.handle_moving_to_target_state(ai_current_tile)
-            elif self.current_state == AI_STATE_ITEM_NO_TARGET_IDLE:
-                self.handle_no_target_idle_state(ai_current_tile)
-            elif self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMB:
-                self.handle_retreat_after_bomb_state(ai_current_tile)
-            # ... 其他可能需要的狀態
-            else:
-                ai_base_log(f"[ITEM_AI_WARN] Unknown state: {self.current_state}. Defaulting to SCANNING.")
+            elif self.current_state == AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM:
+                self.handle_moving_to_accessible_item_state(ai_current_tile)
+            elif self.current_state == AI_STATE_ITEM_PLANNING_BOMB_FOR_ITEM: 
+                self.handle_planning_bomb_for_item_state(ai_current_tile)
+            elif self.current_state == AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM:
+                self.handle_moving_to_bomb_spot_for_item_state(ai_current_tile)
+            elif self.current_state == AI_STATE_ITEM_BOMBING_FOR_ITEM:
+                self.handle_bombing_for_item_state(ai_current_tile)
+            elif self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM:
+                self.handle_retreat_after_bombing_for_item_state(ai_current_tile)
+            elif self.current_state == AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE:
+                self.handle_no_viable_target_idle_state(ai_current_tile)
+            elif self.current_state == AI_STATE_ITEM_DEAD:
+                pass
+            else: 
+                ai_base_log(f"[ITEM_AI_WARN] Unknown state: {self.current_state}. Reverting to SCANNING.")
                 self.change_state(AI_STATE_ITEM_SCANNING)
-
-        # --- 移動子路徑執行 ---
-        if self.ai_player.action_timer <= 0:
-            sub_path_finished_or_failed = False
+        
+        if self.ai_player.action_timer <= 0: 
             if self.current_movement_sub_path:
                 sub_path_finished_or_failed = self.execute_next_move_on_sub_path(ai_current_tile)
-
-            if sub_path_finished_or_failed:
-                self.last_decision_time = pygame.time.get_ticks() - self.ai_decision_interval - 1
-                # 如果子路徑完成（例如到達道具前一格，或炸牆點），需要根據當前狀態決定下一步
-                if self.current_state == AI_STATE_ITEM_MOVING_TO_TARGET and self.current_target_item:
-                    if ai_current_tile == self.current_target_item[1]: # 已到達道具位置
-                        ai_base_log(f"    Reached item target {self.current_target_item[0].type} at {ai_current_tile}. Item should be collected by game logic.")
-                        self.current_target_item = None # 清除目標
-                        self.astar_planned_path = []
-                        self.change_state(AI_STATE_ITEM_SCANNING) # 重新掃描
-                    # else: # 可能子路徑是到某個中間點，例如炸牆點
-                      # handle_moving_to_target_state 內部會處理
-                elif self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMB:
-                    # 撤退完成後，檢查炸彈是否清除，然後重新掃描
-                    if ai_current_tile == self.chosen_retreat_spot_coords:
-                         self.handle_retreat_after_bomb_state(ai_current_tile) # 讓狀態處理函式決定下一步
-                    else: # 撤退路徑中斷
-                         self.change_state(AI_STATE_ITEM_EVADING)
-
-
+                if sub_path_finished_or_failed:
+                    self.last_decision_time = pygame.time.get_ticks() - self.ai_decision_interval - 1 
+                    if self.current_state == AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM and self.current_target_item_info and ai_current_tile == self.current_target_item_info['coords']:
+                        self._target_item_reached_or_gone()
+                    elif self.current_state == AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM and self.current_target_item_info and ai_current_tile == self.current_target_item_info.get('bomb_spot'):
+                        self.change_state(AI_STATE_ITEM_BOMBING_FOR_ITEM) 
+                    elif self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM and self.chosen_retreat_spot_coords and ai_current_tile == self.chosen_retreat_spot_coords:
+                        self.handle_retreat_after_bombing_for_item_state(ai_current_tile) 
+            
             if not self.current_movement_sub_path:
                 self.ai_player.is_moving = False
 
-    def _evaluate_item_value(self, item_sprite):
-        # 根據道具類型和 AI 當前狀態給道具評分
-        # 這是核心的道具優先邏輯
-        if not item_sprite or not hasattr(item_sprite, 'type'):
-            return 0
+    # （1）！！！新增 ItemFocusedAIController 特有的 change_state 方法！！！
+    def change_state(self, new_state):
+        old_state = self.current_state
+        # 呼叫父類的通用狀態轉換邏輯 (這會設定 self.current_state, self.state_start_time 並清空路徑)
+        super().change_state(new_state) 
 
-        item_type = item_sprite.type
-        base_value = 0
-        # 假設 settings.py 有 ITEM_TYPE_* 的定義
-        if item_type == settings.ITEM_TYPE_BOMB_CAPACITY:
-            # 如果炸彈容量未滿，則價值較高
-            if self.ai_player.max_bombs < getattr(settings, "MAX_POSSIBLE_BOMBS", 5): # 假設有個最大上限
-                base_value = 80
+        # 特定於道具 AI 的清理邏輯
+        # 如果從一個與道具追蹤相關的狀態離開，並且新的狀態不是另一個道具追蹤/處理狀態，則清理道具目標
+        item_pursuit_states = [ # 這些狀態下，AI 有一個明確的 current_target_item_info
+            AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM,
+            AI_STATE_ITEM_PLANNING_BOMB_FOR_ITEM, # 雖然此狀態可能較少直接使用
+            AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM,
+            AI_STATE_ITEM_BOMBING_FOR_ITEM
+            # RETREAT_AFTER_BOMBING_FOR_ITEM 也與之前的道具目標相關，但不一定是主動追蹤狀態
+        ]
+        # 這些狀態是道具相關的，但不一定表示正在“追逐”一個舊目標，所以不在此處觸發重置
+        safe_new_item_states = [
+            AI_STATE_ITEM_SCANNING, # 掃描會自己找新目標
+            AI_STATE_ITEM_EVADING_DANGER, # 躲避優先
+            AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE, # 沒有目標
+            AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM, # 正在處理炸彈後續
+            AI_STATE_ITEM_DEAD
+        ]
+
+        if old_state in item_pursuit_states and new_state not in item_pursuit_states:
+            # 只有當舊狀態是追蹤道具，而新狀態不是繼續追蹤或處理該道具的後續時，才重置
+            # 例如，從 MOVING_TO_ITEM -> EVADING，或者 MOVING_TO_ITEM -> SCANNING (因卡住)
+            if new_state not in [AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM]: # 如果不是轉到炸後撤退
+                ai_base_log(f"    ItemFocusedAI: Clearing item targets due to state change from {old_state} to {new_state}")
+                self._reset_item_specific_targets()
+    # （1）！！！新增結束！！！
+    
+    def _evaluate_item_value(self, item_sprite, path_len_to_item):
+        # (與上一版本相同的實現)
+        if not item_sprite or not hasattr(item_sprite, 'type'): return -1
+        item_type = item_sprite.type; base_value = 0
+        if item_type == settings.ITEM_TYPE_BOMB_CAPACITY: base_value = 90 if self.ai_player.max_bombs < getattr(settings, "MAX_POSSIBLE_BOMBS", 5) else 5
+        elif item_type == settings.ITEM_TYPE_BOMB_RANGE: base_value = 85 if self.ai_player.bomb_range < getattr(settings, "MAX_POSSIBLE_RANGE", 6) else 5
+        elif item_type == settings.ITEM_TYPE_LIFE: base_value = 120 if self.ai_player.lives < settings.MAX_LIVES else 2
+        elif item_type == settings.ITEM_TYPE_SCORE: base_value = 10
+        else: base_value = 15
+        if base_value <= 0: return -1
+        value_after_distance = base_value / (path_len_to_item / 3.0 + 1.0)
+        item_tile_x = item_sprite.rect.centerx // settings.TILE_SIZE; item_tile_y = item_sprite.rect.centery // settings.TILE_SIZE
+        if self.is_tile_dangerous(item_tile_x, item_tile_y, future_seconds=self.danger_avoidance_for_item_future):
+            value_after_distance *= 0.1 
+            ai_base_log(f"    Item {item_type} at dangerous spot ({item_tile_x},{item_tile_y}), value heavily reduced.")
+        ai_base_log(f"    Evaluating item: {item_type}, base_val: {base_value}, path_len: {path_len:.1f}, final_val: {value_after_distance:.2f}")
+        return value_after_distance
+
+    def _find_best_item_target(self, ai_current_tile):
+        # (與上一版本相同的實現)
+        best_target_info = None; highest_score = -1 
+        if not hasattr(self.game, 'items_group') or not self.game.items_group:
+            ai_base_log("    _find_best_item_target: No items_group attribute or items_group is empty."); return None
+        active_items = [s for s in self.game.items_group if s.alive()]
+        if not active_items:
+            ai_base_log("    _find_best_item_target: items_group contains no alive items."); return None
+        ai_base_log(f"    _find_best_item_target: Scanning {len(active_items)} alive items.")
+        for item_sprite in active_items:
+            item_coords = (item_sprite.rect.centerx // settings.TILE_SIZE, item_sprite.rect.centery // settings.TILE_SIZE)
+            ai_base_log(f"        Considering item: {getattr(item_sprite, 'type', 'UnknownType')} at {item_coords}")
+            direct_path_to_item = self.bfs_find_direct_movement_path(ai_current_tile, item_coords, max_depth=self.bfs_max_depth_direct_item)
+            path_len = len(direct_path_to_item) - 1 if direct_path_to_item else float('inf')
+            current_item_value = self._evaluate_item_value(item_sprite, path_len)
+            ai_base_log(f"            BFS path len: {path_len if direct_path_to_item else 'N/A'}. Evaluated value: {current_item_value:.2f}. Threshold: {self.item_value_threshold}")
+            if current_item_value < self.item_value_threshold:
+                ai_base_log(f"            Item {getattr(item_sprite, 'type', 'UnknownType')} value too low. Skipping."); continue
+            if direct_path_to_item:
+                ai_base_log(f"            Direct path found for {getattr(item_sprite, 'type', 'UnknownType')}. Length: {path_len}.")
+                if current_item_value > highest_score:
+                    highest_score = current_item_value
+                    best_target_info = {'sprite': item_sprite, 'coords': item_coords, 'value': current_item_value,'path': direct_path_to_item, 'type': 'direct','wall_to_bomb': None, 'bomb_spot': None, 'retreat_spot': None}
+                    ai_base_log(f"                New best direct target: {getattr(item_sprite, 'type', 'UnknownType')}, score: {highest_score:.2f}")
+                continue 
+            ai_base_log(f"            No direct BFS to {getattr(item_sprite, 'type', 'UnknownType')}. Trying A* and bombing logic.")
+            astar_path_nodes = self.astar_find_path(ai_current_tile, item_coords) 
+            if not astar_path_nodes:
+                ai_base_log(f"                A* path to {getattr(item_sprite, 'type', 'UnknownType')} FAILED."); continue 
+            wall_to_bomb_node = None; path_to_wall_is_clear = True
+            for node_idx, node in enumerate(astar_path_nodes):
+                if node_idx == 0 and (node.x, node.y) == ai_current_tile: continue 
+                if node.is_destructible_box(): wall_to_bomb_node = node; break 
+                elif not node.is_empty_for_direct_movement(): path_to_wall_is_clear = False; break
+            if not path_to_wall_is_clear:
+                ai_base_log(f"                A* path to {getattr(item_sprite, 'type', 'UnknownType')} blocked by indestructible wall."); continue
+            if not wall_to_bomb_node:
+                astar_path_coords = self._convert_astar_nodes_to_coords(astar_path_nodes)
+                astar_path_len = len(astar_path_coords) -1
+                value_via_astar_direct = self._evaluate_item_value(item_sprite, astar_path_len)
+                if value_via_astar_direct > self.item_value_threshold and value_via_astar_direct > highest_score:
+                    highest_score = value_via_astar_direct
+                    best_target_info = {'sprite': item_sprite, 'coords': item_coords, 'value': value_via_astar_direct, 'path': astar_path_coords, 'type': 'astar_direct', 'wall_to_bomb': None, 'bomb_spot': None, 'retreat_spot': None}
+                    ai_base_log(f"                Found A* direct path for {getattr(item_sprite, 'type', 'UnknownType')}, score: {highest_score:.2f}")
+                continue
+            ai_base_log(f"            A* to {getattr(item_sprite, 'type', 'UnknownType')} requires bombing wall: {wall_to_bomb_node}")
+            bomb_spot, retreat_spot = self._find_optimal_bombing_and_retreat_spot_for_item(wall_to_bomb_node, ai_current_tile, for_item=True)
+            if bomb_spot and retreat_spot:
+                path_to_bomb_spot = self.bfs_find_direct_movement_path(ai_current_tile, bomb_spot, max_depth=self.bfs_max_depth_direct_item)
+                if not path_to_bomb_spot:
+                    ai_base_log(f"                Cannot BFS to bomb_spot {bomb_spot} for wall {wall_to_bomb_node}."); continue 
+                cost_to_reach_bomb_spot = len(path_to_bomb_spot) - 1
+                item_base_value = self._evaluate_item_value(item_sprite, 0) 
+                value_after_bombing = item_base_value - self.bombing_cost_for_item - (cost_to_reach_bomb_spot * 0.3)
+                ai_base_log(f"                Bombing for {getattr(item_sprite, 'type', 'UnknownType')}: val_after_bomb_cost={value_after_bombing:.2f} (item_base_val={item_base_value:.2f}, reach_cost={cost_to_reach_bomb_spot*0.3}, bomb_cost={self.bombing_cost_for_item})")
+                if value_after_bombing > self.item_value_threshold and value_after_bombing > highest_score:
+                    highest_score = value_after_bombing
+                    best_target_info = {'sprite': item_sprite, 'coords': item_coords, 'value': value_after_bombing, 'path': path_to_bomb_spot, 'type': 'via_bombing', 'wall_to_bomb': wall_to_bomb_node, 'bomb_spot': bomb_spot, 'retreat_spot': retreat_spot}
+                    ai_base_log(f"                New best via_bombing target: {getattr(item_sprite, 'type', 'UnknownType')}, score: {highest_score:.2f}")
             else:
-                base_value = 10 # 已經滿了，價值不高
-        elif item_type == settings.ITEM_TYPE_BOMB_RANGE:
-            if self.ai_player.bomb_range < getattr(settings, "MAX_POSSIBLE_RANGE", 5):
-                base_value = 75
-            else:
-                base_value = 10
-        elif item_type == settings.ITEM_TYPE_LIFE:
-            if self.ai_player.lives < settings.MAX_LIVES: # 假設 MAX_LIVES 在 settings 中
-                base_value = 100 # 生命最重要
-            else:
-                base_value = 5 # 命滿了
-        elif item_type == settings.ITEM_TYPE_SCORE:
-            base_value = 20 # 分數道具價值一般
-        # ... 其他道具類型 ...
+                ai_base_log(f"                Cannot find optimal bombing/retreat for wall {wall_to_bomb_node} for item {getattr(item_sprite, 'type', 'UnknownType')}")
+        if best_target_info:
+             target_sprite_type = getattr(best_target_info.get('sprite'), 'type', 'UnknownType')
+             ai_base_log(f"    [FINAL_ITEM_CHOICE] Target: {target_sprite_type} at {best_target_info.get('coords')}, Type: {best_target_info.get('type')}, Score: {highest_score:.2f}, Path: {best_target_info.get('path')}")
         else:
-            base_value = 15 # 未知或一般道具
-
-        # 可以根據距離、危險程度等調整價值
-        # 此處簡化，只返回基礎價值
-        return base_value
-
-    def _find_best_item(self, ai_current_tile):
-        best_item_found = None
-        highest_value = -1
-        shortest_path_len = float('inf')
-
-        if not hasattr(self.game, 'items_group'): #
-            return None
-
-        visible_items = []
-        for item_sprite in self.game.items_group:
-            if item_sprite.alive(): # 確保道具還存在
-                 # 假設 item sprite 有 rect 屬性用於獲取格子座標
-                item_tile_x = item_sprite.rect.centerx // settings.TILE_SIZE
-                item_tile_y = item_sprite.rect.centery // settings.TILE_SIZE
-                item_tile_coords = (item_tile_x, item_tile_y)
-
-                # 評估道具價值
-                value = self._evaluate_item_value(item_sprite)
-                if value < self.item_priority_threshold * 20: # 忽略價值太低的 (乘以一個因子)
-                    continue
-
-                # 評估路徑可達性和距離 (初步用BFS，如果太遠或中間有牆再考慮A*)
-                # 這裡只考慮直接可達性，不考慮炸牆拿道具 (除非後續狀態處理中加入)
-                path_to_item = self.bfs_find_direct_movement_path(ai_current_tile, item_tile_coords, max_depth=self.max_item_search_depth_bfs)
-                if path_to_item:
-                    path_len = len(path_to_item) - 1
-                    # 綜合考慮價值和距離 (例如: value / (path_len + 1))
-                    effective_value = value / (path_len + 0.1) # 避免除以0
-
-                    if effective_value > highest_value :
-                        highest_value = effective_value
-                        best_item_found = (item_sprite, item_tile_coords, path_to_item)
-                    elif effective_value == highest_value and path_len < shortest_path_len: # 同樣價值，選近的
-                        shortest_path_len = path_len
-                        best_item_found = (item_sprite, item_tile_coords, path_to_item)
-
-        if best_item_found:
-            ai_base_log(f"    [ITEM_SCAN] Best item found: {best_item_found[0].type} at {best_item_found[1]} with effective_value {highest_value:.2f}")
-            return best_item_found
-        else:
-            ai_base_log("    [ITEM_SCAN] No suitable items found.")
-            return None
+            ai_base_log(f"    [FINAL_ITEM_CHOICE] No viable item target found.")
+        return best_target_info
 
     def handle_scanning_state(self, ai_current_tile):
-        ai_base_log(f"[ITEM_AI_SCANNING] at {ai_current_tile}.")
-        found_item_data = self._find_best_item(ai_current_tile)
-        if found_item_data:
-            self.current_target_item = (found_item_data[0], found_item_data[1]) # sprite, coords
-            # A* 路徑規劃到道具 (如果 BFS 路徑太長或不可靠，或者 _find_best_item 中只做了初步可達性)
-            # 為了簡化，如果 _find_best_item 返回了 BFS 路徑，可以直接用它
-            if len(found_item_data) > 2 and found_item_data[2]: # 如果返回了 BFS 路徑
-                self.astar_planned_path = [] # 清空 A* 路徑，因為我們用 BFS
-                self.set_current_movement_sub_path(found_item_data[2])
-                self.change_state(AI_STATE_ITEM_MOVING_TO_TARGET)
-            else: # 否則，需要 A* 規劃
-                self.change_state(AI_STATE_ITEM_PLANNING_PATH)
-        else:
-            self.change_state(AI_STATE_ITEM_NO_TARGET_IDLE) # 沒有道具目標，進入閒置
+        ai_base_log(f"[ITEM_AI_State] SCANNING at {ai_current_tile}")
+        self.current_target_item_info = self._find_best_item_target(ai_current_tile)
+        if self.current_target_item_info:
+            target_type = self.current_target_item_info['type']
+            path_to_next_point = self.current_target_item_info['path']
+            if path_to_next_point and len(path_to_next_point) > 0 :
+                self.set_current_movement_sub_path(path_to_next_point)
+                if target_type == 'direct' or target_type == 'astar_direct':
+                    self.change_state(AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM)
+                elif target_type == 'via_bombing':
+                    self.chosen_bombing_spot_coords = self.current_target_item_info.get('bomb_spot') 
+                    self.chosen_retreat_spot_coords = self.current_target_item_info.get('retreat_spot')
+                    self.wall_to_clear_for_item = self.current_target_item_info.get('wall_to_bomb')
+                    if not (self.chosen_bombing_spot_coords and self.chosen_retreat_spot_coords and self.wall_to_clear_for_item):
+                        self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE)
+                    else: self.change_state(AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM)
+                else: self.change_state(AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE)
+            else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE)
+        else: self.change_state(AI_STATE_ITEM_NO_VIABLE_TARGET_IDLE)
 
-
-    def handle_planning_path_state(self, ai_current_tile):
-        ai_base_log(f"[ITEM_AI_PLANNING_PATH] to target item at {self.current_target_item[1] if self.current_target_item else 'None'}.")
-        if not self.current_target_item:
-            self.change_state(AI_STATE_ITEM_SCANNING); return
-
-        target_item_coords = self.current_target_item[1]
-        # 使用 A* 規劃路徑到道具 (這裡假設道具本身是可穿越的，目標是道具所在的格子)
-        # 注意：如果道具被牆擋住，此處的 A* 可能無法直接到達
-        # 需要更複雜的邏輯：先 A* 到牆邊，然後炸牆，然後再去撿道具
-        # 為了簡化此階段，我們先假設 A* 的目標是道具格子，如果路徑上有可破壞牆，則轉到炸牆邏輯
-
-        self.astar_planned_path = self.astar_find_path(ai_current_tile, target_item_coords) # max_depth?
-        if self.astar_planned_path:
-            self.astar_path_current_segment_index = 0
-            # 檢查路徑上是否有可破壞的牆需要清除
-            # (這部分邏輯可以從 AggressiveAIController 或原始 AIController 借鑒)
-            # ...
-            # 如果需要炸牆：
-            #   self.target_destructible_wall_node_in_astar = first_destructible_wall_on_path
-            #   self.change_state(AI_STATE_ITEM_CLEARING_FOR_ITEM) # 需要新狀態
-            #   return
-            # 如果路徑直接可達 (或只有空格):
-            self.set_current_movement_sub_path(self._convert_astar_nodes_to_coords(self.astar_planned_path))
-            self.change_state(AI_STATE_ITEM_MOVING_TO_TARGET)
-        else:
-            ai_base_log(f"    Cannot A* path to item {self.current_target_item[0].type} at {target_item_coords}. Re-scanning.")
-            self.current_target_item = None # 放棄當前目標
-            self.change_state(AI_STATE_ITEM_SCANNING)
-
-    def _convert_astar_nodes_to_coords(self, astar_node_path):
-        if not astar_node_path: return []
-        return [(node.x, node.y) for node in astar_node_path]
-
-    def handle_moving_to_target_state(self, ai_current_tile):
-        ai_base_log(f"[ITEM_AI_MOVING_TO_TARGET] at {ai_current_tile}. Target: {self.current_target_item[1] if self.current_target_item else 'None'}.")
-        if not self.current_target_item or not self.current_target_item[0].alive(): # 道具消失或已被拾取
-            ai_base_log("    Target item no longer available. Re-scanning.")
-            self.current_target_item = None
-            self.astar_planned_path = []
-            self.current_movement_sub_path = []
-            self.change_state(AI_STATE_ITEM_SCANNING)
-            return
-
-        target_item_coords = self.current_target_item[1]
-        if ai_current_tile == target_item_coords: # 已經到達
-            # 遊戲邏輯會處理拾取，這裡AI任務完成
-            ai_base_log(f"    Successfully arrived at item {self.current_target_item[0].type}. Re-scanning.")
-            self.current_target_item = None
-            self.astar_planned_path = []
-            self.current_movement_sub_path = []
-            self.change_state(AI_STATE_ITEM_SCANNING)
-            return
-
-        # 如果沒有子路徑了 (例如A*路徑執行完但未到達，或路徑中斷)，重新規劃或放棄
+    def handle_moving_to_accessible_item_state(self, ai_current_tile): 
+        ai_base_log(f"[ITEM_AI_State] MOVING_TO_ACCESSIBLE_ITEM to {self.current_target_item_info.get('coords') if self.current_target_item_info else 'None'}")
+        if not self.current_target_item_info or not self.current_target_item_info.get('sprite') or not self.current_target_item_info['sprite'].alive():
+            self._target_item_reached_or_gone(); return
+        target_coords = self.current_target_item_info['coords']
+        if ai_current_tile == target_coords: 
+            self._target_item_reached_or_gone(); return
         if not self.current_movement_sub_path:
-            ai_base_log("    Sub-path ended before reaching item. Re-planning or re-scanning.")
-            # 可以嘗試重新規劃一次BFS，如果不行就重新掃描
-            path_to_item_bfs = self.bfs_find_direct_movement_path(ai_current_tile, target_item_coords, max_depth=self.max_item_search_depth_bfs // 2)
-            if path_to_item_bfs and len(path_to_item_bfs) > 1:
-                self.set_current_movement_sub_path(path_to_item_bfs)
-            else:
-                self.current_target_item = None
-                self.astar_planned_path = []
-                self.change_state(AI_STATE_ITEM_SCANNING)
+            new_path = self.bfs_find_direct_movement_path(ai_current_tile, target_coords, max_depth=self.bfs_max_depth_direct_item // 2)
+            if new_path and len(new_path) > 1: self.set_current_movement_sub_path(new_path)
+            else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING)
 
-    def handle_no_target_idle_state(self, ai_current_tile):
-        ai_base_log(f"[ITEM_AI_NO_TARGET_IDLE] at {ai_current_tile}.")
-        # 類似 ConservativeAI 的 IDLE 狀態，進行安全巡邏
-        # 定期嘗試重新掃描道具 (由主 update 迴圈的 scan_interval 控制)
-        if not self.current_movement_sub_path:
-            safe_random_moves = []
-            for dx, dy in DIRECTIONS.values():
-                next_x, next_y = ai_current_tile[0] + dx, ai_current_tile[1] + dy
-                node = self._get_node_at_coords(next_x, next_y)
-                if node and node.is_empty_for_direct_movement() and \
-                   not self.is_tile_dangerous(next_x, next_y, future_seconds=0.5): # 安全巡邏
-                    safe_random_moves.append((next_x, next_y))
-            if safe_random_moves:
-                self.set_current_movement_sub_path([ai_current_tile, random.choice(safe_random_moves)])
-            else: # 無處可去
-                self.ai_player.is_moving = False
+    def handle_planning_bomb_for_item_state(self, ai_current_tile):
+        ai_base_log(f"[ITEM_AI_State] PLANNING_BOMB_FOR_ITEM (type: {self.current_target_item_info.get('type') if self.current_target_item_info else 'None'})")
+        if not self.current_target_item_info or self.current_target_item_info.get('type') != 'via_bombing':
+            self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING); return
+        bomb_spot = self.current_target_item_info.get('bomb_spot'); retreat_spot = self.current_target_item_info.get('retreat_spot')
+        wall_target = self.current_target_item_info.get('wall_to_bomb'); path_to_bomb_spot = self.current_target_item_info.get('path')
+        if not (bomb_spot and retreat_spot and wall_target and path_to_bomb_spot):
+            self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING); return
+        self.set_current_movement_sub_path(path_to_bomb_spot)
+        self.chosen_bombing_spot_coords = bomb_spot; self.chosen_retreat_spot_coords = retreat_spot
+        self.wall_to_clear_for_item = wall_target
+        self.change_state(AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM)
 
+    def handle_moving_to_bomb_spot_for_item_state(self, ai_current_tile):
+        target_bomb_spot = self.current_target_item_info.get('bomb_spot') if self.current_target_item_info else None
+        ai_base_log(f"[ITEM_AI_State] MOVING_TO_BOMB_SPOT to {target_bomb_spot}")
+        if not self.current_target_item_info or not target_bomb_spot or \
+           not self.current_target_item_info.get('sprite') or not self.current_target_item_info['sprite'].alive():
+            self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING); return
+        if ai_current_tile == target_bomb_spot:
+            self.change_state(AI_STATE_ITEM_BOMBING_FOR_ITEM); return
+        if not self.current_movement_sub_path: 
+            new_path_to_bomb_spot = self.bfs_find_direct_movement_path(ai_current_tile, target_bomb_spot, max_depth=self.bfs_max_depth_direct_item // 2)
+            if new_path_to_bomb_spot and len(new_path_to_bomb_spot) > 1: self.set_current_movement_sub_path(new_path_to_bomb_spot)
+            else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING)
+    
+    def handle_bombing_for_item_state(self, ai_current_tile):
+        ai_base_log(f"[ITEM_AI_State] BOMBING_FOR_ITEM at {ai_current_tile}")
+        if not self.current_target_item_info or \
+           not self.current_target_item_info.get('bomb_spot') or \
+           not self.current_target_item_info.get('retreat_spot') or \
+           not self.current_target_item_info.get('wall_to_bomb'):
+            self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING); return
+        bomb_spot = self.current_target_item_info['bomb_spot']; retreat_spot = self.current_target_item_info['retreat_spot']
+        wall_to_bomb = self.current_target_item_info['wall_to_bomb']
+        if ai_current_tile != bomb_spot: 
+            path_to_it = self.bfs_find_direct_movement_path(ai_current_tile, bomb_spot, max_depth=3)
+            if path_to_it: self.set_current_movement_sub_path(path_to_it)
+            self.change_state(AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM); return
+        current_wall_node = self._get_node_at_coords(wall_to_bomb.x, wall_to_bomb.y)
+        if not current_wall_node or not current_wall_node.is_destructible_box():
+            self.current_target_item_info['type'] = 'direct'; self.current_target_item_info['wall_to_bomb'] = None
+            self.current_target_item_info['bomb_spot'] = None; self.current_target_item_info['retreat_spot'] = None
+            direct_path = self.bfs_find_direct_movement_path(ai_current_tile, self.current_target_item_info['coords'], max_depth=self.bfs_max_depth_direct_item)
+            if direct_path: self.current_target_item_info['path'] = direct_path; self.set_current_movement_sub_path(direct_path); self.change_state(AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM)
+            else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING)
+            return
+        if self.ai_player.bombs_placed_count < self.ai_player.max_bombs:
+            self.ai_player.place_bomb(); self.ai_just_placed_bomb = True; self.last_bomb_placed_time = pygame.time.get_ticks()
+            self.chosen_retreat_spot_coords = retreat_spot 
+            path_to_retreat_coords = self.bfs_find_direct_movement_path(ai_current_tile, retreat_spot, max_depth=self.bfs_max_depth_direct_item)
+            if path_to_retreat_coords and len(path_to_retreat_coords) > 1: self.set_current_movement_sub_path(path_to_retreat_coords)
+            self.change_state(AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM)
+        else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING)
 
-    def handle_retreat_after_bomb_state(self, ai_current_tile):
-        ai_base_log(f"[ITEM_AI_RETREAT_AFTER_BOMB] at {ai_current_tile}. Target: {self.chosen_retreat_spot_coords}")
-        # 與其他AI的撤退邏輯類似
-        if self.current_movement_sub_path: return
-
-        if ai_current_tile == self.chosen_retreat_spot_coords or not self.chosen_retreat_spot_coords:
-            if not self.is_bomb_still_active(self.last_bomb_placed_time):
-                ai_base_log(f"      Bomb cleared (for item). Re-scanning.")
-                self.ai_just_placed_bomb = False
-                self.chosen_bombing_spot_coords = None
-                self.chosen_retreat_spot_coords = None
-                self.target_destructible_wall_node_in_astar = None # 清除炸牆目標
-                self.change_state(AI_STATE_ITEM_SCANNING) # 重新掃描，看是否能拿到道具或有新道具
-            # else: # 炸彈還在，繼續等待
-        else: # 未到達撤退點
-            # (重新規劃到撤退點的邏輯，或轉入 EVADING)
-            if self.chosen_retreat_spot_coords:
-                retreat_path = self.bfs_find_direct_movement_path(ai_current_tile, self.chosen_retreat_spot_coords, max_depth=7)
-                if retreat_path and len(retreat_path)>1: self.set_current_movement_sub_path(retreat_path)
-                else: self.change_state(AI_STATE_ITEM_EVADING)
-            else: self.change_state(AI_STATE_ITEM_EVADING)
-
+    def handle_retreat_after_bombing_for_item_state(self, ai_current_tile):
+        ai_base_log(f"[ITEM_AI_State] RETREAT_AFTER_BOMBING_FOR_ITEM to {self.chosen_retreat_spot_coords}")
+        if self.current_movement_sub_path and ai_current_tile != self.current_movement_sub_path[-1]: return
+        if not self.chosen_retreat_spot_coords: self.change_state(AI_STATE_ITEM_EVADING_DANGER); return
+        if ai_current_tile == self.chosen_retreat_spot_coords or not self.current_movement_sub_path:
+            if not self.is_bomb_still_active(self.last_bomb_placed_time): 
+                self.ai_just_placed_bomb = False; wall_was_cleared = True
+                original_target_item_sprite = self.current_target_item_info.get('sprite') if self.current_target_item_info else None
+                original_target_item_coords = self.current_target_item_info.get('coords') if self.current_target_item_info else None
+                if self.current_target_item_info and self.current_target_item_info.get('wall_to_bomb'): 
+                    wall_node = self.current_target_item_info['wall_to_bomb']
+                    current_wall_state = self._get_node_at_coords(wall_node.x, wall_node.y)
+                    if current_wall_state and current_wall_state.is_destructible_box(): wall_was_cleared = False
+                self.chosen_bombing_spot_coords = None; self.chosen_retreat_spot_coords = None
+                if wall_was_cleared and original_target_item_sprite and original_target_item_sprite.alive():
+                    path_to_item_now = self.bfs_find_direct_movement_path(ai_current_tile, original_target_item_coords, max_depth=self.bfs_max_depth_direct_item)
+                    if path_to_item_now:
+                        self.current_target_item_info = {'sprite': original_target_item_sprite, 'coords': original_target_item_coords, 'value': self._evaluate_item_value(original_target_item_sprite, len(path_to_item_now)-1),'path': path_to_item_now, 'type': 'direct','wall_to_bomb': None, 'bomb_spot': None, 'retreat_spot': None}
+                        self.set_current_movement_sub_path(path_to_item_now); self.change_state(AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM)
+                    else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING)
+                else: self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING)
+        else: self.change_state(AI_STATE_ITEM_EVADING_DANGER)
 
     def handle_evading_danger_state(self, ai_current_tile):
-        ai_base_log(f"[ITEM_AI_EVADING] at {ai_current_tile}")
-        # 與其他AI的躲避邏輯類似
-        if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=0.3):
-            ai_base_log(f"    Tile {ai_current_tile} now safe. Re-scanning for items.")
-            self.current_movement_sub_path = []
-            self.change_state(AI_STATE_ITEM_SCANNING) # 躲避完後，重新掃描道具
-            return
-
+        ai_base_log(f"[ITEM_AI_State] EVADING_DANGER at {ai_current_tile}")
+        if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=self.danger_avoidance_for_item_future / 2.0):
+            self._reset_item_specific_targets(); self.change_state(AI_STATE_ITEM_SCANNING); return
         path_target_is_dangerous = False
-        # (檢查子路徑目標是否危險的邏輯)
-        # (尋找並設定逃跑路徑的邏輯)
-        # ... (與 ConservativeAIController 或 AggressiveAIController 類似的實現) ...
+        if self.current_movement_sub_path and len(self.current_movement_sub_path) > 0 :
+            final_target_in_sub_path = self.current_movement_sub_path[-1]
+            if self.is_tile_dangerous(final_target_in_sub_path[0], final_target_in_sub_path[1], future_seconds=0.1): path_target_is_dangerous = True
         if not self.current_movement_sub_path or \
-           (self.current_movement_sub_path and ai_current_tile == self.current_movement_sub_path[-1]) or \
-           path_target_is_dangerous: # path_target_is_dangerous 需要計算
-            # 尋找安全點，這裡可以使用基礎類別的，或者道具型有自己的偏好
-            safe_options_coords = self.find_safe_tiles_nearby_for_retreat(ai_current_tile, ai_current_tile, 0, max_depth=6) # 基礎的躲避
+            (self.current_movement_sub_path and ai_current_tile == self.current_movement_sub_path[-1]) or \
+            path_target_is_dangerous:
+            safe_options_coords = self.find_safe_tiles_nearby_for_retreat(ai_current_tile, ai_current_tile, 0, max_depth=7) 
             best_evasion_path_coords = []
             if safe_options_coords:
                 for safe_spot_coord in safe_options_coords:
-                    evasion_path_tuples = self.bfs_find_direct_movement_path(ai_current_tile, safe_spot_coord, max_depth=6)
-                    if evasion_path_tuples and len(evasion_path_tuples) > 1:
-                        best_evasion_path_coords = evasion_path_tuples; break
-            if best_evasion_path_coords:
-                self.set_current_movement_sub_path(best_evasion_path_coords)
-            else:
-                self.current_movement_sub_path = []
-                self.ai_player.is_moving = False
+                    evasion_path_tuples = self.bfs_find_direct_movement_path(ai_current_tile, safe_spot_coord, max_depth=7)
+                    if evasion_path_tuples and len(evasion_path_tuples) > 1: best_evasion_path_coords = evasion_path_tuples; break
+            if best_evasion_path_coords: self.set_current_movement_sub_path(best_evasion_path_coords)
+            else: self.current_movement_sub_path = []; self.ai_player.is_moving = False
 
+    def _target_item_reached_or_gone(self):
+        item_type_str = "Unknown"
+        if self.current_target_item_info and self.current_target_item_info.get('sprite') and hasattr(self.current_target_item_info['sprite'], 'type'):
+            item_type_str = self.current_target_item_info['sprite'].type
+        ai_base_log(f"    Target item {item_type_str} reached or gone. Re-scanning.")
+        self._reset_item_specific_targets()
+        self.change_state(AI_STATE_ITEM_SCANNING)
 
-    # debug_draw_path 可以擴展以標記目標道具和路徑
     def debug_draw_path(self, surface):
-        # 首先，呼叫父類別的 debug_draw_path 來繪製通用的路徑訊息
-        # 如果 AIControllerBase 中的 debug_draw_path 繪製了 A* 和 sub_path，這裡可以不用重複
-        # super().debug_draw_path(surface)
-        # 但為了更精細地控制道具優先型 AI 的路徑顏色，我們可以在這裡重新繪製或調整
-
+        super().debug_draw_path(surface) 
         ai_tile_now = self._get_ai_current_tile()
-        if not ai_tile_now or not self.ai_player or not self.ai_player.is_alive:
-            return
-
-        try:
-            tile_size = settings.TILE_SIZE
-            half_tile = tile_size // 2
-
-            # --- 1. 繪製 A* 規劃路徑 (如果目標是道具，使用特殊顏色) ---
-            is_targeting_item_with_astar = (
-                self.astar_planned_path and
-                self.current_target_item and
-                self.current_target_item[0].alive() and # 確保道具還存在
-                len(self.astar_planned_path) > 0 and
-                self.astar_planned_path[-1].x == self.current_target_item[1][0] and
-                self.astar_planned_path[-1].y == self.current_target_item[1][1]
-            )
-
-            if self.astar_planned_path and self.astar_path_current_segment_index < len(self.astar_planned_path):
-                astar_points_to_draw = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
-                current_astar_target_pixel_pos = None
-                for i in range(self.astar_path_current_segment_index, len(self.astar_planned_path)):
-                    node = self.astar_planned_path[i]
-                    px, py = node.x * tile_size + half_tile, node.y * tile_size + half_tile
-                    astar_points_to_draw.append((px, py))
-                    if i == self.astar_path_current_segment_index:
-                        current_astar_target_pixel_pos = (px, py)
-                
-                if len(astar_points_to_draw) > 1:
-                    astar_line_color = (128, 0, 128, 180) # 紫色，預設給道具的 A* 路徑
-                    if not is_targeting_item_with_astar: # 如果 A* 目標不是道具（例如，逃跑時）
-                        astar_line_color = (0, 0, 139, 180) # 深藍色 (與保守型類似或自訂)
-                    
-                    for i in range(len(astar_points_to_draw) - 1):
-                        if i % 2 == 0: # 虛線效果
-                            pygame.draw.aaline(surface, astar_line_color, astar_points_to_draw[i], astar_points_to_draw[i+1], True)
-                
-                if current_astar_target_pixel_pos:
-                    pygame.draw.circle(surface, astar_line_color, current_astar_target_pixel_pos, tile_size // 3, 2)
-
-            # --- 2. 繪製當前移動子路徑 (如果目標是道具，使用特殊顏色) ---
-            if self.current_movement_sub_path and len(self.current_movement_sub_path) > 1 and \
-               self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 :
-                sub_path_points_to_draw = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
-                for i in range(self.current_movement_sub_path_index + 1, len(self.current_movement_sub_path)):
-                    tile_coords = self.current_movement_sub_path[i]
-                    px, py = tile_coords[0] * tile_size + half_tile, tile_coords[1] * tile_size + half_tile
-                    sub_path_points_to_draw.append((px,py))
-                
-                if len(sub_path_points_to_draw) > 1:
-                    sub_path_color = (218, 112, 214, 200) # 蘭花紫，預設給道具的子路徑
-                    if self.current_state == AI_STATE_ITEM_EVADING:
-                        sub_path_color = (255, 165, 0, 220) # 逃跑時用橙色
-                    elif not (self.current_target_item and self.current_movement_sub_path[-1] == self.current_target_item[1]):
-                        # 如果子路徑的最終目標不是當前道具（例如，是去炸牆點，或安全巡邏）
-                        sub_path_color = (0, 200, 0, 180) # 綠色代表其他移動
-                    
-                    pygame.draw.aalines(surface, sub_path_color, False, sub_path_points_to_draw, True)
-                    
-                    next_sub_step_coords = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
-                    next_px, next_py = next_sub_step_coords[0] * tile_size + half_tile, next_sub_step_coords[1] * tile_size + half_tile
-                    pulse_factor = abs(pygame.time.get_ticks() % 1000 - 500) / 500
-                    radius = int(tile_size // 5 + pulse_factor * (tile_size//10))
-                    pygame.draw.circle(surface, sub_path_color, (next_px, next_py), radius, 0)
-
-            # --- 3. 道具優先型 AI 特有的視覺化元素 ---
-
-            # 標記當前目標道具 (如果存在)
-            if self.current_target_item and self.current_target_item[0].alive():
-                item_sprite, item_coords = self.current_target_item
-                ix, iy = item_coords
-                center_ix, center_iy = ix * tile_size + half_tile, iy * tile_size + half_tile
-                
-                # 根據道具類型使用不同顏色和樣式標記目標道具
-                item_value = self._evaluate_item_value(item_sprite) # 獲取道具評估價值
-                target_color = (255, 215, 0, 220) # 金色，高價值道具
-                target_radius = tile_size // 2 - 2
-                target_thickness = 3
-
-                if item_value < 40: # 中等價值
-                    target_color = (173, 216, 230, 200) # 淺藍色
-                    target_radius = tile_size // 3
-                    target_thickness = 2
-                elif item_value < 15: # 低價值 (理論上不會被選為目標，但以防萬一)
-                    target_color = (211, 211, 211, 180) #淺灰色
-                    target_radius = tile_size // 4
-                    target_thickness = 1
-
-                # 繪製目標道具外框
-                pygame.draw.circle(surface, target_color, (center_ix, center_iy), target_radius, target_thickness)
-                
-                # 畫一條從 AI 指向目標道具的指示線 (如果 AI 正在前往該道具)
-                if self.current_state == AI_STATE_ITEM_MOVING_TO_TARGET or self.current_state == AI_STATE_ITEM_PLANNING_PATH:
-                    pygame.draw.aaline(surface, target_color,
-                                       (ai_tile_now[0]*tile_size+half_tile, ai_tile_now[1]*tile_size+half_tile),
-                                       (center_ix, center_iy), True)
-                
-                # 在目標道具旁顯示其類型或價值 (可選，需要字體)
-                if hasattr(self, 'hud_font') and self.hud_font: # 假設有 self.hud_font
-                    try:
-                        item_info_text = f"{item_sprite.type[:3]}:{int(item_value)}" # 簡短類型和價值
-                        text_surf = self.hud_font.render(item_info_text, True, target_color)
-                        text_rect = text_surf.get_rect(center=(center_ix, center_iy - tile_size // 2 - 5))
-                        surface.blit(text_surf, text_rect)
-                    except Exception as e:
-                        ai_base_log(f"Error rendering item info text: {e}")
-
-
-            # 標記為了獲取道具而選擇的轟炸點或目標牆壁
-            # (這部分邏輯與您原始 AIController 中的 debug_draw_path 相似)
-            # 但顏色或標記可以特化，例如用道具相關的顏色 (如果目標是炸牆拿道具)
-            if hasattr(self, 'chosen_bombing_spot_coords') and self.chosen_bombing_spot_coords and \
-               self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMB: # 假設這是炸牆取物後的撤退
-                # (繪製轟炸點的邏輯，顏色可自訂)
-                bx, by = self.chosen_bombing_spot_coords
-                center_bx, center_by = bx * tile_size + half_tile, by * tile_size + half_tile
-                pygame.draw.circle(surface, (255, 140, 0, 180), (center_bx, center_by), tile_size // 3, 2) # 暗橙色
-
-
-            if hasattr(self, 'target_destructible_wall_node_in_astar') and self.target_destructible_wall_node_in_astar and \
-               (self.current_state == AI_STATE_ITEM_PLANNING_PATH or \
-                (self.current_movement_sub_path and len(self.current_movement_sub_path) > 1 and self.current_movement_sub_path[-1] == (self.target_destructible_wall_node_in_astar.x, self.target_destructible_wall_node_in_astar.y))): # 如果正在前往炸這個牆
-                # (繪製目標牆壁的邏輯，顏色可自訂)
-                wall_node = self.target_destructible_wall_node_in_astar
-                wall_rect = pygame.Rect(wall_node.x * tile_size, wall_node.y * tile_size, tile_size, tile_size)
-                s_wall_item = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
-                s_wall_item.fill((255,255,0, 70)) # 黃色半透明表示為了道具要炸的牆
-                surface.blit(s_wall_item, (wall_rect.x, wall_rect.y))
-                pygame.draw.rect(surface, (200,200,0,150), wall_rect, 2)
-
-
-            # 標記撤退點 (如果因為放炸彈拿道具而撤退)
-            if hasattr(self, 'chosen_retreat_spot_coords') and self.chosen_retreat_spot_coords and \
-               self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMB:
-                # (繪製撤退點的邏輯，顏色可自訂)
-                rx, ry = self.chosen_retreat_spot_coords
-                rect_retreat_item = pygame.Rect(rx * tile_size + 3, ry * tile_size + 3, tile_size - 6, tile_size - 6)
-                s_retreat_item = pygame.Surface((tile_size-6, tile_size-6), pygame.SRCALPHA)
-                s_retreat_item.fill((0,220,0, 100)) # 亮綠色
-                surface.blit(s_retreat_item, (rect_retreat_item.x, rect_retreat_item.y))
-                pygame.draw.rect(surface, (0,150,0, 180), rect_retreat_item, 2)
-
-
-        except AttributeError as e:
-            if 'TILE_SIZE' in str(e) or 'game' in str(e) or 'map_manager' in str(e):
-                pass
-            else:
-                ai_base_log(f"ItemFocusedAI Debug Draw AttributeError: {e}")
-        except Exception as e:
-            ai_base_log(f"Error during ItemFocusedAI debug_draw_path: {e}")
+        if not ai_tile_now or not hasattr(settings, 'TILE_SIZE'): return
+        tile_size = settings.TILE_SIZE; half_tile = tile_size // 2
+        astar_line_color_item = (150, 50, 200, 180); sub_path_color_item = (200, 100, 220, 200) 
+        if self.astar_planned_path and self.astar_path_current_segment_index < len(self.astar_planned_path):
+            astar_points = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
+            for i in range(self.astar_path_current_segment_index, len(self.astar_planned_path)):
+                node = self.astar_planned_path[i]; astar_points.append((node.x * tile_size + half_tile, node.y * tile_size + half_tile))
+            if len(astar_points) > 1:
+                for i in range(len(astar_points) - 1):
+                    if i % 2 == 0: pygame.draw.aaline(surface, astar_line_color_item, astar_points[i], astar_points[i+1], True)
+            if len(self.astar_planned_path) > self.astar_path_current_segment_index :
+                next_astar_node = self.astar_planned_path[self.astar_path_current_segment_index]
+                pygame.draw.circle(surface, astar_line_color_item, (next_astar_node.x *tile_size + half_tile, next_astar_node.y*tile_size+half_tile), tile_size//3, 2)
+        if self.current_movement_sub_path and len(self.current_movement_sub_path) > 1 and self.current_movement_sub_path_index < len(self.current_movement_sub_path) -1 :
+            sub_points = [(ai_tile_now[0] * tile_size + half_tile, ai_tile_now[1] * tile_size + half_tile)]
+            for i in range(self.current_movement_sub_path_index + 1, len(self.current_movement_sub_path)):
+                coords = self.current_movement_sub_path[i]; sub_points.append((coords[0] * tile_size + half_tile, coords[1] * tile_size + half_tile))
+            if len(sub_points) > 1: pygame.draw.aalines(surface, sub_path_color_item, False, sub_points, True)
+            next_sub_coords = self.current_movement_sub_path[self.current_movement_sub_path_index+1]
+            pulse_factor = abs(pygame.time.get_ticks() % 1000 - 500) / 500
+            radius = int(tile_size // 5 + pulse_factor * (tile_size//10))
+            pygame.draw.circle(surface, sub_path_color_item, (next_sub_coords[0]*tile_size+half_tile, next_sub_coords[1]*tile_size+half_tile), radius,0)
+        if self.current_target_item_info and self.current_target_item_info.get('sprite') and self.current_target_item_info['sprite'].alive():
+            item_sprite = self.current_target_item_info['sprite']; item_coords = self.current_target_item_info['coords']
+            item_value_score = self.current_target_item_info['value']; path_type_to_item = self.current_target_item_info['type']
+            ix, iy = item_coords; center_ix, center_iy = ix * tile_size + half_tile, iy * tile_size + half_tile
+            item_color = (255, 215, 0, 220) 
+            if item_value_score < 50 : item_color = (173, 216, 230, 200)
+            if item_value_score < self.item_value_threshold : item_color = (192, 192, 192, 180)
+            pygame.draw.circle(surface, item_color, (center_ix, center_iy), tile_size // 2 - 1, 3)
+            if self.current_state in [AI_STATE_ITEM_MOVING_TO_ACCESSIBLE_ITEM, AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM, AI_STATE_ITEM_PLANNING_BOMB_FOR_ITEM] or \
+               (self.astar_planned_path and len(self.astar_planned_path) > 0 and self.astar_planned_path[-1].x == ix and self.astar_planned_path[-1].y == iy): 
+                pygame.draw.aaline(surface, item_color, (ai_tile_now[0]*tile_size+half_tile, ai_tile_now[1]*tile_size+half_tile), (center_ix, center_iy), True)
+            if self.hud_font and hasattr(item_sprite, 'type'):
+                try:
+                    type_abbr = item_sprite.type[:4].upper(); val_text = f"{int(item_value_score)}"
+                    info_str = f"{type_abbr}:{val_text}"; 
+                    if path_type_to_item == 'via_bombing': info_str += "(B!)"
+                    text_surf = self.hud_font.render(info_str, True, (0,0,0))
+                    text_rect = text_surf.get_rect(center=(center_ix, center_iy - tile_size // 2 - 8)); surface.blit(text_surf, text_rect)
+                except Exception: pass
+        if self.current_target_item_info and self.current_target_item_info['type'] == 'via_bombing' and self.current_target_item_info.get('wall_to_bomb'):
+            wall_node = self.current_target_item_info['wall_to_bomb']
+            wall_rect = pygame.Rect(wall_node.x * tile_size, wall_node.y * tile_size, tile_size, tile_size)
+            s_wall_item_clear = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA); s_wall_item_clear.fill((255,165,0, 90)) 
+            surface.blit(s_wall_item_clear, (wall_rect.x, wall_rect.y)); pygame.draw.rect(surface, (255,140,0,180), wall_rect, 2)
+            bomb_spot_for_wall = self.current_target_item_info.get('bomb_spot')
+            if bomb_spot_for_wall and (self.current_state == AI_STATE_ITEM_MOVING_TO_BOMB_SPOT_FOR_ITEM or self.current_state == AI_STATE_ITEM_BOMBING_FOR_ITEM):
+                 bx, by = bomb_spot_for_wall; center_bx, center_by = bx * tile_size + half_tile, by * tile_size + half_tile
+                 pygame.draw.circle(surface, (200, 0, 0, 150), (center_bx, center_by), tile_size // 4, 3)
+                 pygame.draw.aaline(surface, (200,0,0,100), (center_bx, center_by), (wall_node.x*tile_size+half_tile, wall_node.y*tile_size+half_tile))
+        if self.chosen_retreat_spot_coords and self.current_state == AI_STATE_ITEM_RETREAT_AFTER_BOMBING_FOR_ITEM:
+            rx, ry = self.chosen_retreat_spot_coords
+            rect_retreat_item_bomb = pygame.Rect(rx * tile_size + 1, ry * tile_size + 1, tile_size - 2, tile_size - 2)
+            s_retreat_item_bomb = pygame.Surface((tile_size-2, tile_size-2), pygame.SRCALPHA); s_retreat_item_bomb.fill((144,238,144, 120)) 
+            surface.blit(s_retreat_item_bomb, (rect_retreat_item_bomb.x, rect_retreat_item_bomb.y)); pygame.draw.rect(surface, (34,139,34, 180), rect_retreat_item_bomb, 2)

@@ -131,14 +131,17 @@ class Game:
             print(f"[Game Setup] AI Controller instance of {ai_controller_class.__name__} already exists. Updating player reference.")
 
         # 重置 AI 控制器的狀態
-        if hasattr(self.ai_controller_p2, 'reset_state_base'): # 優先檢查新的 base 方法
-            self.ai_controller_p2.reset_state_base()
-            print(f"[Game Setup] Called reset_state_base() on {self.ai_controller_p2.__class__.__name__}.")
-        elif hasattr(self.ai_controller_p2, 'reset_state'): # 相容舊的 reset_state
+        if hasattr(self.ai_controller_p2, 'reset_state') and callable(getattr(self.ai_controller_p2, 'reset_state')):
+            # 優先呼叫子類別（例如 ItemFocusedAIController）自己定義的 reset_state
             self.ai_controller_p2.reset_state()
             print(f"[Game Setup] Called reset_state() on {self.ai_controller_p2.__class__.__name__}.")
+        elif hasattr(self.ai_controller_p2, 'reset_state_base') and callable(getattr(self.ai_controller_p2, 'reset_state_base')):
+            # 如果子類別沒有 reset_state，但基礎類別有 reset_state_base (我們的設計是子類reset_state會調用super().reset_state_base())
+            # 這裡主要是為了向前兼容或處理未完全按新模式設計的AI
+            self.ai_controller_p2.reset_state_base()
+            print(f"[Game Setup] Called reset_state_base() on {self.ai_controller_p2.__class__.__name__} (fallback).")
         else:
-            print(f"[Game Setup] AI Controller {self.ai_controller_p2.__class__.__name__} has no reset_state or reset_state_base method.")
+            print(f"[Game Setup] AI Controller {self.ai_controller_p2.__class__.__name__} has no callable reset_state or reset_state_base method.")
 
 
         self.player2_ai.ai_controller = self.ai_controller_p2
