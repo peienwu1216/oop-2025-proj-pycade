@@ -3,6 +3,7 @@
 import pygame
 import settings # 假設 settings.py 包含 AI 行為相關參數
 import random
+from collections import deque
 from .ai_controller_base import AIControllerBase, TileNode, DIRECTIONS, ai_base_log # 從基礎類別匯入
 
 # 為保守型 AI 定義特定的狀態 (如果需要，可以擴展基礎類別的狀態)
@@ -20,7 +21,7 @@ class ConservativeAIController(AIControllerBase):
 
         # 保守型 AI 特有的參數或狀態初始化
         self.current_state = AI_STATE_CONSERVATIVE_IDLE # 初始狀態
-        self.aggression_level = 0.1 # 非常低的攻擊意願 (0.0 - 1.0)
+        self.aggression_level = 0.3 # 非常低的攻擊意願 (0.0 - 1.0)
         self.evasion_urgency_threshold = 0.6 # 危險判斷的閾值，比通用型更敏感 (例如，更長的 future_seconds)
         self.safe_retreat_depth_conservative = getattr(settings, "AI_CONSERVATIVE_RETREAT_DEPTH", 8) # 更深的撤退搜索
         self.min_safe_bombing_retreat_options = getattr(settings, "AI_CONSERVATIVE_MIN_RETREAT_OPTIONS", 3) # 放置炸彈前需要更多安全撤退點
