@@ -61,8 +61,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds") 
-FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")   
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 DATA_DIR = os.path.join(ASSETS_DIR, "data")     
+
+CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.otf")
 
 # Image specific paths
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
