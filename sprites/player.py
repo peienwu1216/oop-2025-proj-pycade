@@ -130,10 +130,20 @@ class Player(GameObject):
 
 
     def attempt_move_to_tile(self, dx, dy):
+        print(f"[DEBUG_ATTEMPT_MOVE] AI at ({self.tile_x},{self.tile_y}), trying dx={dx}, dy={dy}. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
         if not self.is_alive or self.action_timer > 0:
+            # 新增: 打印具體失敗原因
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Not alive or action_timer > 0. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
             return False
-        if dx == 0 and dy == 0: return False
-        if dx != 0 and dy != 0: return False 
+        if dx == 0 and dy == 0:
+            # 新增: 打印具體失敗原因
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: dx=0 and dy=0 (no actual move)")
+            return False
+        # 假設不允許斜向移動 (如果允許，請調整此邏輯)
+        if dx != 0 and dy != 0:
+            # 新增: 打印具體失敗原因
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Diagonal move attempted (dx={dx}, dy={dy})")
+            return False
 
         target_tile_x = self.tile_x + dx
         target_tile_y = self.tile_y + dy
@@ -141,6 +151,7 @@ class Player(GameObject):
         # 1. Check map boundaries
         if not (0 <= target_tile_x < self.game.map_manager.tile_width and \
                 0 <= target_tile_y < self.game.map_manager.tile_height):
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Target out of bounds. Target: ({target_tile_x},{target_tile_y})")
             return False
 
         target_check_rect = pygame.Rect(target_tile_x * settings.TILE_SIZE,
@@ -155,7 +166,10 @@ class Player(GameObject):
                 if hasattr(obstacle, 'is_destroyed') and obstacle.is_destroyed: 
                     continue 
                 if obstacle.rect.colliderect(target_check_rect):
-                    # ai_log(f"Player {id(self)} blocked by obstacle {type(obstacle)} at ({target_tile_x},{target_tile_y})")
+                    print(f"[DEBUG_MOVE_FAIL] Player at ({self.tile_x}, {self.tile_y}) trying to move to ({target_tile_x}, {target_tile_y}).")
+                    print(f"    Blocked by: {type(obstacle)} sprite.")
+                    print(f"    Obstacle rect: {obstacle.rect}, its map coords should be: ({obstacle.rect.x // settings.TILE_SIZE}, {obstacle.rect.y // settings.TILE_SIZE})")
+                    print(f"    Target check rect: {target_check_rect}")
                     return False
         
         # 3. Check other players
@@ -166,8 +180,8 @@ class Player(GameObject):
                 if other_player.is_alive and \
                    other_player.tile_x == target_tile_x and \
                    other_player.tile_y == target_tile_y:
-                    # ai_log(f"Player {id(self)} blocked by other player {id(other_player)} at ({target_tile_x},{target_tile_y})")
-                    return False 
+                    print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Blocked by other player {id(other_player)} at target ({target_tile_x},{target_tile_y})")
+                    return False
         
         # 4. Check bombs (核心修改處)
         if hasattr(self.game, 'bombs_group'):
@@ -179,15 +193,17 @@ class Player(GameObject):
                     if bomb.placed_by_player is self:
                         # 並且當前玩家【還沒有離開過】這個炸彈所在的格子
                         if not bomb.owner_has_left_tile:
+                            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Trying to re-enter own bomb tile at ({target_tile_x},{target_tile_y}) after leaving.")
                             # 允許玩家離開自己剛放的、尚未固化的炸彈
                             pass 
                         # 如果玩家已經離開過，然後又想回到這個有自己未爆炸炸彈的格子
                         # （無論炸彈是否已固化，通常不允許再次進入，除非遊戲有特殊規則）
-                        else: 
+                        else:
                             # ai_log(f"Player {id(self)} trying to re-enter own bomb tile at ({target_tile_x},{target_tile_y}) after leaving. Blocked.")
                             return False # 不允許重新進入自己已離開的炸彈格
                     # 如果目標格子上的炸彈是【其他玩家】放置的
                     else:
+                        print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Blocked by opponent's bomb at ({target_tile_x},{target_tile_y})")
                         # 【關鍵新增】無論對方炸彈是否固化，都不允許通過
                         # ai_log(f"Player {id(self)} blocked by opponent's bomb at ({target_tile_x},{target_tile_y}) (Owner: {id(bomb.placed_by_player)}).")
                         return False
