@@ -6,7 +6,7 @@ import random
 from collections import deque
 import heapq
 
-AI_DEBUG_MODE = True 
+AI_DEBUG_MODE = True
 def ai_log(message):
     """通用的日誌函式，方便除錯。"""
     if AI_DEBUG_MODE:
@@ -21,13 +21,12 @@ class TileNode:
         self.g_cost, self.h_cost = float('inf'), float('inf')
 
     def get_f_cost(self): return self.g_cost + self.h_cost
-    # is_walkable_for_astar_planning 只做靜態地圖判斷
     def is_walkable_for_astar_planning(self): return self.tile_char in ['.', 'D']
     def is_empty_for_direct_movement(self): return self.tile_char == '.'
     def is_destructible_box(self): return self.tile_char == 'D'
     def get_astar_move_cost_to_here(self):
         COST_MOVE_EMPTY_BASE = 1
-        COST_BOMB_BOX_BASE = 3 
+        COST_BOMB_BOX_BASE = 3
         if self.tile_char == '.': return COST_MOVE_EMPTY_BASE
         elif self.tile_char == 'D': return COST_BOMB_BOX_BASE
         return float('inf')
@@ -54,22 +53,22 @@ class AIControllerBase:
         self.game = game_instance
         self.map_manager = self.game.map_manager
         self.human_player_sprite = getattr(self.game, 'player1', None)
-        
-        self.current_state = "IDLE" 
+
+        self.current_state = "IDLE"
         self.state_start_time = 0
         self.ai_decision_interval = settings.AI_MOVE_DELAY
         self.last_decision_time = 0
-        
+
         self.astar_planned_path = []
         self.astar_path_current_segment_index = 0
         self.current_movement_sub_path = []
         self.current_movement_sub_path_index = 0
-        
+
         self.last_bomb_placed_time = 0
         self.ai_just_placed_bomb = False
         self.chosen_bombing_spot_coords = None
         self.chosen_retreat_spot_coords = None
-        
+
         self.movement_history = deque(maxlen=4)
         self.oscillation_stuck_counter = 0
         self.decision_cycle_stuck_counter = 0
@@ -86,11 +85,11 @@ class AIControllerBase:
 
     def reset_state(self):
         ai_log(f"Resetting AI state for Player ID: {id(self.ai_player)}.")
-        self.current_state = "PLANNING_PATH" 
+        self.current_state = "PLANNING_PATH" # Default initial state for base, will be changed by derived class
         self.state_start_time = pygame.time.get_ticks()
         self.astar_planned_path = []
         self.astar_path_current_segment_index = 0
-        self.current_movement_sub_path = []
+        self.current_movement_sub_path = [] # Correctly clears here
         self.current_movement_sub_path_index = 0
         self.last_bomb_placed_time = 0
         self.ai_just_placed_bomb = False
@@ -111,20 +110,36 @@ class AIControllerBase:
             ai_log(f"[STATE_CHANGE] ID: {id(self.ai_player)} From {self.current_state} -> {new_state}")
             self.current_state = new_state
             self.state_start_time = pygame.time.get_ticks()
-            self.current_movement_sub_path = [] 
-            self.current_movement_sub_path_index = 0
-            
-            if new_state not in ["EXECUTING_PATH_CLEARANCE", "TACTICAL_RETREAT_AND_WAIT", "ASSESSING_OBSTACLE", "MOVING_TO_BOMB_OBSTACLE", "EXECUTING_ASTAR_PATH_TO_TARGET"]:
-                self.target_destructible_wall_node_in_astar = None
-                self.target_obstacle_to_bomb = None
-            if new_state not in ["TACTICAL_RETREAT_AND_WAIT", "CLOSE_QUARTERS_COMBAT", "ENGAGING_PLAYER", "ASSESSING_OBSTACLE", "MOVING_TO_BOMB_OBSTACLE"]:
-                self.chosen_bombing_spot_coords = None
-                self.chosen_retreat_spot_coords = None
-            if new_state.startswith("PLANNING_"): 
+
+            # --- MODIFICATION START ---
+            # Only clear paths if entering a "planning" state, or a state that specifically requires it.
+            # This prevents clearing a path that was just set by a handler before changing to an "execution" state.
+            if new_state.startswith("PLANNING_") or new_state == "IDLE" or new_state == "DEAD":
+                ai_log(f"    Clearing current_movement_sub_path due to entering state: {new_state}")
+                self.current_movement_sub_path = []
+                self.current_movement_sub_path_index = 0
+            # --- MODIFICATION END ---
+
+            # Clear A* path when entering any top-level planning state
+            if new_state.startswith("PLANNING_"):
                  self.astar_planned_path = []
                  self.astar_path_current_segment_index = 0
-            if new_state != "ROAMING": 
+            
+            # Clean up specific target variables based on the new state
+            if new_state not in ["EXECUTING_PATH_CLEARANCE", "TACTICAL_RETREAT_AND_WAIT", "ASSESSING_OBSTACLE", "MOVING_TO_BOMB_OBSTACLE", "EXECUTING_ASTAR_PATH_TO_TARGET", "ASSESSING_OBSTACLE_FOR_ITEM"]: # Added ASSESSING_OBSTACLE_FOR_ITEM
+                self.target_destructible_wall_node_in_astar = None
+                self.target_obstacle_to_bomb = None # This is a base class variable, ensure it's cleared appropriately
+                if hasattr(self, 'potential_wall_to_bomb_for_item'): # Specific to ItemFocusedAI but good to be general
+                    self.potential_wall_to_bomb_for_item = None
+
+
+            if new_state not in ["TACTICAL_RETREAT_AND_WAIT", "CLOSE_QUARTERS_COMBAT", "ENGAGING_PLAYER", "ASSESSING_OBSTACLE", "MOVING_TO_BOMB_OBSTACLE", "ASSESSING_OBSTACLE_FOR_ITEM"]:  # Added ASSESSING_OBSTACLE_FOR_ITEM
+                self.chosen_bombing_spot_coords = None
+                self.chosen_retreat_spot_coords = None
+
+            if new_state != "ROAMING":
                 self.roaming_target_tile = None
+            
             if new_state != "MOVING_TO_COLLECT_ITEM" and new_state != "EXECUTING_ASTAR_PATH_TO_TARGET" and hasattr(self, 'target_item_on_ground'): # item_focused AI cleanup
                 self.target_item_on_ground = None
 
@@ -141,13 +156,12 @@ class AIControllerBase:
              ai_log("Bomb flag auto-cleared as bomb effect should have ended.")
              self.ai_just_placed_bomb = False
 
-        # 使用 self.evasion_urgency_seconds，它可以在子類中被覆寫以調整敏感度
         evasion_check_seconds = getattr(self, 'evasion_urgency_seconds', getattr(settings, "AI_EVASION_SAFETY_CHECK_FUTURE_SECONDS", 0.5))
         if self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], future_seconds=evasion_check_seconds):
             if self.current_state != "EVADING_DANGER":
                 ai_log(f"AI at {ai_current_tile} is in DANGER! Switching to EVADING_DANGER.")
-                self.change_state("EVADING_DANGER")
-                self.last_decision_time = current_time 
+                self.change_state("EVADING_DANGER") # change_state now handles path clearing appropriately
+                self.last_decision_time = current_time # Ensure immediate reaction in EVADING_DANGER
 
         if current_time - self.last_decision_time >= self.ai_decision_interval:
             self.last_decision_time = current_time
@@ -161,22 +175,24 @@ class AIControllerBase:
                 self.decision_cycle_stuck_counter = 0
                 self.oscillation_stuck_counter = 0
                 
-                default_planning_state = "PLANNING_PATH" 
+                default_planning_state = "PLANNING_PATH"
                 if hasattr(self, 'default_planning_state_on_stuck'):
                     default_planning_state = self.default_planning_state_on_stuck
-                self.change_state(default_planning_state) 
-                self.handle_state(ai_current_tile) 
+                self.change_state(default_planning_state) # change_state now handles path clearing
+                self.handle_state(ai_current_tile)
                 return
 
             self.handle_state(ai_current_tile)
 
         if self.ai_player.action_timer <= 0:
             if self.current_movement_sub_path:
+                # --- MODIFICATION START: Add logs inside execute_next_move_on_sub_path as per previous suggestion ---
                 sub_path_finished = self.execute_next_move_on_sub_path(ai_current_tile)
+                # --- MODIFICATION END ---
                 if sub_path_finished:
-                    self.last_decision_time = pygame.time.get_ticks() - self.ai_decision_interval 
+                    self.last_decision_time = pygame.time.get_ticks() - self.ai_decision_interval
             else:
-                if hasattr(self.ai_player, 'is_moving'): 
+                if hasattr(self.ai_player, 'is_moving'):
                     self.ai_player.is_moving = False
     
     def handle_state(self, ai_current_tile):
@@ -188,132 +204,155 @@ class AIControllerBase:
         ai_log(f"Warning: Unknown state '{self.current_state}'. Reverting to default PLANNING_PATH.")
         self.change_state("PLANNING_PATH")
         
-    def handle_planning_path_state(self, ai_current_tile):
+    def handle_planning_path_state(self, ai_current_tile): # Example base planning state
         ai_log(f"Base: In PLANNING_PATH at {ai_current_tile}. Default: go IDLE.")
+        # Ensure paths are cleared when entering a base planning state
+        self.current_movement_sub_path = []
+        self.current_movement_sub_path_index = 0
+        self.astar_planned_path = []
+        self.astar_path_current_segment_index = 0
         self.change_state("IDLE")
         
     def handle_roaming_state(self, ai_current_tile):
-        ai_log(f"Base: In ROAMING at {ai_current_tile}. Default: go IDLE if path empty.")
-        if not self.current_movement_sub_path: 
-             self.change_state("PLANNING_ROAM") 
+        ai_log(f"Base: In ROAMING at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
+        if not self.current_movement_sub_path:
+             self.change_state("PLANNING_ROAM")
 
-    def handle_planning_roam_state(self, ai_current_tile):
+    def handle_planning_roam_state(self, ai_current_tile): # Example base planning state
         ai_log(f"Base: In PLANNING_ROAM at {ai_current_tile}. Default: go ROAMING.")
-        self.change_state("ROAMING") 
+        self.current_movement_sub_path = [] # Clear path before planning new roam
+        self.current_movement_sub_path_index = 0
+        self.change_state("ROAMING") # This will be caught by derived class usually
 
-    def handle_assessing_obstacle_state(self, ai_current_tile): # 道具AI可能會覆寫ASSESSING_OBSTACLE_FOR_ITEM
+    def handle_assessing_obstacle_state(self, ai_current_tile):
         ai_log(f"Base: In ASSESSING_OBSTACLE at {ai_current_tile}. Default: go PLANNING_PATH.")
-        self.change_state("PLANNING_PATH") # 預設回到通用規劃
+        self.change_state("PLANNING_PATH")
 
     def handle_moving_to_bomb_obstacle_state(self, ai_current_tile):
-        ai_log(f"Base: In MOVING_TO_BOMB_OBSTACLE at {ai_current_tile}. Default: go PLANNING_PATH if path empty.")
+        ai_log(f"Base: In MOVING_TO_BOMB_OBSTACLE at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
         if not self.current_movement_sub_path:
             self.change_state("PLANNING_PATH")
             
     def handle_moving_to_safe_spot_state(self, ai_current_tile):
-        ai_log(f"Base: In MOVING_TO_SAFE_SPOT at {ai_current_tile}. Default: go IDLE if path empty.")
+        ai_log(f"Base: In MOVING_TO_SAFE_SPOT at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
         if not self.current_movement_sub_path:
             self.change_state("IDLE")
 
     def handle_idle_state(self, ai_current_tile):
         ai_log(f"Base: In IDLE at {ai_current_tile}. Default: go PLANNING_PATH after delay.")
-        idle_duration = getattr(self, 'idle_duration_ms', 2000) 
+        idle_duration = getattr(self, 'idle_duration_ms', 2000)
         if pygame.time.get_ticks() - self.state_start_time > idle_duration:
             default_planning_state = "PLANNING_PATH"
-            if hasattr(self, 'default_planning_state_on_stuck'): 
+            if hasattr(self, 'default_planning_state_on_stuck'):
                 default_planning_state = self.default_planning_state_on_stuck
             self.change_state(default_planning_state)
             
     def handle_executing_path_clearance_state(self, ai_current_tile):
-        ai_log(f"Base: In EXECUTING_PATH_CLEARANCE at {ai_current_tile}. Default: go PLANNING_PATH.")
-        self.change_state("PLANNING_PATH")
+        ai_log(f"Base: In EXECUTING_PATH_CLEARANCE at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
+        # Path clearance usually involves A* path and sub-paths. If sub-path is done, it might re-evaluate A* or continue.
+        # If no A* path, it should replan.
+        if not self.astar_planned_path and not self.current_movement_sub_path:
+             self.change_state("PLANNING_PATH")
+
 
     def handle_tactical_retreat_and_wait_state(self, ai_current_tile):
-        ai_log(f"Base: In TACTICAL_RETREAT_AND_WAIT at {ai_current_tile}. Default: go PLANNING_PATH if bomb inactive.")
+        ai_log(f"Base: In TACTICAL_RETREAT_AND_WAIT at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
         if not self.is_bomb_still_active(self.last_bomb_placed_time):
-            self.ai_just_placed_bomb = False 
-            self.change_state("PLANNING_PATH")
+            self.ai_just_placed_bomb = False
+            self.change_state("PLANNING_PATH") # Or a more specific post-bombing state
 
     def handle_engaging_player_state(self, ai_current_tile):
-        ai_log(f"Base: In ENGAGING_PLAYER at {ai_current_tile}. Default: go PLANNING_PATH.")
-        self.change_state("PLANNING_PATH")
+        ai_log(f"Base: In ENGAGING_PLAYER at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
+        if not self.current_movement_sub_path: # If no path to follow towards player
+            self.change_state("PLANNING_PATH") # Or a specific "PLANNING_ENGAGEMENT"
 
     def handle_close_quarters_combat_state(self, ai_current_tile):
-        ai_log(f"Base: In CLOSE_QUARTERS_COMBAT at {ai_current_tile}. Default: go PLANNING_PATH.")
-        self.change_state("PLANNING_PATH")
+        ai_log(f"Base: In CLOSE_QUARTERS_COMBAT at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
+        # CQC might not always have a sub-path if it's about immediate actions
+        # If logic dictates it needs a path and doesn't have one, it should replan.
+        # For now, if it gets stuck here without a path, it might need to replan.
+        # This is highly dependent on the CQC logic in derived classes.
+        # if not self.current_movement_sub_path and not self.ai_just_placed_bomb:
+        #     self.change_state("PLANNING_PATH")
 
-    def handle_executing_astar_path_to_target_state(self, ai_current_tile): # 新增的通用A*執行狀態
-        ai_log(f"Base: In EXECUTING_ASTAR_PATH_TO_TARGET at {ai_current_tile}. Default: go PLANNING_PATH if A* path done/invalid.")
+
+    def handle_executing_astar_path_to_target_state(self, ai_current_tile):
+        ai_log(f"Base: In EXECUTING_ASTAR_PATH_TO_TARGET at {ai_current_tile}. A*Path: {self.astar_planned_path}, Sub-path: {self.current_movement_sub_path}") # Added log
         if not self.astar_planned_path or self.astar_path_current_segment_index >= len(self.astar_planned_path):
-            self.change_state("PLANNING_PATH")
+            self.change_state("PLANNING_PATH") # Or specific planning state for this AI type
         elif not self.current_movement_sub_path and ai_current_tile == (self.astar_planned_path[self.astar_path_current_segment_index].x, self.astar_planned_path[self.astar_path_current_segment_index].y) :
-             self.astar_path_current_segment_index +=1 # 推進到下一個 A* 節點
+             self.astar_path_current_segment_index +=1
              if self.astar_path_current_segment_index >= len(self.astar_planned_path):
-                 self.change_state("PLANNING_PATH") # A* 路徑完成
-             else: # 強制重新評估下一個節點
+                 self.change_state("PLANNING_PATH")
+             else:
                  self.last_decision_time = pygame.time.get_ticks() - self.ai_decision_interval
 
 
-    def handle_moving_to_collect_item_state(self, ai_current_tile): # 新增的道具相關狀態
-        ai_log(f"Base: In MOVING_TO_COLLECT_ITEM at {ai_current_tile}. Default: go PLANNING_ITEM_TARGET if path empty.")
+    def handle_moving_to_collect_item_state(self, ai_current_tile):
+        ai_log(f"Base: In MOVING_TO_COLLECT_ITEM at {ai_current_tile}. Sub-path: {self.current_movement_sub_path}") # Added log for path
         if not self.current_movement_sub_path:
-             self.change_state("PLANNING_ITEM_TARGET") # ItemFocusedAI 會覆寫這個
+             self.change_state("PLANNING_ITEM_TARGET")
 
-    def handle_planning_item_target_state(self, ai_current_tile): # 新增的道具相關狀態
+    def handle_planning_item_target_state(self, ai_current_tile):
         ai_log(f"Base: In PLANNING_ITEM_TARGET at {ai_current_tile}. Default: go IDLE.")
+        self.current_movement_sub_path = [] # Explicitly clear here
+        self.current_movement_sub_path_index = 0
+        self.astar_planned_path = [] # Also A* path
+        self.astar_path_current_segment_index = 0
         self.change_state("IDLE")
 
-    def handle_assessing_obstacle_for_item_state(self, ai_current_tile): # 新增的道具相關狀態
+    def handle_assessing_obstacle_for_item_state(self, ai_current_tile):
         ai_log(f"Base: In ASSESSING_OBSTACLE_FOR_ITEM at {ai_current_tile}. Default: go PLANNING_ITEM_TARGET.")
         self.change_state("PLANNING_ITEM_TARGET")
         
     def handle_evading_danger_state(self, ai_current_tile):
-        ai_log(f"Base: EVADING_DANGER at {ai_current_tile} with urgency: {self.evasion_urgency_seconds}s.")
-        
+        ai_log(f"Base: EVADING_DANGER at {ai_current_tile} with urgency: {self.evasion_urgency_seconds}s. Sub-path: {self.current_movement_sub_path}")
+
         if not self.is_tile_dangerous(ai_current_tile[0], ai_current_tile[1], self.evasion_urgency_seconds):
             ai_log("Base: Danger seems to have passed. Re-planning.")
             default_safe_state = "PLANNING_PATH"
             if hasattr(self, 'default_state_after_evasion'):
                 default_safe_state = self.default_state_after_evasion
-            self.change_state(default_safe_state) 
+            self.change_state(default_safe_state)
             return
 
-        if self.current_movement_sub_path: 
-            target_of_current_path = self.current_movement_sub_path[-1] 
-            if self.is_tile_dangerous(target_of_current_path[0], target_of_current_path[1], 0.05): 
+        if self.current_movement_sub_path:
+            target_of_current_path = self.current_movement_sub_path[-1]
+            if self.is_tile_dangerous(target_of_current_path[0], target_of_current_path[1], 0.05):
                 ai_log("Base: Current evasion path target became dangerous. Re-planning evasion.")
-                self.current_movement_sub_path = [] 
+                self.current_movement_sub_path = []
+                self.current_movement_sub_path_index = 0 # Ensure index is also reset
 
-        if not self.current_movement_sub_path: 
+        if not self.current_movement_sub_path:
             ai_log("Base: Finding new evasion path.")
-            retreat_search_depth = getattr(self, 'retreat_search_depth', 7) 
+            retreat_search_depth = getattr(self, 'retreat_search_depth', 7)
             min_options_for_evasion = getattr(self, 'min_retreat_options_for_evasion', 1)
 
             safe_spots = self.find_safe_tiles_nearby_for_retreat(
                 from_coords=ai_current_tile,
-                bomb_coords_as_danger_source=ai_current_tile, 
-                bomb_range_of_danger_source=0, 
-                max_depth=retreat_search_depth, 
-                min_options_needed=min_options_for_evasion 
-            ) 
+                bomb_coords_as_danger_source=ai_current_tile,
+                bomb_range_of_danger_source=0,
+                max_depth=retreat_search_depth,
+                min_options_needed=min_options_for_evasion
+            )
             
             best_path_to_safety = None
-            if safe_spots: 
+            if safe_spots:
                 candidate_paths = []
-                for spot in safe_spots: 
-                    path = self.bfs_find_direct_movement_path(ai_current_tile, spot, max_depth=retreat_search_depth) 
-                    if path and len(path) > 1: 
-                        openness = self._get_tile_openness(spot[0], spot[1]) 
+                for spot in safe_spots:
+                    path = self.bfs_find_direct_movement_path(ai_current_tile, spot, max_depth=retreat_search_depth)
+                    if path and len(path) > 1:
+                        openness = self._get_tile_openness(spot[0], spot[1])
                         candidate_paths.append({'path': path, 'openness': openness, 'len': len(path)})
                 
                 if candidate_paths:
-                    candidate_paths.sort(key=lambda p: (-p['openness'], p['len'])) 
+                    candidate_paths.sort(key=lambda p: (-p['openness'], p['len']))
                     best_path_to_safety = candidate_paths[0]['path']
             
-            if best_path_to_safety: 
+            if best_path_to_safety:
                 ai_log(f"Base: Found best evasion path to {best_path_to_safety[-1]}. Path: {best_path_to_safety}")
-                self.set_current_movement_sub_path(best_path_to_safety) 
-            else: 
+                self.set_current_movement_sub_path(best_path_to_safety)
+            else:
                 ai_log("Base: CRITICAL - No valid evasion path found! Attempting desperate move.")
                 self._attempt_desperate_move(ai_current_tile)
 
@@ -323,19 +362,16 @@ class AIControllerBase:
             next_x, next_y = ai_current_tile[0] + dx, ai_current_tile[1] + dy
             node = self._get_node_at_coords(next_x, next_y)
             if node and node.is_empty_for_direct_movement():
-                # （1）！！！_attempt_desperate_move 修改開始！！！（1）
-                # 躲避時，也要避免撞上對方的非固化炸彈
                 if self._is_tile_blocked_by_opponent_bomb(next_x, next_y):
                     continue
-                # （1）！！！_attempt_desperate_move 修改結束！！！（1）
                 danger_score = 0
-                if self.is_tile_dangerous(next_x, next_y, 0.05): danger_score += 20 
-                elif self.is_tile_dangerous(next_x, next_y, 0.15): danger_score += 10 
-                elif self.is_tile_dangerous(next_x, next_y, 0.3): danger_score += 5  
+                if self.is_tile_dangerous(next_x, next_y, 0.05): danger_score += 20
+                elif self.is_tile_dangerous(next_x, next_y, 0.15): danger_score += 10
+                elif self.is_tile_dangerous(next_x, next_y, 0.3): danger_score += 5
                 possible_moves.append(((next_x, next_y), danger_score))
         
         if possible_moves:
-            possible_moves.sort(key=lambda m: m[1]) 
+            possible_moves.sort(key=lambda m: m[1])
             desperate_target = possible_moves[0][0]
             ai_log(f"Base: Making a desperate random move to {desperate_target}.")
             self.set_current_movement_sub_path([ai_current_tile, desperate_target])
@@ -360,23 +396,20 @@ class AIControllerBase:
             except IndexError:
                 ai_log(f"[ERROR_BASE] Map data access out of bounds for y={y}, x={x}")
                 return None
-            except TypeError: 
+            except TypeError:
                  ai_log(f"[ERROR_BASE] Map data not subscriptable for y={y}, x={x}. map_data type: {type(self.map_manager.map_data)}")
                  return None
         return None
 
-    # （2）！！！_is_tile_blocked_by_opponent_bomb 新增方法開始！！！（2）
     def _is_tile_blocked_by_opponent_bomb(self, tile_x, tile_y):
-        """檢查指定格子是否被對手的（任何狀態的）炸彈阻擋。"""
         if hasattr(self.game, 'bombs_group'):
             for bomb in self.game.bombs_group:
                 if not bomb.exploded and \
                    bomb.current_tile_x == tile_x and \
                    bomb.current_tile_y == tile_y and \
-                   bomb.placed_by_player is not self.ai_player: # 關鍵：是其他玩家的炸彈
+                   bomb.placed_by_player is not self.ai_player:
                     return True
         return False
-    # （2）！！！_is_tile_blocked_by_opponent_bomb 新增方法結束！！！（2）
 
     def _get_node_neighbors(self, node: TileNode, for_astar_planning=True):
         neighbors = []
@@ -384,19 +417,14 @@ class AIControllerBase:
             nx, ny = node.x + dx, node.y + dy
             neighbor_node_template = self._get_node_at_coords(nx, ny)
             if neighbor_node_template:
-                # （3）！！！_get_node_neighbors 修改開始！！！（3）
-                # 尋路時，任何對手的炸彈（無論是否固化）都視為障礙
                 if self._is_tile_blocked_by_opponent_bomb(nx, ny):
-                    continue 
-                # （3）！！！_get_node_neighbors 修改結束！！！（3）
+                    continue
 
                 if for_astar_planning:
-                    # A*規劃時，可以走在 'D' (可破壞牆)上，成本較高
-                    if neighbor_node_template.is_walkable_for_astar_planning(): 
+                    if neighbor_node_template.is_walkable_for_astar_planning():
                         neighbors.append(neighbor_node_template)
-                else: 
-                    # BFS直接移動時，只能走在 '.' (空格)上
-                    if neighbor_node_template.is_empty_for_direct_movement(): 
+                else:
+                    if neighbor_node_template.is_empty_for_direct_movement():
                         neighbors.append(neighbor_node_template)
         return neighbors
 
@@ -433,7 +461,7 @@ class AIControllerBase:
         stuck = self.decision_cycle_stuck_counter >= stuck_threshold
         oscillating = self.oscillation_stuck_counter >= oscillation_threshold
 
-        if stuck and not is_oscillating : 
+        if stuck and not is_oscillating :
             ai_log(f"[STUCK_BASE_TILE] AI stuck at {ai_current_tile} for {self.decision_cycle_stuck_counter} cycles (threshold: {stuck_threshold}).")
         
         return stuck or oscillating
@@ -445,8 +473,8 @@ class AIControllerBase:
         if not start_node or not target_node: return []
 
         open_set = []
-        heapq.heappush(open_set, (0, 0, start_node)) 
-        node_data = {(start_node.x, start_node.y): start_node} 
+        heapq.heappush(open_set, (0, 0, start_node))
+        node_data = {(start_node.x, start_node.y): start_node}
         closed_set = set()
         start_node.g_cost = 0
         start_node.h_cost = abs(start_node.x - target_node.x) + abs(start_node.y - target_node.y)
@@ -466,7 +494,7 @@ class AIControllerBase:
                 return path[::-1]
             closed_set.add((current_node.x, current_node.y))
 
-            for neighbor_template in self._get_node_neighbors(current_node, for_astar_planning=True): # _get_node_neighbors 已更新
+            for neighbor_template in self._get_node_neighbors(current_node, for_astar_planning=True):
                 if (neighbor_template.x, neighbor_template.y) in closed_set: continue
                 tentative_g_cost = current_node.g_cost + neighbor_template.get_astar_move_cost_to_here()
                 neighbor_coords = (neighbor_template.x, neighbor_template.y)
@@ -497,11 +525,9 @@ class AIControllerBase:
                 if next_coords not in visited:
                     if avoid_specific_tile and next_coords == avoid_specific_tile: continue
                     node = self._get_node_at_coords(next_x, next_y)
-                    # （4）！！！bfs_find_direct_movement_path 修改開始！！！（4）
                     if node and node.is_empty_for_direct_movement() and \
                        not self.is_tile_dangerous(next_x, next_y, future_seconds=0.15) and \
-                       not self._is_tile_blocked_by_opponent_bomb(next_x, next_y): # 新增檢查
-                    # （4）！！！bfs_find_direct_movement_path 修改結束！！！（4）
+                       not self._is_tile_blocked_by_opponent_bomb(next_x, next_y):
                         visited.add(next_coords)
                         q.append((next_coords, path + [next_coords]))
         return []
@@ -511,13 +537,13 @@ class AIControllerBase:
             return False, None
         bomb_range_to_use = self.ai_player.bomb_range
         retreat_search_depth = getattr(self, 'retreat_search_depth', 7)
-        min_options = getattr(self, 'min_retreat_options_for_bombing', 1) 
+        min_options = getattr(self, 'min_retreat_options_for_bombing', 1)
         retreat_spots = self.find_safe_tiles_nearby_for_retreat(
-            bomb_placement_coords, 
-            bomb_placement_coords, 
+            bomb_placement_coords,
+            bomb_placement_coords,
             bomb_range_to_use,
             max_depth=retreat_search_depth,
-            min_options_needed=min_options 
+            min_options_needed=min_options
             )
         if retreat_spots:
             best_retreat_spot = retreat_spots[0]
@@ -528,44 +554,42 @@ class AIControllerBase:
 
     def find_safe_tiles_nearby_for_retreat(self, from_coords, bomb_coords_as_danger_source, bomb_range_of_danger_source, max_depth=6, min_options_needed=1):
         ai_log(f"Finding safe retreat from {from_coords}, danger at {bomb_coords_as_danger_source} (range {bomb_range_of_danger_source}), depth {max_depth}")
-        q = deque([(from_coords, [from_coords], 0)]) 
-        visited = {from_coords} 
-        potential_safe_spots = [] 
+        q = deque([(from_coords, [from_coords], 0)])
+        visited = {from_coords}
+        potential_safe_spots = []
         future_check_seconds = getattr(settings, "AI_RETREAT_SPOT_OTHER_DANGER_FUTURE_SECONDS", self.evasion_urgency_seconds)
         while q:
-            (curr_x, curr_y), path, depth = q.popleft() 
-            if depth > max_depth: continue 
-            is_safe_from_this_bomb = True 
-            if bomb_range_of_danger_source > 0: 
-                is_safe_from_this_bomb = not self._is_tile_in_hypothetical_blast(curr_x, curr_y, bomb_coords_as_danger_source[0], bomb_coords_as_danger_source[1], bomb_range_of_danger_source) 
-            is_safe_from_others = not self.is_tile_dangerous(curr_x, curr_y, future_seconds=future_check_seconds) 
-            # （5）！！！find_safe_tiles_nearby_for_retreat 修改開始！！！（5）
+            (curr_x, curr_y), path, depth = q.popleft()
+            if depth > max_depth: continue
+            is_safe_from_this_bomb = True
+            if bomb_range_of_danger_source > 0:
+                is_safe_from_this_bomb = not self._is_tile_in_hypothetical_blast(curr_x, curr_y, bomb_coords_as_danger_source[0], bomb_coords_as_danger_source[1], bomb_range_of_danger_source)
+            is_safe_from_others = not self.is_tile_dangerous(curr_x, curr_y, future_seconds=future_check_seconds)
             is_blocked_by_opponent_bomb = self._is_tile_blocked_by_opponent_bomb(curr_x, curr_y)
-            if is_safe_from_this_bomb and is_safe_from_others and not is_blocked_by_opponent_bomb: 
-            # （5）！！！find_safe_tiles_nearby_for_retreat 修改結束！！！（5）
-                openness = self._get_tile_openness(curr_x, curr_y) 
-                potential_safe_spots.append({ 
-                    'coords': (curr_x, curr_y), 
-                    'path_len': len(path) - 1, 
-                    'depth': depth, 
+            if is_safe_from_this_bomb and is_safe_from_others and not is_blocked_by_opponent_bomb:
+                openness = self._get_tile_openness(curr_x, curr_y)
+                potential_safe_spots.append({
+                    'coords': (curr_x, curr_y),
+                    'path_len': len(path) - 1,
+                    'depth': depth,
                     'openness': openness })
-            if depth < max_depth: 
-                shuffled_directions = list(DIRECTIONS.values()); random.shuffle(shuffled_directions) 
-                for dx, dy in shuffled_directions: 
-                    next_coords = (curr_x + dx, curr_y + dy) 
-                    if next_coords not in visited: 
-                        node = self._get_node_at_coords(next_coords[0], next_coords[1]) 
-                        if node and node.is_empty_for_direct_movement(): 
+            if depth < max_depth:
+                shuffled_directions = list(DIRECTIONS.values()); random.shuffle(shuffled_directions)
+                for dx, dy in shuffled_directions:
+                    next_coords = (curr_x + dx, curr_y + dy)
+                    if next_coords not in visited:
+                        node = self._get_node_at_coords(next_coords[0], next_coords[1])
+                        if node and node.is_empty_for_direct_movement():
                             if not self.is_tile_dangerous(next_coords[0], next_coords[1], 0.05) and \
-                               not self._is_tile_blocked_by_opponent_bomb(next_coords[0], next_coords[1]): # 路徑上也避開
-                                visited.add(next_coords) 
-                                q.append((next_coords, path + [next_coords], depth + 1)) 
-        if not potential_safe_spots: return [] 
-        potential_safe_spots.sort(key=lambda s: (-s['openness'], -s['depth'], s['path_len'])) 
+                               not self._is_tile_blocked_by_opponent_bomb(next_coords[0], next_coords[1]):
+                                visited.add(next_coords)
+                                q.append((next_coords, path + [next_coords], depth + 1))
+        if not potential_safe_spots: return []
+        potential_safe_spots.sort(key=lambda s: (-s['openness'], -s['depth'], s['path_len']))
         return [spot['coords'] for spot in potential_safe_spots[:max(min_options_needed, len(potential_safe_spots))]]
         
     def set_current_movement_sub_path(self, path_coords_list):
-        if path_coords_list and len(path_coords_list) > 1: 
+        if path_coords_list and len(path_coords_list) > 1:
             self.current_movement_sub_path = path_coords_list
             self.current_movement_sub_path_index = 0
             ai_log(f"    Set new sub-path: {self.current_movement_sub_path}")
@@ -575,27 +599,65 @@ class AIControllerBase:
             ai_log(f"    Cleared sub-path (path too short or None). Received: {path_coords_list}")
 
     def execute_next_move_on_sub_path(self, ai_current_tile):
-        if not self.current_movement_sub_path: return True
+        ai_log(f"    EXEC_SUB_PATH CALLED. AI: {ai_current_tile}, Path: {self.current_movement_sub_path}, Index: {self.current_movement_sub_path_index}") # 已加入的除錯點
+        if not self.current_movement_sub_path: 
+            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 1): Path is ALREADY empty.") # 已加入的除錯點
+            return True
         if ai_current_tile == self.current_movement_sub_path[-1]:
             if self.current_movement_sub_path_index == len(self.current_movement_sub_path) -1 :
+                 ai_log(f"    EXEC_SUB_PATH SUCCESS (Early Exit 2a): Reached final destination {ai_current_tile} and index matches.") # 已加入的除錯點
                  self.movement_history.append(ai_current_tile)
                  self.current_movement_sub_path = []
                  self.current_movement_sub_path_index = 0
                  if hasattr(self.ai_player, 'is_moving'): self.ai_player.is_moving = False
                  return True
             else: 
+                ai_log(f"    EXEC_SUB_PATH WARN (Early Exit 2b): At destination {ai_current_tile}, but index {self.current_movement_sub_path_index} (expected {len(self.current_movement_sub_path)-1}) not last. Clearing path.") # 已加入的除錯點
                 self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         if self.current_movement_sub_path_index >= len(self.current_movement_sub_path):
+            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 3): Index {self.current_movement_sub_path_index} out of bounds for path len {len(self.current_movement_sub_path)}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         expected_current_sub_path_tile = self.current_movement_sub_path[self.current_movement_sub_path_index]
         if ai_current_tile != expected_current_sub_path_tile:
+            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 4): AI at {ai_current_tile} but path expected {expected_current_sub_path_tile} at index {self.current_movement_sub_path_index}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         if self.current_movement_sub_path_index + 1 >= len(self.current_movement_sub_path): 
+            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 5): No next step in path. Index {self.current_movement_sub_path_index}, Path len {len(self.current_movement_sub_path)}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
+        
         next_target_tile_in_sub_path = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
         dx = next_target_tile_in_sub_path[0] - ai_current_tile[0]; dy = next_target_tile_in_sub_path[1] - ai_current_tile[1]
+        
         if not (abs(dx) <= 1 and abs(dy) <= 1 and (dx != 0 or dy != 0) and (dx == 0 or dy == 0)):
+            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 6): Invalid step calculated. dx={dx}, dy={dy} for move from {ai_current_tile} to {next_target_tile_in_sub_path}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
+        
+        # --- 您要加入的除錯日誌從這裡開始 ---
+        ai_log(f"    BASE: --- Preparing to call attempt_move_to_tile ---")
+        ai_log(f"    BASE: AI Player Object: {self.ai_player}")
+        ai_log(f"    BASE: AI Player Type: {type(self.ai_player)}")
+        ai_log(f"    BASE: AI Player ID: {id(self.ai_player)}")
+        # 確保 self.ai_player 有這些屬性，如果沒有，您的 Player 類別可能不完整或 AI 未正確初始化
+        if hasattr(self.ai_player, 'tile_x') and hasattr(self.ai_player, 'tile_y'):
+            ai_log(f"    BASE: AI Player's current tile_x, tile_y: ({self.ai_player.tile_x}, {self.ai_player.tile_y})")
+        else:
+            ai_log(f"    BASE: AI Player object does not have tile_x/tile_y attributes.")
+        if hasattr(self.ai_player, 'action_timer'):
+            ai_log(f"    BASE: AI Player's action_timer: {self.ai_player.action_timer}")
+        else:
+            ai_log(f"    BASE: AI Player object does not have action_timer attribute.")
+        if hasattr(self.ai_player, 'is_alive'):
+            ai_log(f"    BASE: AI Player's is_alive: {self.ai_player.is_alive}")
+        else:
+            ai_log(f"    BASE: AI Player object does not have is_alive attribute.")
+        ai_log(f"    BASE: Does ai_player have 'attempt_move_to_tile' attribute? {hasattr(self.ai_player, 'attempt_move_to_tile')}")
+        if hasattr(self.ai_player, 'attempt_move_to_tile'):
+            ai_log(f"    BASE: Method reference: {self.ai_player.attempt_move_to_tile}")
+        else: # 新增，如果沒有 attempt_move_to_tile 方法
+            ai_log(f"    BASE: CRITICAL - ai_player does NOT have 'attempt_move_to_tile' attribute!")
+        ai_log(f"    BASE: Moving from current_tile ({ai_current_tile[0]},{ai_current_tile[1]}) with dx={dx}, dy={dy}. Calculated next_target_tile: ({next_target_tile_in_sub_path[0]},{next_target_tile_in_sub_path[1]})")
+        # --- 除錯日誌結束 ---
+
         moved = self.ai_player.attempt_move_to_tile(dx, dy)
         if moved:
             moved_to_tile = (self.ai_player.tile_x, self.ai_player.tile_y)
@@ -608,7 +670,7 @@ class AIControllerBase:
                 return True 
             return False 
         else:
-            ai_log(f"    Sub-path move from {ai_current_tile} to {next_target_tile_in_sub_path} FAILED (blocked). Clearing.")
+            ai_log(f"    Sub-path move from {ai_current_tile} to {next_target_tile_in_sub_path} FAILED (blocked by attempt_move_to_tile). Clearing.") # 修改日誌以區分
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
 
     def is_bomb_still_active(self, bomb_placed_timestamp):

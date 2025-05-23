@@ -42,6 +42,7 @@ class ItemFocusedAIController(AIControllerBase):
         self.last_failed_bombing_spot = None
         self.last_failed_roam_target = None # 新增：記錄上次失敗的漫遊目標
         self.roam_target_seek_depth = 10 # 漫遊目標尋找深度
+        self.idle_duration_ms = 1500
 
         self.change_state("PLANNING_ITEM_TARGET")
 
