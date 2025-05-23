@@ -533,24 +533,77 @@ class AIControllerBase:
         return []
         
     def can_place_bomb_and_retreat(self, bomb_placement_coords):
-        if self.is_tile_dangerous(bomb_placement_coords[0], bomb_placement_coords[1], future_seconds=0.1):
+        ai_log(f"    [AI_BOMB_DECISION_HELPER] can_place_bomb_and_retreat called for: {bomb_placement_coords}")
+
+        # --- BUG FIX START ---
+        # Check if the bomb_placement_coords is a valid spot to place a bomb
+        placement_node = self._get_node_at_coords(bomb_placement_coords[0], bomb_placement_coords[1])
+        if not placement_node or not placement_node.is_empty_for_direct_movement(): # Must be an empty tile (not a wall)
+            ai_log(f"      [AI_BOMB_DECISION_HELPER] Bomb spot {bomb_placement_coords} is not an empty tile. Returning False.")
             return False, None
+
+        # Check if another player (not AI itself) is at the bomb_placement_coords
+        human_player_tile = self._get_human_player_current_tile() # Get human player's current tile
+        if human_player_tile and human_player_tile == bomb_placement_coords:
+            ai_log(f"      [AI_BOMB_DECISION_HELPER] Human player is at bomb spot {bomb_placement_coords}. Returning False.")
+            return False, None
+        
+        # Check if another AI (if any, and not self) is at the bomb_placement_coords
+        # This is more for future-proofing if you have multiple AIs.
+        for player_sprite in self.game.players_group: # Iterate through all players
+            if player_sprite is not self.ai_player and player_sprite.is_alive: # Check if it's another player and alive
+                if player_sprite.tile_x == bomb_placement_coords[0] and player_sprite.tile_y == bomb_placement_coords[1]:
+                    ai_log(f"      [AI_BOMB_DECISION_HELPER] Another player (ID: {id(player_sprite)}) is at bomb spot {bomb_placement_coords}. Returning False.")
+                    return False, None
+        
+        # Check if there's already a non-exploded bomb at the spot
+        for bomb in self.game.bombs_group:
+            if not bomb.exploded and \
+               bomb.current_tile_x == bomb_placement_coords[0] and \
+               bomb.current_tile_y == bomb_placement_coords[1]:
+                # Optional: Could allow placing if it's AI's own bomb and owner_has_left_tile is False,
+                # but Player.place_bomb already has complex logic for this.
+                # Simplest for decision making: if any bomb is there, don't place another.
+                ai_log(f"      [AI_BOMB_DECISION_HELPER] Existing non-exploded bomb at {bomb_placement_coords}. Returning False.")
+                return False, None
+        # --- BUG FIX END ---
+
+        # Check if the spot itself is immediately dangerous (e.g., in an ongoing explosion)
+        if self.is_tile_dangerous(bomb_placement_coords[0], bomb_placement_coords[1], future_seconds=0.1): # Check for very immediate danger
+            ai_log(f"      [AI_BOMB_DECISION_HELPER] Bomb spot {bomb_placement_coords} is ALREADY dangerous (e.g. existing explosion). Returning False.")
+            return False, None
+
         bomb_range_to_use = self.ai_player.bomb_range
+        ai_log(f"      [AI_BOMB_DECISION_HELPER] AI bomb_range for this check: {bomb_range_to_use}")
+        
         retreat_search_depth = getattr(self, 'retreat_search_depth', 7)
         min_options = getattr(self, 'min_retreat_options_for_bombing', 1)
+
+        # Find safe retreat spots, considering the bomb placed at bomb_placement_coords as the danger source
         retreat_spots = self.find_safe_tiles_nearby_for_retreat(
-            bomb_placement_coords,
-            bomb_placement_coords,
-            bomb_range_to_use,
+            from_coords=bomb_placement_coords, # AI will be at bomb_placement_coords initially
+            bomb_coords_as_danger_source=bomb_placement_coords, # The new bomb is the danger
+            bomb_range_of_danger_source=bomb_range_to_use,
             max_depth=retreat_search_depth,
             min_options_needed=min_options
-            )
+        )
+        ai_log(f"      [AI_BOMB_DECISION_HELPER] find_safe_tiles_nearby_for_retreat for spot {bomb_placement_coords} (range {bomb_range_to_use}) found: {retreat_spots}")
+
         if retreat_spots:
-            best_retreat_spot = retreat_spots[0]
+            best_retreat_spot = retreat_spots[0] # find_safe_tiles_nearby_for_retreat sorts by preference
+            
+            # Check if AI can actually path from the bomb_placement_coords to the best_retreat_spot
             path_to_retreat = self.bfs_find_direct_movement_path(bomb_placement_coords, best_retreat_spot, max_depth=retreat_search_depth)
-            if path_to_retreat and len(path_to_retreat) > 1 :
+            
+            if path_to_retreat and len(path_to_retreat) > 1 : # Path must involve at least one step
+                ai_log(f"      [AI_BOMB_DECISION_HELPER] Can bomb at {bomb_placement_coords}, best retreat to {best_retreat_spot} (path: {path_to_retreat}). Returning True.")
                 return True, best_retreat_spot
-        return False, None
+            else:
+                ai_log(f"      [AI_BOMB_DECISION_HELPER] Can bomb at {bomb_placement_coords}, found retreat spot {best_retreat_spot}, BUT no valid BFS path from bomb spot to retreat. Returning False.")
+                return False, None
+        else:
+            ai_log(f"      [AI_BOMB_DECISION_HELPER] Cannot bomb at {bomb_placement_coords}, no safe retreat found by find_safe_tiles_nearby_for_retreat. Returning False.")
+            return False, None
 
     def find_safe_tiles_nearby_for_retreat(self, from_coords, bomb_coords_as_danger_source, bomb_range_of_danger_source, max_depth=6, min_options_needed=1):
         ai_log(f"Finding safe retreat from {from_coords}, danger at {bomb_coords_as_danger_source} (range {bomb_range_of_danger_source}), depth {max_depth}")
@@ -599,64 +652,31 @@ class AIControllerBase:
             ai_log(f"    Cleared sub-path (path too short or None). Received: {path_coords_list}")
 
     def execute_next_move_on_sub_path(self, ai_current_tile):
-        ai_log(f"    EXEC_SUB_PATH CALLED. AI: {ai_current_tile}, Path: {self.current_movement_sub_path}, Index: {self.current_movement_sub_path_index}") # 已加入的除錯點
         if not self.current_movement_sub_path: 
-            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 1): Path is ALREADY empty.") # 已加入的除錯點
             return True
         if ai_current_tile == self.current_movement_sub_path[-1]:
             if self.current_movement_sub_path_index == len(self.current_movement_sub_path) -1 :
-                 ai_log(f"    EXEC_SUB_PATH SUCCESS (Early Exit 2a): Reached final destination {ai_current_tile} and index matches.") # 已加入的除錯點
                  self.movement_history.append(ai_current_tile)
                  self.current_movement_sub_path = []
                  self.current_movement_sub_path_index = 0
                  if hasattr(self.ai_player, 'is_moving'): self.ai_player.is_moving = False
                  return True
             else: 
-                ai_log(f"    EXEC_SUB_PATH WARN (Early Exit 2b): At destination {ai_current_tile}, but index {self.current_movement_sub_path_index} (expected {len(self.current_movement_sub_path)-1}) not last. Clearing path.") # 已加入的除錯點
                 self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         if self.current_movement_sub_path_index >= len(self.current_movement_sub_path):
-            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 3): Index {self.current_movement_sub_path_index} out of bounds for path len {len(self.current_movement_sub_path)}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         expected_current_sub_path_tile = self.current_movement_sub_path[self.current_movement_sub_path_index]
         if ai_current_tile != expected_current_sub_path_tile:
-            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 4): AI at {ai_current_tile} but path expected {expected_current_sub_path_tile} at index {self.current_movement_sub_path_index}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         if self.current_movement_sub_path_index + 1 >= len(self.current_movement_sub_path): 
-            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 5): No next step in path. Index {self.current_movement_sub_path_index}, Path len {len(self.current_movement_sub_path)}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         
         next_target_tile_in_sub_path = self.current_movement_sub_path[self.current_movement_sub_path_index + 1]
         dx = next_target_tile_in_sub_path[0] - ai_current_tile[0]; dy = next_target_tile_in_sub_path[1] - ai_current_tile[1]
         
         if not (abs(dx) <= 1 and abs(dy) <= 1 and (dx != 0 or dy != 0) and (dx == 0 or dy == 0)):
-            ai_log(f"    EXEC_SUB_PATH FAIL (Early Exit 6): Invalid step calculated. dx={dx}, dy={dy} for move from {ai_current_tile} to {next_target_tile_in_sub_path}. Clearing path.") # 已加入的除錯點
             self.current_movement_sub_path = []; self.current_movement_sub_path_index = 0; return True
         
-        # --- 您要加入的除錯日誌從這裡開始 ---
-        ai_log(f"    BASE: --- Preparing to call attempt_move_to_tile ---")
-        ai_log(f"    BASE: AI Player Object: {self.ai_player}")
-        ai_log(f"    BASE: AI Player Type: {type(self.ai_player)}")
-        ai_log(f"    BASE: AI Player ID: {id(self.ai_player)}")
-        # 確保 self.ai_player 有這些屬性，如果沒有，您的 Player 類別可能不完整或 AI 未正確初始化
-        if hasattr(self.ai_player, 'tile_x') and hasattr(self.ai_player, 'tile_y'):
-            ai_log(f"    BASE: AI Player's current tile_x, tile_y: ({self.ai_player.tile_x}, {self.ai_player.tile_y})")
-        else:
-            ai_log(f"    BASE: AI Player object does not have tile_x/tile_y attributes.")
-        if hasattr(self.ai_player, 'action_timer'):
-            ai_log(f"    BASE: AI Player's action_timer: {self.ai_player.action_timer}")
-        else:
-            ai_log(f"    BASE: AI Player object does not have action_timer attribute.")
-        if hasattr(self.ai_player, 'is_alive'):
-            ai_log(f"    BASE: AI Player's is_alive: {self.ai_player.is_alive}")
-        else:
-            ai_log(f"    BASE: AI Player object does not have is_alive attribute.")
-        ai_log(f"    BASE: Does ai_player have 'attempt_move_to_tile' attribute? {hasattr(self.ai_player, 'attempt_move_to_tile')}")
-        if hasattr(self.ai_player, 'attempt_move_to_tile'):
-            ai_log(f"    BASE: Method reference: {self.ai_player.attempt_move_to_tile}")
-        else: # 新增，如果沒有 attempt_move_to_tile 方法
-            ai_log(f"    BASE: CRITICAL - ai_player does NOT have 'attempt_move_to_tile' attribute!")
-        ai_log(f"    BASE: Moving from current_tile ({ai_current_tile[0]},{ai_current_tile[1]}) with dx={dx}, dy={dy}. Calculated next_target_tile: ({next_target_tile_in_sub_path[0]},{next_target_tile_in_sub_path[1]})")
-        # --- 除錯日誌結束 ---
 
         moved = self.ai_player.attempt_move_to_tile(dx, dy)
         if moved:
