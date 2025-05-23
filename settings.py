@@ -13,6 +13,14 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GREY = (128, 128, 128)
 
+GAME_DURATION_SECONDS = 180  # 例如 3 分鐘 (180 秒)
+GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0) # 時間到訊息的顏色
+
+TIMER_COLOR = (220, 0, 0)  # 正常倒數計時的顏色 (例如：深紅色)
+TIMER_URGENT_COLOR = (255, 0, 0) # 緊急倒數計時的顏色 (例如：亮紅色)
+TIMER_URGENT_THRESHOLD_SECONDS = 10 # 當少於多少秒時，計時器變為緊急狀態
+
+
 # Game Title
 TITLE = "Pycade Bomber"
 

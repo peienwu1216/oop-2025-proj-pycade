@@ -21,8 +21,8 @@ class Game:
         self.game_state = "PLAYING"
         
         self.ai_archetype = ai_archetype
-        # print(f"[Game Init] Selected AI Archetype: {self.ai_archetype}") # 可以註解掉，避免過多日誌
-
+        
+        # --- Sprite Groups ---
         self.all_sprites = pygame.sprite.Group()
         self.players_group = pygame.sprite.Group()
         self.bombs_group = pygame.sprite.Group()
@@ -30,46 +30,62 @@ class Game:
         self.items_group = pygame.sprite.Group()
         self.solid_obstacles_group = pygame.sprite.Group()
 
+        # --- Managers and Player/AI instances ---
         self.map_manager = MapManager(self)
         self.player1 = None
         self.player2_ai = None
         self.ai_controller_p2 = None
 
+        # --- Timer related attributes ---
+        self.time_elapsed_seconds = 0 
+        self.game_timer_active = True   
+        self.time_up_winner = None      
+
+        # --- Font attributes ---
         self.hud_font = None
         self.game_over_font = None
         self.restart_font = None
         self.ai_status_font = None
+        self.timer_font_normal = None 
+        self.timer_font_urgent = None 
         try:
-            # 統一使用較小的字體以便在左下角並排顯示
             font_size = 22
             font_status_size = 18
-            self.hud_font = pygame.font.Font(None, font_size)
-            self.ai_status_font = pygame.font.Font(None, font_status_size)
-            
-            # 嘗試載入中文字體 (如果您的 menu.py 和 settings.py 已經設定好 CHINESE_FONT_PATH)
+            timer_font_size_normal = 28
+            timer_font_size_urgent = 36 
+
+            default_font_path = None
             if hasattr(settings, 'CHINESE_FONT_PATH'):
                 try:
-                    self.hud_font = pygame.font.Font(settings.CHINESE_FONT_PATH, font_size)
-                    self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, font_status_size)
-                    print("HUD: 成功載入中文字體用於狀態顯示。")
-                except pygame.error as e:
-                    print(f"HUD: 載入中文字體失敗 ({e})，將使用預設字體。")
-                    self.hud_font = pygame.font.Font(None, font_size) # Fallback
-                    self.ai_status_font = pygame.font.Font(None, font_status_size) # Fallback
+                    font_test = pygame.font.Font(settings.CHINESE_FONT_PATH, 10)
+                    if font_test:
+                        default_font_path = settings.CHINESE_FONT_PATH
+                        # print("HUD: 將使用中文字體。") # 可以取消註解以確認字體路徑
+                except pygame.error:
+                    print(f"HUD: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗，將使用預設字體。")
+
+            self.hud_font = pygame.font.Font(default_font_path, font_size)
+            self.ai_status_font = pygame.font.Font(default_font_path, font_status_size)
+            self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
+            self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             
-            self.game_over_font = pygame.font.Font(None, 74)
-            self.restart_font = pygame.font.Font(None, 30)
+            self.game_over_font = pygame.font.Font(default_font_path, 74)
+            self.restart_font = pygame.font.Font(default_font_path, 30)
 
         except Exception as e:
             print(f"Error initializing fonts: {e}")
-            self.hud_font = pygame.font.SysFont("arial", 24) # Fallback
+            self.hud_font = pygame.font.SysFont("arial", 24)
             self.game_over_font = pygame.font.SysFont('arial', 74)
             self.restart_font = pygame.font.SysFont('arial', 30)
-            self.ai_status_font = pygame.font.SysFont("arial", 20) # Fallback
+            self.ai_status_font = pygame.font.SysFont("arial", 20)
+            self.timer_font_normal = pygame.font.SysFont("arial", 30)
+            self.timer_font_urgent = pygame.font.SysFont("arial", 38)
         
+        # --- Call setup_initial_state AFTER all attributes are initialized ---
         self.setup_initial_state()
 
     def setup_initial_state(self):
+        # --- Sprite Groups: Empty them ---
         self.all_sprites.empty()
         self.players_group.empty()
         self.bombs_group.empty()
@@ -77,6 +93,13 @@ class Game:
         self.items_group.empty()
         self.solid_obstacles_group.empty()
 
+        # --- Reset timer and game state ---
+        self.time_elapsed_seconds = 0
+        self.game_timer_active = True
+        self.time_up_winner = None
+        self.game_state = "PLAYING"
+
+        # --- Map and player setup ---
         grid_width = getattr(settings, 'GRID_WIDTH', 15)
         grid_height = getattr(settings, 'GRID_HEIGHT', 11)
         
@@ -116,6 +139,7 @@ class Game:
         self.all_sprites.add(self.player2_ai)
         self.players_group.add(self.player2_ai)
         
+        # --- AI Controller Instantiation ---
         ai_controller_class = None
         if self.ai_archetype == "original":
             ai_controller_class = OriginalAIController
@@ -126,7 +150,7 @@ class Game:
         elif self.ai_archetype == "item_focused":
             ai_controller_class = ItemFocusedAIController
         else:
-            ai_controller_class = OriginalAIController
+            ai_controller_class = OriginalAIController # Fallback
         
         self.ai_controller_p2 = ai_controller_class(self.player2_ai, self)
 
@@ -134,11 +158,9 @@ class Game:
             self.ai_controller_p2.reset_state()
         
         self.player2_ai.ai_controller = self.ai_controller_p2
-        if self.ai_controller_p2: # 確保控制器存在
+        if self.ai_controller_p2: 
             self.ai_controller_p2.human_player_sprite = self.player1
         
-        self.game_state = "PLAYING"
-
     def run(self):
         while self.running:
             self.dt = self.clock.tick(settings.FPS) / 1000.0
@@ -169,6 +191,30 @@ class Game:
 
     def update(self):
         if self.game_state == "PLAYING":
+            if self.game_timer_active:
+                self.time_elapsed_seconds += self.dt
+                if self.time_elapsed_seconds >= settings.GAME_DURATION_SECONDS:
+                    self.game_timer_active = False 
+                    self.game_state = "GAME_OVER" 
+                    if self.player1.is_alive and self.player2_ai.is_alive:
+                        if self.player1.lives > self.player2_ai.lives:
+                            self.time_up_winner = "P1"
+                        elif self.player2_ai.lives > self.player1.lives:
+                            self.time_up_winner = "AI"
+                        else: 
+                            if self.player1.score > self.player2_ai.score:
+                                self.time_up_winner = "P1"
+                            elif self.player2_ai.score > self.player1.score:
+                                self.time_up_winner = "AI"
+                            else:
+                                self.time_up_winner = "DRAW"
+                    elif self.player1.is_alive:
+                        self.time_up_winner = "P1"
+                    elif self.player2_ai.is_alive:
+                        self.time_up_winner = "AI"
+                    else: 
+                        self.time_up_winner = "DRAW" 
+
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
             
@@ -191,11 +237,12 @@ class Game:
                     for item in items_collected:
                         item.apply_effect(player)
             
-            human_player_alive = self.player1 and self.player1.is_alive
-            ai_player_alive = self.player2_ai and self.player2_ai.is_alive
-
-            if not human_player_alive or not ai_player_alive:
-                self.game_state = "GAME_OVER"
+            if self.game_timer_active:
+                human_player_alive = self.player1 and self.player1.is_alive
+                ai_player_alive = self.player2_ai and self.player2_ai.is_alive
+                if not human_player_alive or not ai_player_alive:
+                    self.game_state = "GAME_OVER"
+                    self.game_timer_active = False
 
     def draw(self):
         self.screen.fill(settings.WHITE)
@@ -205,24 +252,47 @@ class Game:
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 if hasattr(self.ai_controller_p2, 'debug_draw_path'):
                     self.ai_controller_p2.debug_draw_path(self.screen)
-            self.draw_hud() # 繪製 HUD
+            self.draw_hud()
         elif self.game_state == "GAME_OVER":
             self.draw_game_over_screen()
         
         pygame.display.flip()
 
-    # --- 修改後的 draw_hud 方法 ---
     def draw_hud(self):
-        """在畫面左下角並排顯示 P1 和 AI 的狀態資訊。"""
-        if not self.hud_font:
+        if not self.hud_font or not self.timer_font_normal or not self.timer_font_urgent:
             return
 
-        line_height = self.hud_font.get_linesize() 
-        start_x_p1 = 10
-        start_x_ai_offset = 200 # AI 資訊相對於 P1 資訊的水平偏移量
-        start_y = settings.SCREEN_HEIGHT - (line_height * 6) # 預留足夠的行數空間，從底部往上算
+        # --- 繪製剩餘時間 (右上角) ---
+        time_left = max(0, settings.GAME_DURATION_SECONDS - self.time_elapsed_seconds)
+        minutes = int(time_left) // 60
+        seconds = int(time_left) % 60
+        timer_text = f"{minutes:02d}:{seconds:02d}"
+        
+        current_timer_font = self.timer_font_normal
+        current_timer_color = settings.TIMER_COLOR 
 
-        # --- P1 資訊 (左列) ---
+        if self.game_timer_active and time_left <= settings.TIMER_URGENT_THRESHOLD_SECONDS:
+            current_timer_font = self.timer_font_urgent
+            current_timer_color = settings.TIMER_URGENT_COLOR
+        elif not self.game_timer_active and self.game_state == "PLAYING":
+            timer_text = "00:00"
+            current_timer_font = self.timer_font_urgent
+            current_timer_color = settings.TIMER_URGENT_COLOR
+        
+        timer_surf = current_timer_font.render(timer_text, True, current_timer_color)
+        timer_rect = timer_surf.get_rect(topright=(settings.SCREEN_WIDTH - 15, 10))
+        self.screen.blit(timer_surf, timer_rect)
+
+        # --- P1 和 AI 狀態資訊 (左下角，並排) ---
+        line_height = self.hud_font.get_linesize() 
+        start_x_p1 = 15 
+        start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280) 
+        
+        num_max_hud_lines = 5 
+        bottom_padding = 10 
+        start_y = settings.SCREEN_HEIGHT - (num_max_hud_lines * line_height) - bottom_padding
+
+        # P1 資訊
         p1_texts = []
         if self.player1:
             p1_texts.append(f"P1 Lives: {self.player1.lives}")
@@ -234,7 +304,7 @@ class Game:
             surf = self.hud_font.render(text, True, settings.BLACK)
             self.screen.blit(surf, (start_x_p1, start_y + i * line_height))
 
-        # --- AI 資訊 (右列) ---
+        # AI 資訊
         ai_texts = []
         if self.player2_ai:
             if self.player2_ai.is_alive:
@@ -242,22 +312,27 @@ class Game:
             else:
                 ai_texts.append("AI Defeated")
             
-            # 新增 AI 的炸彈數量和分數
             ai_texts.append(f"AI Bombs: {self.player2_ai.max_bombs - self.player2_ai.bombs_placed_count}/{self.player2_ai.max_bombs}")
             ai_texts.append(f"AI Range: {self.player2_ai.bomb_range}")
             ai_texts.append(f"AI Score: {self.player2_ai.score}")
             
             if self.ai_controller_p2 and self.ai_status_font:
-                ai_name = self.ai_controller_p2.__class__.__name__.replace("AIController", "")
+                class_name = self.ai_controller_p2.__class__.__name__
+                ai_name = class_name.replace("AIController", "")
+                if not ai_name: # 如果替換後是空字串
+                    if class_name == "AIController": # 確認是基礎的 AIController
+                        ai_name = "Standard" # 給它一個預設名稱
+
                 state = getattr(self.ai_controller_p2, 'current_state', 'N/A')
                 ai_texts.append(f"AI ({ai_name}): {state}")
 
         for i, text in enumerate(ai_texts):
             font_to_use = self.hud_font
-            if text.startswith("AI (") and self.ai_status_font: # AI 狀態使用小一點的字體
+            text_color = settings.BLACK
+            if text.startswith("AI (") and self.ai_status_font:
                 font_to_use = self.ai_status_font
             
-            surf = font_to_use.render(text, True, settings.BLACK)
+            surf = font_to_use.render(text, True, text_color)
             self.screen.blit(surf, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
 
     def draw_game_over_screen(self):
@@ -268,9 +343,20 @@ class Game:
         p1_alive = self.player1 and self.player1.is_alive
         ai_alive = self.player2_ai and self.player2_ai.is_alive
 
-        if not p1_alive and not ai_alive: msg = "DRAW!"; color = settings.GREY
-        elif not p1_alive: msg = "GAME OVER - You Lost!"
-        elif not ai_alive: msg = "VICTORY - AI Defeated!"; color = settings.GREEN
+        if self.time_up_winner: 
+            if self.time_up_winner == "P1":
+                msg = "TIME'S UP! P1 WINS!"
+                color = settings.GREEN
+            elif self.time_up_winner == "AI":
+                msg = "TIME'S UP! AI WINS!"
+                color = settings.RED
+            else: 
+                msg = "TIME'S UP! DRAW!"
+                color = settings.GREY
+        else: 
+            if not p1_alive and not ai_alive: msg = "DRAW!"; color = settings.GREY
+            elif not p1_alive: msg = "GAME OVER - You Lost!"; color = settings.RED
+            elif not ai_alive: msg = "VICTORY - AI Defeated!"; color = settings.GREEN
         
         game_over_text = self.game_over_font.render(msg, True, color)
         text_rect = game_over_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 50))
