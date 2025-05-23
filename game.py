@@ -4,26 +4,35 @@ import pygame
 import settings
 from core.map_manager import MapManager
 from sprites.player import Player # Player 類別現在使用新的移動系統
-from core.ai_controller import AIController # AIController 也會調整為使用 Player 的新移動方法
+
+# AI 控制器匯入
+from core.ai_controller import AIController as OriginalAIController # 您目前的 AI，作為 "original" 或 "balanced"
+from core.ai_conservative import ConservativeAIController # 未來階段會建立
+# from core.ai_controller_aggressive import AggressiveAIController   # 未來階段會建立
+# from core.ai_controller_item_focused import ItemFocusedAIController # 未來階段會建立
+
 
 class Game:
     def __init__(self, screen, clock):
         self.screen = screen
         self.clock = clock
         self.running = True
-        self.game_state = "PLAYING" 
+        self.game_state = "PLAYING"
+        # 從 settings.py 讀取 AI 原型，預設為 "original"
+        self.ai_archetype = getattr(settings, "AI_OPPONENT_ARCHETYPE", "original")
+        print(f"[Game Init] Selected AI Archetype: {self.ai_archetype}")
 
         self.all_sprites = pygame.sprite.Group()
         self.players_group = pygame.sprite.Group()
         self.bombs_group = pygame.sprite.Group()
         self.explosions_group = pygame.sprite.Group()
-        self.items_group = pygame.sprite.Group() 
-        self.solid_obstacles_group = pygame.sprite.Group() # 這個 group 仍然重要，用於 Player.attempt_move_to_tile 的障礙物檢查
+        self.items_group = pygame.sprite.Group()
+        self.solid_obstacles_group = pygame.sprite.Group()
 
         self.map_manager = MapManager(self)
         self.player1 = None
         self.player2_ai = None
-        self.ai_controller_p2 = None
+        self.ai_controller_p2 = None # AI 控制器實例
 
         self.hud_font = None
         self.game_over_font = None
@@ -48,19 +57,16 @@ class Game:
         self.players_group.empty()
         self.bombs_group.empty()
         self.explosions_group.empty()
-        self.items_group.empty() 
+        self.items_group.empty()
         self.solid_obstacles_group.empty()
 
-        # 地圖和玩家生成邏輯不變，Player 的 __init__ 已更新為使用 tile_x, tile_y
-        grid_width = getattr(settings, 'GRID_WIDTH', 15) # 使用 getattr 提供預設值
-        grid_height = getattr(settings, 'GRID_HEIGHT', 11) # 使用 getattr 提供預設值
+        grid_width = getattr(settings, 'GRID_WIDTH', 15)
+        grid_height = getattr(settings, 'GRID_HEIGHT', 11)
         
         p1_start_tile = (1, 1)
-        # 確保 p2_start_tile 在邊界內
         p2_start_tile_x = grid_width - 2 if grid_width > 2 else 1
         p2_start_tile_y = grid_height - 2 if grid_height > 2 else 1
         p2_start_tile = (p2_start_tile_x, p2_start_tile_y)
-
         safe_radius = 2
 
         random_map_layout = self.map_manager.get_randomized_map_layout(
@@ -71,11 +77,11 @@ class Game:
         self.map_manager.load_map_from_data(random_map_layout)
         
         player1_sprite_config = {
-            "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP, 
-            "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES 
+            "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP,
+            "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES
         }
         self.player1 = Player(self, p1_start_tile[0], p1_start_tile[1],
-                              spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH, 
+                              spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH,
                               sprite_config=player1_sprite_config,
                               is_ai=False)
         self.all_sprites.add(self.player1)
@@ -83,8 +89,8 @@ class Game:
 
         ai_image_set_path = getattr(settings, 'PLAYER2_AI_SPRITESHEET_PATH', settings.PLAYER1_SPRITESHEET_PATH)
         ai_sprite_config = {
-            "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP, 
-            "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES 
+            "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP,
+            "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES
         }
         self.player2_ai = Player(self, p2_start_tile[0], p2_start_tile[1],
                                  spritesheet_path=ai_image_set_path,
@@ -93,24 +99,61 @@ class Game:
         self.all_sprites.add(self.player2_ai)
         self.players_group.add(self.player2_ai)
         
-        if self.ai_controller_p2 is None: # 只有在第一次 setup 時創建 AIController
-            self.ai_controller_p2 = AIController(self.player2_ai, self)
-        else: # 後續 reset 時，更新 AIController 內部參考的 AI player 物件 (如果需要)
-            self.ai_controller_p2.ai_player = self.player2_ai 
-            # 可能還需要重置 AIController 的內部狀態，例如呼叫一個 reset 方法
-            if hasattr(self.ai_controller_p2, 'reset_state'):
-                self.ai_controller_p2.reset_state()
+        # 根據選擇的 AI 原型實例化 AI 控制器
+        ai_controller_class = None
+        if self.ai_archetype == "original":
+            ai_controller_class = OriginalAIController
+            print("[Game Setup] Initializing OriginalAIController.")
+        # --- 未來擴展點 ---
+        elif self.ai_archetype == "conservative":
+            from core.ai_conservative import ConservativeAIController # 假設您已創建此文件
+            ai_controller_class = ConservativeAIController
+            print("[Game Setup] Initializing ConservativeAIController.")
+        elif self.ai_archetype == "aggressive":
+            from core.ai_aggressive import AggressiveAIController # 假設您已創建此文件
+            ai_controller_class = AggressiveAIController
+            print("[Game Setup] Initializing AggressiveAIController.")
+        elif self.ai_archetype == "item_focused":
+            from core.ai_item_focused import ItemFocusedAIController # 假設您已創建此文件
+            ai_controller_class = ItemFocusedAIController
+            print("[Game Setup] Initializing ItemFocusedAIController.")
+        else:
+            print(f"[Game Setup] Unknown AI Archetype '{self.ai_archetype}'. Defaulting to OriginalAIController.")
+            ai_controller_class = OriginalAIController
+
+        if self.ai_controller_p2 is None or not isinstance(self.ai_controller_p2, ai_controller_class):
+            # 只有在控制器不存在，或控制器類型與期望類型不符時，才重新創建
+            self.ai_controller_p2 = ai_controller_class(self.player2_ai, self)
+            print(f"[Game Setup] AI Controller (re)created as {ai_controller_class.__name__}.")
+        else:
+            # 如果控制器已存在且類型正確，則只需更新其內部參考並重置狀態
+            self.ai_controller_p2.ai_player = self.player2_ai
+            print(f"[Game Setup] AI Controller instance of {ai_controller_class.__name__} already exists. Updating player reference.")
+
+        # 重置 AI 控制器的狀態
+        if hasattr(self.ai_controller_p2, 'reset_state') and callable(getattr(self.ai_controller_p2, 'reset_state')):
+            # 優先呼叫子類別（例如 ItemFocusedAIController）自己定義的 reset_state
+            self.ai_controller_p2.reset_state()
+            print(f"[Game Setup] Called reset_state() on {self.ai_controller_p2.__class__.__name__}.")
+        elif hasattr(self.ai_controller_p2, 'reset_state_base') and callable(getattr(self.ai_controller_p2, 'reset_state_base')):
+            # 如果子類別沒有 reset_state，但基礎類別有 reset_state_base (我們的設計是子類reset_state會調用super().reset_state_base())
+            # 這裡主要是為了向前兼容或處理未完全按新模式設計的AI
+            self.ai_controller_p2.reset_state_base()
+            print(f"[Game Setup] Called reset_state_base() on {self.ai_controller_p2.__class__.__name__} (fallback).")
+        else:
+            print(f"[Game Setup] AI Controller {self.ai_controller_p2.__class__.__name__} has no callable reset_state or reset_state_base method.")
 
 
-        self.player2_ai.ai_controller = self.ai_controller_p2 
+        self.player2_ai.ai_controller = self.ai_controller_p2
         if self.ai_controller_p2:
-            self.ai_controller_p2.human_player_sprite = self.player1 
+            self.ai_controller_p2.human_player_sprite = self.player1
         
         self.game_state = "PLAYING"
 
+
     def run(self):
         while self.running:
-            self.dt = self.clock.tick(settings.FPS) / 1000.0 
+            self.dt = self.clock.tick(settings.FPS) / 1000.0
             self.events()
             self.update()
             self.draw()
@@ -119,95 +162,67 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            if event.type == pygame.KEYDOWN: 
+            if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 
                 if self.game_state == "PLAYING":
-                    # 只處理一次性動作，如放炸彈
-                    if event.key == pygame.K_f: 
+                    if event.key == pygame.K_f:
                         if self.player1 and self.player1.is_alive:
                             self.player1.place_bomb()
                 
                 elif self.game_state == "GAME_OVER":
                     if event.key == pygame.K_r:
-                        self.setup_initial_state()
-        # 方向移動的 KEYDOWN 處理已移除，改由 Player.get_input() 配合 get_pressed() 處理
+                        self.setup_initial_state() # 重置遊戲
 
     def update(self):
         if self.game_state == "PLAYING":
-            # AI 控制器更新 (AIController.update 會呼叫 ai_player.attempt_move_to_tile)
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
             
-            # 更新所有精靈 (Player.update 現在主要處理動畫和 action_timer)
-            self.all_sprites.update(self.dt, self.solid_obstacles_group) 
+            self.all_sprites.update(self.dt, self.solid_obstacles_group)
 
-            # --- 碰撞檢測 ---
-            # 玩家與爆炸的碰撞 (基於 rect/hitbox，這部分不變，因為爆炸是區域效果)
             for player in list(self.players_group):
                 if player.is_alive:
-                    # 確保 player.hitbox 更新到最新位置 (Player.update 會處理)
-                    # 使用 player.hitbox 進行碰撞檢測會更精確
-                    hit_explosions = pygame.sprite.spritecollide(player, self.explosions_group, False, pygame.sprite.collide_rect) # 或者使用 player.hitbox 如果它更小:
-                    # collided_hitbox = lambda s1, s2: s1.hitbox.colliderect(s2.rect)
-                    # hit_explosions = pygame.sprite.spritecollide(player, self.explosions_group, False, collided_hitbox)
+                    hit_explosions = pygame.sprite.spritecollide(player, self.explosions_group, False, pygame.sprite.collide_rect)
                     if hit_explosions:
                         player.take_damage()
             
-            # 可破壞牆壁與爆炸的碰撞 (不變)
             if hasattr(self.map_manager, 'destructible_walls_group'):
                 for d_wall in list(self.map_manager.destructible_walls_group):
-                    if d_wall.alive():
+                    if d_wall.alive(): # 確保牆壁還存在
                         hit_explosions_for_d_wall = pygame.sprite.spritecollide(d_wall, self.explosions_group, False)
-                        if hit_explosions_for_d_wall: 
+                        if hit_explosions_for_d_wall:
                             d_wall.take_damage()
             
-            # ！！！修改開始：玩家與道具的碰撞 (基於格子座標)！！！
             for player in list(self.players_group):
                 if player.is_alive:
                     collected_items_this_frame = []
-                    for item in list(self.items_group): # 使用 list() 以允許在迭代中修改
-                        # 假設 Item 精靈也有 tile_x, tile_y 屬性，或者從 rect 推算
-                        # 我們在 Player.py 中已經將玩家位置改為 self.tile_x, self.tile_y
-                        # 需要確保 Item 也有類似的格子座標屬性，或能方便地獲取
-                        item_tile_x = item.rect.centerx // settings.TILE_SIZE # 從 Item rect 的中心計算格子座標
+                    for item in list(self.items_group):
+                        item_tile_x = item.rect.centerx // settings.TILE_SIZE
                         item_tile_y = item.rect.centery // settings.TILE_SIZE
-
                         if player.tile_x == item_tile_x and player.tile_y == item_tile_y:
                             collected_items_this_frame.append(item)
                     
                     for item_to_collect in collected_items_this_frame:
-                        # print(f"Player at ({player.tile_x},{player.tile_y}) collected item {item_to_collect.type} at ({item_tile_x},{item_tile_y})") # DEBUG
-                        item_to_collect.apply_effect(player) # apply_effect 應該包含 item.kill()
-                        # Item.kill() 會將其從 all_sprites 和它所屬的其他 group (例如 items_group) 中移除
-                        # 如果 Item.kill() 沒有將其從 self.items_group 中移除，則需要手動移除：
-                        # if item_to_collect in self.items_group: # Double check
-                        #    self.items_group.remove(item_to_collect)
-            # ！！！修改結束！！！
+                        item_to_collect.apply_effect(player)
             
-            # --- 遊戲結束判斷 (不變) ---
             human_player_alive = self.player1 and self.player1.is_alive
             ai_player_alive = self.player2_ai and self.player2_ai.is_alive
 
             if not human_player_alive and not ai_player_alive and self.game_state != "GAME_OVER":
                 self.game_state = "GAME_OVER"
-                # print("Draw! Both players are defeated.") # DEBUG
             elif not human_player_alive and self.game_state != "GAME_OVER":
                 self.game_state = "GAME_OVER"
-                # print("Game Over! Player 1 (Human) has been defeated.") # DEBUG
             elif not ai_player_alive and human_player_alive and self.game_state != "GAME_OVER":
                 self.game_state = "GAME_OVER"
-                # print("Victory! Player 2 (AI) has been defeated.") # DEBUG
 
-        elif self.game_state == "GAME_OVER": 
+        elif self.game_state == "GAME_OVER":
             pass
 
     def draw(self):
         self.screen.fill(settings.WHITE)
-        # self.map_manager.draw_grid(self.screen) # 可選的調試繪圖
-
-        self.all_sprites.draw(self.screen) # Player.rect 的位置由 Player.update 更新
+        self.all_sprites.draw(self.screen)
 
         if self.game_state == "PLAYING":
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
@@ -216,8 +231,6 @@ class Game:
             
             hud_texts = []
             if self.player1 and self.hud_font:
-                # 顯示 P1 格子座標 (調試用)
-                # hud_texts.append(f"P1 Tile: ({self.player1.tile_x}, {self.player1.tile_y})")
                 hud_texts.extend([
                     f"P1 Lives: {self.player1.lives}",
                     f"P1 Bombs: {self.player1.max_bombs - self.player1.bombs_placed_count}/{self.player1.max_bombs}",
@@ -226,15 +239,16 @@ class Game:
                 ])
             if self.player2_ai and self.hud_font:
                  if self.player2_ai.is_alive:
-                    # 顯示 AI 格子座標 (調試用)
-                    # hud_texts.append(f"AI Tile: ({self.player2_ai.tile_x}, {self.player2_ai.tile_y})")
                     hud_texts.append(f"AI Lives: {self.player2_ai.lives}")
                  else:
                     hud_texts.append("AI Defeated")
                  
-                 if self.ai_controller_p2 and self.ai_status_font:
+                 if self.ai_controller_p2 and self.ai_status_font and hasattr(self.ai_controller_p2, 'current_state'):
                     ai_state_text = f"AI State: {self.ai_controller_p2.current_state}"
                     hud_texts.append(ai_state_text)
+                 elif self.ai_controller_p2 and self.ai_status_font: # Fallback if current_state is missing for some reason
+                    hud_texts.append(f"AI Controller: {self.ai_controller_p2.__class__.__name__}")
+
 
             line_height = 22
             start_y_offset = 10
@@ -242,7 +256,9 @@ class Game:
                 font_to_use = self.hud_font
                 if "AI State:" in text_line and self.ai_status_font:
                     font_to_use = self.ai_status_font
-                
+                elif "AI Controller:" in text_line and self.ai_status_font:
+                    font_to_use = self.ai_status_font
+
                 text_surface = font_to_use.render(text_line, True, settings.BLACK)
                 text_pos_y = settings.SCREEN_HEIGHT - start_y_offset - (i + 1) * line_height
                 self.screen.blit(text_surface, (10, text_pos_y))

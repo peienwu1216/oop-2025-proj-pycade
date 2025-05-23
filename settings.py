@@ -48,7 +48,7 @@ HUMAN_GRID_MOVE_ACTION_DURATION = 0.2
 AI_GRID_MOVE_ACTION_DURATION = 0.2   # AI 移動可以慢一點，方便觀察
 
 # 受傷無敵時間 (毫秒)
-PLAYER_INVINCIBLE_DURATION = 1500 
+PLAYER_INVINCIBLE_DURATION = 1000 
 # （3）！！！ 新增或確認結束 ！！！（3）
 
 DESTRUCTIBLE_WALL_CHANCE = 0.5
@@ -116,8 +116,17 @@ EXPLOSION_DURATION = 300
 USE_EXPLOSION_IMAGES = True # 改為 False 則使用顏色方塊
 EXPLOSION_COLOR = (255, 165, 0) 
 
+# Explosion size setting
+AVAILABLE_AI_ARCHETYPES = {
+    "智慧道具型": "item_focused",  # 對應 ItemFocusedAIController
+    "保守型": "conservative",    # 對應 ConservativeAIController
+    "侵略型": "aggressive",      # 對應 AggressiveAIController
+    "標準型": "original"        # 對應 AIController (您最初的AI)
+}
+
 # AI Settings
 AI_MOVE_DELAY = 200       
+AI_OPPONENT_ARCHETYPE = "item_focused" # 可以是 "original", "conservative", "aggressive", "item_focused"
 
 AI_ENGAGE_MIN_DIST_TO_PLAYER_FOR_DIRECT_PATH = 2 # 在 ENGAGE 狀態下，如果與玩家距離小於此值，AI會重新考慮直接走向玩家的策略
 AI_EVASION_SAFETY_CHECK_FUTURE_SECONDS = 0.3  # EVADING_DANGER 狀態下，判斷當前格子是否"真的"安全時的預判時間
@@ -128,3 +137,8 @@ AI_EVASION_SAFETY_CHECK_FUTURE_SECONDS = 0.3
 AI_RETREAT_SPOT_OTHER_DANGER_FUTURE_SECONDS = 1.5
 AI_CLOSE_QUARTERS_BOMB_CHANCE = 0.6 # 近距離無法移動時，嘗試放置炸彈的機率
 AI_OSCILLATION_STUCK_THRESHOLD = 3 # 振盪多少次後認為卡住
+
+# AI Conservative State Settings
+AI_CONSERVATIVE_RETREAT_DEPTH = 8
+AI_CONSERVATIVE_MIN_RETREAT_OPTIONS = 3
+AI_CONSERVATIVE_EVASION_URGENCY_MULTIPLIER = 1.5 # 用於 is_tile_dangerous 的 future_seconds

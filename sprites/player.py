@@ -130,10 +130,20 @@ class Player(GameObject):
 
 
     def attempt_move_to_tile(self, dx, dy):
+        print(f"[DEBUG_ATTEMPT_MOVE] AI at ({self.tile_x},{self.tile_y}), trying dx={dx}, dy={dy}. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
         if not self.is_alive or self.action_timer > 0:
+            # 新增: 打印具體失敗原因
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Not alive or action_timer > 0. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
             return False
-        if dx == 0 and dy == 0: return False
-        if dx != 0 and dy != 0: return False 
+        if dx == 0 and dy == 0:
+            # 新增: 打印具體失敗原因
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: dx=0 and dy=0 (no actual move)")
+            return False
+        # 假設不允許斜向移動 (如果允許，請調整此邏輯)
+        if dx != 0 and dy != 0:
+            # 新增: 打印具體失敗原因
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Diagonal move attempted (dx={dx}, dy={dy})")
+            return False
 
         target_tile_x = self.tile_x + dx
         target_tile_y = self.tile_y + dy
@@ -141,6 +151,7 @@ class Player(GameObject):
         # 1. Check map boundaries
         if not (0 <= target_tile_x < self.game.map_manager.tile_width and \
                 0 <= target_tile_y < self.game.map_manager.tile_height):
+            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Target out of bounds. Target: ({target_tile_x},{target_tile_y})")
             return False
 
         target_check_rect = pygame.Rect(target_tile_x * settings.TILE_SIZE,
@@ -151,11 +162,17 @@ class Player(GameObject):
         # 2. Check solid obstacles (walls, destructible walls)
         if hasattr(self.game, 'solid_obstacles_group'):
             for obstacle in self.game.solid_obstacles_group:
+                # 確保只檢查實際的碰撞體，並且未被摧毀的牆壁
                 if hasattr(obstacle, 'is_destroyed') and obstacle.is_destroyed: 
                     continue 
                 if obstacle.rect.colliderect(target_check_rect):
+                    print(f"[DEBUG_MOVE_FAIL] Player at ({self.tile_x}, {self.tile_y}) trying to move to ({target_tile_x}, {target_tile_y}).")
+                    print(f"    Blocked by: {type(obstacle)} sprite.")
+                    print(f"    Obstacle rect: {obstacle.rect}, its map coords should be: ({obstacle.rect.x // settings.TILE_SIZE}, {obstacle.rect.y // settings.TILE_SIZE})")
+                    print(f"    Target check rect: {target_check_rect}")
                     return False
         
+        # 3. Check other players
         if hasattr(self.game, 'players_group'):
             for other_player in self.game.players_group:
                 if other_player is self: 
@@ -163,38 +180,53 @@ class Player(GameObject):
                 if other_player.is_alive and \
                    other_player.tile_x == target_tile_x and \
                    other_player.tile_y == target_tile_y:
-                    # print(f"Player {id(self)} blocked by other player {id(other_player)} at ({target_tile_x},{target_tile_y})")
-                    return False 
+                    print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Blocked by other player {id(other_player)} at target ({target_tile_x},{target_tile_y})")
+                    return False
         
-        # 3. 這裡的炸彈檢查是為了防止玩家重疊在炸彈上
+        # 4. Check bombs (核心修改處)
         if hasattr(self.game, 'bombs_group'):
             for bomb in self.game.bombs_group:
                 if not bomb.exploded and \
                    bomb.current_tile_x == target_tile_x and \
                    bomb.current_tile_y == target_tile_y:
-                    # 如果是自己剛放置的炸彈，且自己還未離開該格，則允許移動（這是為了能順利離開）
-                    if bomb.placed_by_player is self and not bomb.owner_has_left_tile:
-                        pass # 允許玩家離開自己剛放的、尚未固化的炸彈
-                    elif bomb.is_solidified: # 炸彈已經固化，不可通行
-                        # print(f"Player {id(self)} blocked by solidified bomb at ({target_tile_x},{target_tile_y})")
-                        return False # 被固化炸彈阻擋
+                    # 如果目標格子上的炸彈是【當前玩家自己】放置的
+                    if bomb.placed_by_player is self:
+                        # 並且當前玩家【還沒有離開過】這個炸彈所在的格子
+                        if not bomb.owner_has_left_tile:
+                            print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Trying to re-enter own bomb tile at ({target_tile_x},{target_tile_y}) after leaving.")
+                            # 允許玩家離開自己剛放的、尚未固化的炸彈
+                            pass 
+                        # 如果玩家已經離開過，然後又想回到這個有自己未爆炸炸彈的格子
+                        # （無論炸彈是否已固化，通常不允許再次進入，除非遊戲有特殊規則）
+                        else:
+                            # ai_log(f"Player {id(self)} trying to re-enter own bomb tile at ({target_tile_x},{target_tile_y}) after leaving. Blocked.")
+                            return False # 不允許重新進入自己已離開的炸彈格
+                    # 如果目標格子上的炸彈是【其他玩家】放置的
+                    else:
+                        print(f"[DEBUG_ATTEMPT_MOVE_FAIL] Reason: Blocked by opponent's bomb at ({target_tile_x},{target_tile_y})")
+                        # 【關鍵新增】無論對方炸彈是否固化，都不允許通過
+                        # ai_log(f"Player {id(self)} blocked by opponent's bomb at ({target_tile_x},{target_tile_y}) (Owner: {id(bomb.placed_by_player)}).")
+                        return False
         
-        
+        # 如果以上檢查都通過，則允許移動
         self.tile_x = target_tile_x
         self.tile_y = target_tile_y
+        # 更新 sprite 的 rect 位置，使其中心對齊新的格子中心
         self.rect.center = (self.tile_x * settings.TILE_SIZE + settings.TILE_SIZE // 2,
                              self.tile_y * settings.TILE_SIZE + settings.TILE_SIZE // 2)
-        if hasattr(self, 'hitbox'): 
+        if hasattr(self, 'hitbox'): # 同時更新 hitbox 位置
             self.hitbox.center = self.rect.center
 
+        # 更新面向和移動動畫相關狀態
         if dx > 0: self.current_direction = "RIGHT"
         elif dx < 0: self.current_direction = "LEFT"
         if dy > 0: self.current_direction = "DOWN"
         elif dy < 0: self.current_direction = "UP"
         
         self.is_moving = True
-        self.action_timer = self.ACTION_ANIMATION_DURATION
+        self.action_timer = self.ACTION_ANIMATION_DURATION # ACTION_ANIMATION_DURATION 應在 __init__ 中設定
         return True
+    
 
     def get_input(self):
         if self.is_ai or not self.is_alive: return
