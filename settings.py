@@ -116,6 +116,14 @@ EXPLOSION_DURATION = 300
 USE_EXPLOSION_IMAGES = True # 改為 False 則使用顏色方塊
 EXPLOSION_COLOR = (255, 165, 0) 
 
+# Explosion size setting
+AVAILABLE_AI_ARCHETYPES = {
+    "智慧道具型": "item_focused",  # 對應 ItemFocusedAIController
+    "保守型": "conservative",    # 對應 ConservativeAIController
+    "侵略型": "aggressive",      # 對應 AggressiveAIController
+    "標準型": "original"        # 對應 AIController (您最初的AI)
+}
+
 # AI Settings
 AI_MOVE_DELAY = 200       
 AI_OPPONENT_ARCHETYPE = "item_focused" # 可以是 "original", "conservative", "aggressive", "item_focused"
