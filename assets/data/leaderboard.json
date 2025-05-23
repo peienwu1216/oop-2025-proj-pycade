@@ -1,5 +1,11 @@
 [
     {
+        "name": "Bryan",
+        "score": 540,
+        "ai_defeated": "item_focused",
+        "date": "2025-05-23 21:39"
+    },
+    {
         "name": "Benson",
         "score": 320,
         "ai_defeated": "item_focused",
@@ -10,12 +16,6 @@
         "score": 270,
         "ai_defeated": "aggressive",
         "date": "2025-05-23 21:55"
-    },
-    {
-        "name": "Bryan",
-        "score": 540,
-        "ai_defeated": "item_focused",
-        "date": "2025-05-23 21:39"
     },
     {
         "name": "Patrick",
