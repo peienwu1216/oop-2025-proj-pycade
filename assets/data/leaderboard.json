@@ -1,0 +1,32 @@
+[
+    {
+        "name": "facebook",
+        "score": 320,
+        "ai_defeated": "item_focused",
+        "date": "2025-05-23 21:56"
+    },
+    {
+        "name": "Patty",
+        "score": 270,
+        "ai_defeated": "aggressive",
+        "date": "2025-05-23 21:55"
+    },
+    {
+        "name": "Bryan",
+        "score": 120,
+        "ai_defeated": "item_focused",
+        "date": "2025-05-23 21:39"
+    },
+    {
+        "name": "Patrick",
+        "score": 40,
+        "ai_defeated": "original",
+        "date": "2025-05-23 21:40"
+    },
+    {
+        "name": "ins",
+        "score": 20,
+        "ai_defeated": "conservative",
+        "date": "2025-05-23 21:42"
+    }
+]

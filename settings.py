@@ -1,4 +1,6 @@
 # oop-2025-proj-pycade/settings.py
+import pygame
+import os
 
 # Screen dimensions
 SCREEN_WIDTH = 800
@@ -13,7 +15,7 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GREY = (128, 128, 128)
 
-GAME_DURATION_SECONDS = 180  # 例如 3 分鐘 (180 秒)
+GAME_DURATION_SECONDS = 40  # 例如 3 分鐘 (180 秒)
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0) # 時間到訊息的顏色
 
 TIMER_COLOR = (220, 0, 0)  # 正常倒數計時的顏色 (例如：深紅色)
@@ -152,3 +154,14 @@ AI_OSCILLATION_STUCK_THRESHOLD = 3 # 振盪多少次後認為卡住
 AI_CONSERVATIVE_RETREAT_DEPTH = 8
 AI_CONSERVATIVE_MIN_RETREAT_OPTIONS = 3
 AI_CONSERVATIVE_EVASION_URGENCY_MULTIPLIER = 1.5 # 用於 is_tile_dangerous 的 future_seconds
+
+# --- 新增排行榜設定 ---
+LEADERBOARD_FILE = os.path.join(DATA_DIR, "leaderboard.json")
+LEADERBOARD_MAX_ENTRIES = 10 # 排行榜最多顯示幾筆記錄
+
+# --- 文字輸入框設定 ---
+TEXT_INPUT_BOX_COLOR_INACTIVE = pygame.Color('lightskyblue3')
+TEXT_INPUT_BOX_COLOR_ACTIVE = pygame.Color('dodgerblue2')
+TEXT_INPUT_PROMPT_COLOR = BLACK # 或者您選擇的其他顏色
+TEXT_INPUT_TEXT_COLOR = BLACK
+TEXT_INPUT_MAX_LENGTH = 10
