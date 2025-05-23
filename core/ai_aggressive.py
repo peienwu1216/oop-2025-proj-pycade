@@ -3,6 +3,7 @@
 import pygame
 import settings # 假設 settings.py 包含 AI 行為相關參數
 import random
+from collections import deque
 from .ai_controller_base import AIControllerBase, TileNode, DIRECTIONS, ai_base_log # 從基礎類別匯入
 
 # 攻擊型 AI 可能會更頻繁地使用或直接進入這些從原始 AIController 借鑒的狀態
