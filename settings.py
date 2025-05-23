@@ -118,7 +118,7 @@ EXPLOSION_COLOR = (255, 165, 0)
 
 # AI Settings
 AI_MOVE_DELAY = 200       
-AI_OPPONENT_ARCHETYPE = "aggressive" # 可以是 "original", "conservative", "aggressive", "item_focused"
+AI_OPPONENT_ARCHETYPE = "item_focused" # 可以是 "original", "conservative", "aggressive", "item_focused"
 
 AI_ENGAGE_MIN_DIST_TO_PLAYER_FOR_DIRECT_PATH = 2 # 在 ENGAGE 狀態下，如果與玩家距離小於此值，AI會重新考慮直接走向玩家的策略
 AI_EVASION_SAFETY_CHECK_FUTURE_SECONDS = 0.3  # EVADING_DANGER 狀態下，判斷當前格子是否"真的"安全時的預判時間
