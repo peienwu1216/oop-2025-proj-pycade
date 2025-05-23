@@ -109,14 +109,14 @@ class Game:
             from core.ai_conservative import ConservativeAIController # 假設您已創建此文件
             ai_controller_class = ConservativeAIController
             print("[Game Setup] Initializing ConservativeAIController.")
-        # elif self.ai_archetype == "aggressive":
-        #     from core.ai_controller_aggressive import AggressiveAIController # 假設您已創建此文件
-        #     ai_controller_class = AggressiveAIController
-        #     print("[Game Setup] Initializing AggressiveAIController.")
-        # elif self.ai_archetype == "item_focused":
-        #     from core.ai_controller_item_focused import ItemFocusedAIController # 假設您已創建此文件
-        #     ai_controller_class = ItemFocusedAIController
-        #     print("[Game Setup] Initializing ItemFocusedAIController.")
+        elif self.ai_archetype == "aggressive":
+            from core.ai_aggressive import AggressiveAIController # 假設您已創建此文件
+            ai_controller_class = AggressiveAIController
+            print("[Game Setup] Initializing AggressiveAIController.")
+        elif self.ai_archetype == "item_focused":
+            from core.ai_item_focused import ItemFocusedAIController # 假設您已創建此文件
+            ai_controller_class = ItemFocusedAIController
+            print("[Game Setup] Initializing ItemFocusedAIController.")
         else:
             print(f"[Game Setup] Unknown AI Archetype '{self.ai_archetype}'. Defaulting to OriginalAIController.")
             ai_controller_class = OriginalAIController
