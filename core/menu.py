@@ -21,9 +21,12 @@ class Menu:
         self.background_image = pygame.transform.scale(self.background_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
         
         self.ai_light_button_image = pygame.image.load(settings.MENU_AI_LIGHT_BUTTON_IMG).convert_alpha()
-        self.ai_light_button_hover_image = pygame.image.load(settings.MENU_AI_LIGHT_BUTTON_HOVER_IMG).convert_alpha()
         self.ai_light_button_image = pygame.transform.smoothscale(self.ai_light_button_image, (int(self.ai_light_button_image.get_size()[0] * (button_height / self.ai_light_button_image.get_size()[1])), button_height))
+        self.ai_light_button_hover_image = pygame.image.load(settings.MENU_AI_LIGHT_BUTTON_HOVER_IMG).convert_alpha()
         self.ai_light_button_hover_image = pygame.transform.smoothscale(self.ai_light_button_hover_image, (int(self.ai_light_button_image.get_size()[0] * (button_height / self.ai_light_button_image.get_size()[1])), button_height))
+        self.ai_blue_button_image = pygame.image.load(settings.MENU_AI_BLUE_BUTTON_IMG).convert_alpha()
+        self.ai_blue_button_image = pygame.transform.smoothscale(self.ai_blue_button_image, (int(self.ai_blue_button_image.get_size()[0] * (button_height / self.ai_blue_button_image.get_size()[1])), button_height))
+        
         
         # --- 新增：選單狀態 ---
         self.menu_state = "MAIN"  # "MAIN" 或 "LEADERBOARD"
@@ -79,7 +82,7 @@ class Menu:
         # 2. 排行榜按鈕 (加在 AI 選項下方)
         leaderboard_y_pos = start_y + len(self.ai_options) * button_spacing + button_spacing // 2 # 留一些額外間距
         leaderboard_rect = pygame.Rect(
-            (settings.SCREEN_WIDTH - button_width) // 2, leaderboard_y_pos, button_width, button_height
+            (settings.SCREEN_WIDTH - self.ai_blue_button_image.get_size()[0]) // 2, leaderboard_y_pos, self.ai_blue_button_image.get_size()[0], self.ai_blue_button_image.get_size()[1]
         )
         self.buttons.append({
             "rect": leaderboard_rect, "text": "排行榜 (Leaderboard)", "action_type": "SHOW_LEADERBOARD",
@@ -178,7 +181,7 @@ class Menu:
 
         # 繪製按鈕
         mouse_pos = pygame.mouse.get_pos()
-        for button in self.buttons: # self.buttons 此時應包含 AI 選項和排行榜按鈕
+        for button in self.buttons[:-2]: # self.buttons 此時應包含 AI 選項和排行榜按鈕
             is_hovering = button["rect"].collidepoint(mouse_pos)
             # color = button["hover_color"] if is_hovering else button["color"]
             
@@ -189,17 +192,17 @@ class Menu:
             text_surface = self.option_font.render(button["text"], True, settings.BLACK)
             text_rect = text_surface.get_rect(center=(button["rect"].centerx, button["rect"].centery-3))
             self.screen.blit(text_surface, text_rect)
-        # for button in self.buttons[-2:]: # self.buttons 此時應包含 AI 選項和排行榜按鈕
-        #     is_hovering = button["rect"].collidepoint(mouse_pos)
-        #     # color = button["hover_color"] if is_hovering else button["color"]
+        for button in self.buttons[-2:]: # self.buttons 此時應包含 AI 選項和排行榜按鈕
+            is_hovering = button["rect"].collidepoint(mouse_pos)
+            # color = button["hover_color"] if is_hovering else button["color"]
             
-        #     # pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
-        #     button_image = self.ai_light_button_hover_image if is_hovering else self.ai_light_button_image
-        #     self.screen.blit(button_image, button["rect"])
+            # pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
+            button_image = self.ai_blue_button_image if is_hovering else self.ai_blue_button_image
+            self.screen.blit(button_image, button["rect"])
             
-        #     text_surface = self.option_font.render(button["text"], True, settings.BLACK)
-        #     text_rect = text_surface.get_rect(center=button["rect"].center)
-        #     self.screen.blit(text_surface, text_rect)
+            text_surface = self.option_font.render(button["text"], True, settings.BLACK)
+            text_rect = text_surface.get_rect(center=(button["rect"].centerx, button["rect"].centery-3))
+            self.screen.blit(text_surface, text_rect)
 
     def draw_leaderboard_content(self):
         """繪製排行榜介面。"""
