@@ -128,7 +128,6 @@ class Player(GameObject):
             self.ACTION_ANIMATION_DURATION = settings.HUMAN_GRID_MOVE_ACTION_DURATION 
             # （8）！！！ 修改結束 ！！！（8）
 
-
     def attempt_move_to_tile(self, dx, dy):
         print(f"[DEBUG_ATTEMPT_MOVE] AI at ({self.tile_x},{self.tile_y}), trying dx={dx}, dy={dy}. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
         if not self.is_alive or self.action_timer > 0:
@@ -227,7 +226,9 @@ class Player(GameObject):
         self.action_timer = self.ACTION_ANIMATION_DURATION # ACTION_ANIMATION_DURATION 應在 __init__ 中設定
         return True
     
-
+    def move(self, dx, dy):
+        return self.attempt_move_to_tile(dx, dy)
+    
     def get_input(self):
         if self.is_ai or not self.is_alive: return
         if self.action_timer > 0: return 

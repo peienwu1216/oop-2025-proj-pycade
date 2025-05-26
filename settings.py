@@ -19,6 +19,7 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GREY = (128, 128, 128)
+LIGHT_BROWN = (222, 193, 179)
 
 # -----------------------------------------------------------------------------
 # 遊戲機制設定 (Gameplay Mechanics)
@@ -145,6 +146,8 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 用於存放 leaderboard.json 
 
 # 特定字體路徑
 CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.otf") # 確保字體檔案在此路徑
+TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
+SUB_TITLE_FONT_PATH = os.path.join(FONTS_DIR, "Lora-VariableItalic.ttf") # 副標題字體
 
 # 特定圖片路徑
 # 牆壁
@@ -162,6 +165,13 @@ ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
 ITEM_LIFE_IMG = os.path.join(IMAGES_DIR, "items", "item_life_placeholder.png")
 ITEM_BOMB_CAPACITY_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_capacity_placeholder.png")
 ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeholder.png")
+
+# Menu 圖片
+MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.png")
+MENU_AI_LIGHT_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button.png")
+MENU_AI_LIGHT_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button_hover.png")
+MENU_AI_BLUE_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button.png")
+MENU_AI_BLUE_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button_hover.png")
 
 # 玩家 SpriteSheet 動畫影格對應 (範例)
 PLAYER_SPRITESHEET_ROW_MAP = {

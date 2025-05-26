@@ -18,6 +18,7 @@ class Game:
         self.screen = screen
         self.clock = clock
         self.running = True
+        self.dt = self.clock.tick(settings.FPS) / 1000.0 # 每秒遊戲更新次數
         self.restart_game = False
         # --- 修改：新增遊戲狀態 ---
         self.game_state = "PLAYING"  # "PLAYING", "GAME_OVER", "ENTER_NAME", "SCORE_SUBMITTED"
