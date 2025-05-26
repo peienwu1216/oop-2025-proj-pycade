@@ -167,6 +167,7 @@ ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeho
 MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.png")
 MENU_AI_LIGHT_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button.png")
 MENU_AI_LIGHT_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button_hover.png")
+MENU_AI_BLUE_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button.png")
 
 # 玩家 SpriteSheet 動畫影格對應 (範例)
 PLAYER_SPRITESHEET_ROW_MAP = {
