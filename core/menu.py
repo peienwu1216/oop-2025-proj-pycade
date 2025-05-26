@@ -26,6 +26,8 @@ class Menu:
         self.ai_light_button_hover_image = pygame.transform.smoothscale(self.ai_light_button_hover_image, (int(self.ai_light_button_image.get_size()[0] * (button_height / self.ai_light_button_image.get_size()[1])), button_height))
         self.ai_blue_button_image = pygame.image.load(settings.MENU_AI_BLUE_BUTTON_IMG).convert_alpha()
         self.ai_blue_button_image = pygame.transform.smoothscale(self.ai_blue_button_image, (int(self.ai_blue_button_image.get_size()[0] * (button_height / self.ai_blue_button_image.get_size()[1])), button_height))
+        self.ai_blue_button_hover_image = pygame.image.load(settings.MENU_AI_BLUE_BUTTON_HOVER_IMG).convert_alpha()
+        self.ai_blue_button_hover_image = pygame.transform.smoothscale(self.ai_blue_button_hover_image, (int(self.ai_blue_button_image.get_size()[0] * (button_height / self.ai_blue_button_image.get_size()[1])), button_height))
         
         
         # --- 新增：選單狀態 ---
@@ -92,7 +94,7 @@ class Menu:
         # 3. (可選) 退出遊戲按鈕
         quit_y_pos = leaderboard_y_pos + button_spacing
         quit_rect = pygame.Rect(
-            (settings.SCREEN_WIDTH - button_width) // 2, quit_y_pos, button_width, button_height
+            (settings.SCREEN_WIDTH - self.ai_blue_button_hover_image.get_size()[0]) // 2, quit_y_pos, self.ai_blue_button_hover_image.get_size()[0], self.ai_blue_button_hover_image.get_size()[1]
         )
         self.buttons.append({
             "rect": quit_rect, "text": "退出遊戲 (Quit)", "action_type": "QUIT_GAME",
@@ -197,7 +199,7 @@ class Menu:
             # color = button["hover_color"] if is_hovering else button["color"]
             
             # pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
-            button_image = self.ai_blue_button_image if is_hovering else self.ai_blue_button_image
+            button_image = self.ai_blue_button_hover_image if is_hovering else self.ai_blue_button_image
             self.screen.blit(button_image, button["rect"])
             
             text_surface = self.option_font.render(button["text"], True, settings.BLACK)
