@@ -39,7 +39,7 @@ class Menu:
         # 字體設定 (假設您已解決了字體問題，這裡沿用之前的設定)
         try:
             font_path = settings.CHINESE_FONT_PATH
-            self.title_font = pygame.font.Font(font_path, 70)
+            self.title_font = pygame.font.Font(settings.TITLE_FONT_PATH, 70)
             self.option_font = pygame.font.Font(font_path, 30)
             self.description_font = pygame.font.Font(font_path, 26)
             self.leaderboard_text_font = pygame.font.Font(font_path, 22) # 排行榜內容字體
@@ -173,7 +173,7 @@ class Menu:
     def draw_main_menu_content(self):
         """繪製主選單的內容 (AI選擇、排行榜按鈕等)。"""
         # 繪製標題
-        title_text = self.title_font.render(settings.TITLE, True, settings.BLACK)
+        title_text = self.title_font.render(settings.TITLE, True, settings.WHITE)
         title_rect = title_text.get_rect(center=(settings.SCREEN_WIDTH / 2, 80)) # 稍微上移標題
         self.screen.blit(title_text, title_rect)
         
