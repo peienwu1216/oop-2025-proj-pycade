@@ -4,6 +4,9 @@ import pygame
 import settings
 from core.leaderboard_manager import LeaderboardManager # 匯入排行榜管理器
 
+button_width = 200
+button_height = 40
+
 class Menu:
     """
     遊戲主選單，允許玩家選擇對戰的 AI 類型，並查看排行榜。
@@ -17,8 +20,10 @@ class Menu:
         self.background_image = pygame.image.load(settings.MENU_BACKGROUND_IMG).convert()
         self.background_image = pygame.transform.scale(self.background_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
         
-        self.button_image = pygame.image.load(settings.MENU_LIGHT_BUTTON_IMG).convert_alpha()
-        self.button_image = pygame.transform.smoothscale(self.button_image, (350, int(self.button_image.get_size()[1] * (350 / self.button_image.get_size()[0]))))
+        self.ai_light_button_image = pygame.image.load(settings.MENU_AI_LIGHT_BUTTON_IMG).convert_alpha()
+        self.ai_light_button_hover_image = pygame.image.load(settings.MENU_AI_LIGHT_BUTTON_HOVER_IMG).convert_alpha()
+        self.ai_light_button_image = pygame.transform.smoothscale(self.ai_light_button_image, (button_width, int(self.ai_light_button_image.get_size()[1] * (button_width / self.ai_light_button_image.get_size()[0]))))
+        self.ai_light_button_hover_image = pygame.transform.smoothscale(self.ai_light_button_hover_image, (button_width, int(self.ai_light_button_hover_image.get_size()[1] * (button_width / self.ai_light_button_hover_image.get_size()[0]))))
         
         # --- 新增：選單狀態 ---
         self.menu_state = "MAIN"  # "MAIN" 或 "LEADERBOARD"
@@ -53,8 +58,7 @@ class Menu:
         
         start_y = 180
         button_spacing = 60
-        button_width = 350
-        button_height = 40
+        
         
 
         # 1. AI 選擇按鈕
@@ -179,7 +183,7 @@ class Menu:
             # color = button["hover_color"] if is_hovering else button["color"]
             
             # pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
-            button_image = self.button_image if is_hovering else self.button_image
+            button_image = self.ai_light_button_hover_image if is_hovering else self.ai_light_button_image
             self.screen.blit(button_image, button["rect"])
             
             text_surface = self.option_font.render(button["text"], True, settings.BLACK)
