@@ -17,6 +17,9 @@ class Menu:
         self.background_image = pygame.image.load(settings.MENU_BACKGROUND_IMG).convert()
         self.background_image = pygame.transform.scale(self.background_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
         
+        self.button_image = pygame.image.load(settings.MENU_LIGHT_BUTTON_IMG).convert_alpha()
+        self.button_image = pygame.transform.smoothscale(self.button_image, (350, int(self.button_image.get_size()[1] * (350 / self.button_image.get_size()[0]))))
+        
         # --- 新增：選單狀態 ---
         self.menu_state = "MAIN"  # "MAIN" 或 "LEADERBOARD"
 
@@ -47,10 +50,12 @@ class Menu:
         """根據設定檔中的 AI 選項和附加按鈕創建按鈕。"""
         self.buttons = [] # 清空按鈕，以便在狀態切換時重新創建（如果需要）
         
+        
         start_y = 180
         button_spacing = 60
         button_width = 350
         button_height = 40
+        
 
         # 1. AI 選擇按鈕
         for i, (display_name, archetype_key) in enumerate(self.ai_options.items()):
@@ -58,9 +63,13 @@ class Menu:
             button_rect = pygame.Rect(
                 (settings.SCREEN_WIDTH - button_width) // 2, y_pos, button_width, button_height
             )
+            # self.buttons.append({
+            #     "rect": button_rect, "text": display_name, "action_type": "SELECT_AI",
+            #     "archetype": archetype_key, "color": settings.GREY, "hover_color": (150, 150, 150)
+            # })
             self.buttons.append({
                 "rect": button_rect, "text": display_name, "action_type": "SELECT_AI",
-                "archetype": archetype_key, "color": settings.GREY, "hover_color": (150, 150, 150)
+                "archetype": archetype_key
             })
 
         # 2. 排行榜按鈕 (加在 AI 選項下方)
@@ -167,9 +176,11 @@ class Menu:
         mouse_pos = pygame.mouse.get_pos()
         for button in self.buttons: # self.buttons 此時應包含 AI 選項和排行榜按鈕
             is_hovering = button["rect"].collidepoint(mouse_pos)
-            color = button["hover_color"] if is_hovering else button["color"]
+            # color = button["hover_color"] if is_hovering else button["color"]
             
-            pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
+            # pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
+            button_image = self.button_image if is_hovering else self.button_image
+            self.screen.blit(button_image, button["rect"])
             
             text_surface = self.option_font.render(button["text"], True, settings.BLACK)
             text_rect = text_surface.get_rect(center=button["rect"].center)
