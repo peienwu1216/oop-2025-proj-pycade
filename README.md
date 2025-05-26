@@ -1,6 +1,6 @@
 # Pycade Bomber (瘋狂炸彈人 Pygame 複刻版)
 
-
+![MENU](https://github.com/user-attachments/assets/d82658bc-e547-4290-b0fb-48a8f3e954ce)
 https://github.com/user-attachments/assets/abe1d8ec-37be-443d-abd4-bbee1d58cb72
 
 
