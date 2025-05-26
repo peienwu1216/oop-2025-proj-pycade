@@ -177,7 +177,7 @@ class Menu:
         title_rect = title_text.get_rect(center=(settings.SCREEN_WIDTH / 2, 80)) # 稍微上移標題
         self.screen.blit(title_text, title_rect)
         
-        description_text = self.description_font.render("Select AI Opponent or View Leaderboard", True, settings.LIGHT_BLUE)
+        description_text = self.description_font.render("Select AI Opponent or View Leaderboard", True, settings.LIGHT_BROWN)
         description_rect = description_text.get_rect(center=(settings.SCREEN_WIDTH / 2, 140))
         self.screen.blit(description_text, description_rect)
 
