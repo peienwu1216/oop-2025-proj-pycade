@@ -14,6 +14,9 @@ class Menu:
         self.is_running = True
         self.selected_ai_archetype = None # 用於返回給 main.py
         
+        self.background_image = pygame.image.load(settings.MENU_BACKGROUND_IMG).convert()
+        self.background_image = pygame.transform.scale(self.background_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
+        
         # --- 新增：選單狀態 ---
         self.menu_state = "MAIN"  # "MAIN" 或 "LEADERBOARD"
 
@@ -139,7 +142,8 @@ class Menu:
 
     def draw(self):
         """根據目前的選單狀態繪製對應的介面。"""
-        self.screen.fill(settings.WHITE)
+        # self.screen.fill(settings.WHITE)
+        self.screen.blit(self.background_image, (0, 0))
         
         if self.menu_state == "MAIN":
             self.draw_main_menu_content()
@@ -174,6 +178,8 @@ class Menu:
     def draw_leaderboard_content(self):
         """繪製排行榜介面。"""
         self.screen.fill((230, 230, 250)) # 給排行榜一個不同的背景色
+        
+
 
         # 排行榜標題
         lb_title_surf = self.title_font.render("Leaderboard", True, settings.BLACK)
