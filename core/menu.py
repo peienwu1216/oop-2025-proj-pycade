@@ -41,7 +41,7 @@ class Menu:
             font_path = settings.CHINESE_FONT_PATH
             self.title_font = pygame.font.Font(settings.TITLE_FONT_PATH, 70)
             self.option_font = pygame.font.Font(font_path, 30)
-            self.description_font = pygame.font.Font(font_path, 26)
+            self.description_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 26)
             self.leaderboard_text_font = pygame.font.Font(font_path, 22) # 排行榜內容字體
             self.leaderboard_header_font = pygame.font.Font(font_path, 24) # 排行榜標頭字體
         except Exception as e:
