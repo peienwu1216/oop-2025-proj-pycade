@@ -145,6 +145,7 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 用於存放 leaderboard.json 
 
 # 特定字體路徑
 CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.otf") # 確保字體檔案在此路徑
+TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
 
 # 特定圖片路徑
 # 牆壁
