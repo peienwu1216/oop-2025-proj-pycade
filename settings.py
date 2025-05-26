@@ -163,6 +163,9 @@ ITEM_LIFE_IMG = os.path.join(IMAGES_DIR, "items", "item_life_placeholder.png")
 ITEM_BOMB_CAPACITY_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_capacity_placeholder.png")
 ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeholder.png")
 
+# Menu 圖片
+MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.png")
+
 # 玩家 SpriteSheet 動畫影格對應 (範例)
 PLAYER_SPRITESHEET_ROW_MAP = {
     "DOWN": 3,
