@@ -440,11 +440,11 @@ class Game:
                 top_left_y=start_y + 6 * block_size + spacing,  # 第二行數字下移
             )
 
-        line_height = self.hud_font.get_linesize() 
-        start_x_p1 = 75 
+        line_height = self.hud_font.get_linesize()*1.3
+        start_x_p1 = 48 
         start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280) 
         num_max_hud_lines = 5 
-        bottom_padding = 40 
+        bottom_padding = 10 
         start_y = settings.SCREEN_HEIGHT - (num_max_hud_lines * line_height) - bottom_padding
 
         p1_texts = []
