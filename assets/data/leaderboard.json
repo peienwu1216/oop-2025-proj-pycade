@@ -30,6 +30,18 @@
         "date": "2025-05-28 02:12"
     },
     {
+        "name": "Jumbo",
+        "score": 140,
+        "ai_defeated": "aggressive",
+        "date": "2025-05-28 04:11"
+    },
+    {
+        "name": "Jumbo",
+        "score": 70,
+        "ai_defeated": "aggressive",
+        "date": "2025-05-28 04:12"
+    },
+    {
         "name": "Patrick",
         "score": 40,
         "ai_defeated": "original",
