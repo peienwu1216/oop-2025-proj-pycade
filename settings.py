@@ -123,7 +123,7 @@ TEXT_INPUT_BOX_COLOR_ACTIVE = pygame.Color('dodgerblue2')
 TEXT_INPUT_PROMPT_COLOR = BLACK
 TEXT_INPUT_TEXT_COLOR = BLACK
 TEXT_INPUT_MAX_LENGTH = 10
-HUD_AI_OFFSET_X = 280 # HUD 中 AI 資訊相對於 P1 的水平偏移 (game.py draw_hud 中使用)
+HUD_AI_OFFSET_X = 205 # HUD 中 AI 資訊相對於 P1 的水平偏移 (game.py draw_hud 中使用)
 
 # -----------------------------------------------------------------------------
 # 排行榜設定 (Leaderboard Settings)
