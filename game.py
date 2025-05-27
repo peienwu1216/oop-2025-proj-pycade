@@ -41,6 +41,11 @@ class Game:
             self.beside_brick,
             (settings.TILE_SIZE, settings.TILE_SIZE) 
         )
+        self.timer_brick = pygame.image.load(settings.STONE_2_IMG).convert()
+        self.timer_brick = pygame.transform.smoothscale(
+            self.timer_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
         
         
         # --- Sprite Groups ---
@@ -402,7 +407,7 @@ class Game:
                 if pattern[row][col]:
                     dest_x = top_left_x + col * block_size
                     dest_y = top_left_y + row * block_size
-                    self.screen.blit(self.border_brick, (dest_x, dest_y))
+                    self.screen.blit(self.timer_brick, (dest_x, dest_y))
 
 
     def draw_hud(self):
@@ -412,7 +417,6 @@ class Game:
         time_left = max(0, settings.GAME_DURATION_SECONDS - self.time_elapsed_seconds)
         minutes = int(time_left) // 60
         seconds = int(time_left) % 60
-        timer_text = f"{minutes:02d}:{seconds:02d}"
         timer_text_1 = f"{minutes:02d}"
         timer_text_2 = f"{seconds:02d}"
         
@@ -433,21 +437,6 @@ class Game:
                 top_left_x=start_x + i * (3 * block_size + spacing),
                 top_left_y=start_y + 6 * block_size + spacing,  # 第二行數字下移
             )
-        
-        current_timer_font = self.timer_font_normal
-        current_timer_color = settings.TIMER_COLOR 
-
-        if self.game_timer_active and time_left <= settings.TIMER_URGENT_THRESHOLD_SECONDS:
-            current_timer_font = self.timer_font_urgent
-            current_timer_color = settings.TIMER_URGENT_COLOR
-        elif not self.game_timer_active and self.game_state == "PLAYING":
-            timer_text = "00:00"
-            current_timer_font = self.timer_font_urgent
-            current_timer_color = settings.TIMER_URGENT_COLOR
-        
-        timer_surf = current_timer_font.render(timer_text, True, current_timer_color)
-        timer_rect = timer_surf.get_rect(topright=(settings.SCREEN_WIDTH - 15, 10))
-        self.screen.blit(timer_surf, timer_rect)
 
         line_height = self.hud_font.get_linesize() 
         start_x_p1 = 15 
