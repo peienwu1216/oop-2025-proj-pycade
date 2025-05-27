@@ -8,7 +8,6 @@ import random # 用於 item_drop_chance 的判斷
 
 class Floor(GameObject):
     def __init__(self, x, y):
-        image_path=settings.STONE_0_IMG
         super().__init__(
             x * settings.TILE_SIZE,
             y * settings.TILE_SIZE,
