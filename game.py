@@ -22,8 +22,14 @@ class Game:
         self.restart_game = False
         # --- 修改：新增遊戲狀態 ---
         self.game_state = "PLAYING"  # "PLAYING", "GAME_OVER", "ENTER_NAME", "SCORE_SUBMITTED"
-        
         self.ai_archetype = ai_archetype
+        
+        # --- Background ---
+        self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
+        self.brick_tile_image = pygame.transform.scale(
+            self.brick_tile_image,
+            (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
+        )
         
         # --- Sprite Groups ---
         self.all_sprites = pygame.sprite.Group()
@@ -334,7 +340,15 @@ class Game:
 
 
     def draw(self):
-        self.screen.fill(settings.WHITE)
+        # self.screen.fill(settings.WHITE)
+        tile_img = self.brick_tile_image
+        tile_width, tile_height = tile_img.get_size()
+
+        screen_width, screen_height = self.screen.get_size()
+
+        for y in range(0, screen_height, tile_height):
+            for x in range(0, screen_width, tile_width):
+                self.screen.blit(tile_img, (x, y))
         
         if self.game_state == "ENTER_NAME":
             self.draw_enter_name_screen()
