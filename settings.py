@@ -159,6 +159,7 @@ WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_pla
 STONE_0_IMG = os.path.join(IMAGES_DIR, "walls", "stone0.png") # 石頭牆壁圖片
 STONE_1_IMG = os.path.join(IMAGES_DIR, "walls", "stone1.png") # 石頭牆壁圖片
 STONE_2_IMG = os.path.join(IMAGES_DIR, "walls", "stone2.png") # 石頭牆壁圖片
+STONE_3_IMG = os.path.join(IMAGES_DIR, "walls", "stone3.png") # 石頭牆壁圖片
 # 玩家
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png") # 備用/單幀圖片
 PLAYER1_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player.png") 
