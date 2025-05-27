@@ -11,7 +11,8 @@ from core.ai_controller import AIController as OriginalAIController
 from core.ai_conservative import ConservativeAIController
 from core.ai_aggressive import AggressiveAIController
 from core.ai_item_focused import ItemFocusedAIController
-from digit_num_map import DIGIT_MAP
+from sprites.draw_text import DIGIT_MAP
+from sprites.draw_text import draw_text_with_shadow, draw_text_with_outline
 
 
 class Game:
@@ -113,7 +114,7 @@ class Game:
                 except pygame.error as e:
                     print(f"Game: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗 ({e})，將使用預設字體。")
 
-            self.hud_font = pygame.font.Font(default_font_path, font_size)
+            self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
             self.ai_status_font = pygame.font.Font(default_font_path, font_status_size)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
@@ -397,6 +398,7 @@ class Game:
                 self.draw_game_over_screen() 
         
         pygame.display.flip()
+        
     def draw_pixel_digit(self, digit_char, top_left_x, top_left_y, block_size=settings.TILE_SIZE):
         pattern = DIGIT_MAP.get(digit_char)
         if not pattern:
@@ -408,7 +410,7 @@ class Game:
                     dest_x = top_left_x + col * block_size
                     dest_y = top_left_y + row * block_size
                     self.screen.blit(self.timer_brick, (dest_x, dest_y))
-
+    
 
     def draw_hud(self):
         if not self.hud_font or not self.timer_font_normal or not self.timer_font_urgent:
@@ -439,10 +441,10 @@ class Game:
             )
 
         line_height = self.hud_font.get_linesize() 
-        start_x_p1 = 15 
+        start_x_p1 = 75 
         start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280) 
         num_max_hud_lines = 5 
-        bottom_padding = 10 
+        bottom_padding = 40 
         start_y = settings.SCREEN_HEIGHT - (num_max_hud_lines * line_height) - bottom_padding
 
         p1_texts = []
@@ -452,8 +454,11 @@ class Game:
             p1_texts.append(f"P1 Range: {self.player1.bomb_range}")
             p1_texts.append(f"P1 Score: {self.player1.score}")
         for i, text in enumerate(p1_texts):
-            surf = self.hud_font.render(text, True, settings.BLACK)
-            self.screen.blit(surf, (start_x_p1, start_y + i * line_height))
+            #surf = self.hud_font.render(text, True, settings.BLACK)
+            #self.screen.blit(surf, (start_x_p1, start_y + i * line_height))
+            # draw_text_with_shadow(self.screen, text, self.hud_font, (start_x_p1, start_y + i * line_height))
+            draw_text_with_outline(self.screen, text, self.hud_font, (start_x_p1, start_y + i * line_height))
+
 
         ai_texts = []
         if self.player2_ai:
@@ -471,8 +476,9 @@ class Game:
         for i, text in enumerate(ai_texts):
             font_to_use = self.hud_font
             if text.startswith("AI (") and self.ai_status_font: font_to_use = self.ai_status_font
-            surf = font_to_use.render(text, True, settings.BLACK)
-            self.screen.blit(surf, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
+            # surf = font_to_use.render(text, True, settings.BLACK)
+            # self.screen.blit(surf, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
+            draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
 
     def draw_game_over_screen(self):
         if not self.game_over_font or not self.restart_font:
