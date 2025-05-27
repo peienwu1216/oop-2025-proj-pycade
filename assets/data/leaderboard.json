@@ -24,6 +24,12 @@
         "date": "2025-05-23 21:55"
     },
     {
+        "name": "Jumbo",
+        "score": 190,
+        "ai_defeated": "item_focused",
+        "date": "2025-05-28 02:12"
+    },
+    {
         "name": "Patrick",
         "score": 40,
         "ai_defeated": "original",
