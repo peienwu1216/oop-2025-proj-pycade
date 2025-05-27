@@ -22,7 +22,11 @@ class GameObject(pygame.sprite.Sprite):
         
         if loaded_image:
             self.original_image = loaded_image # 保存原始載入的圖像
-            self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
+            if width or height:
+                self.image = pygame.transform.smoothscale(self.original_image, (settings.TILE_SIZE, settings.TILE_SIZE))
+            else:
+                self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
+            
         elif color:
             self.original_image = pygame.Surface([width, height])
             self.original_image.fill(color)
