@@ -156,6 +156,7 @@ STREAM_IMG = os.path.join(IMAGES_DIR, "background", "stream.png") # 流水背景
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
 STONE_0_IMG = os.path.join(IMAGES_DIR, "walls", "stone0.png") # 石頭牆壁圖片
+STONE_1_IMG = os.path.join(IMAGES_DIR, "walls", "stone1.png") # 石頭牆壁圖片
 # 玩家
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png") # 備用/單幀圖片
 PLAYER1_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player.png") 
