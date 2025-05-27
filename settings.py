@@ -148,6 +148,7 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 用於存放 leaderboard.json 
 CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.otf") # 確保字體檔案在此路徑
 TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
 SUB_TITLE_FONT_PATH = os.path.join(FONTS_DIR, "Lora-VariableItalic.ttf") # 副標題字體
+PIXEL_FONT_PATH = os.path.join(FONTS_DIR, "Minecraftia-Regular.ttf") # 像素風格字體
 
 # 特定圖片路徑
 # 地圖背景
@@ -157,6 +158,7 @@ WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
 STONE_0_IMG = os.path.join(IMAGES_DIR, "walls", "stone0.png") # 石頭牆壁圖片
 STONE_1_IMG = os.path.join(IMAGES_DIR, "walls", "stone1.png") # 石頭牆壁圖片
+STONE_2_IMG = os.path.join(IMAGES_DIR, "walls", "stone2.png") # 石頭牆壁圖片
 # 玩家
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png") # 備用/單幀圖片
 PLAYER1_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player.png") 
