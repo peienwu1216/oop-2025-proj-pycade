@@ -47,6 +47,11 @@ class Game:
             self.timer_brick,
             (settings.TILE_SIZE, settings.TILE_SIZE) 
         )
+        self.text_brick = pygame.image.load(settings.STONE_3_IMG).convert()
+        self.text_brick = pygame.transform.smoothscale(
+            self.text_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
         
         
         # --- Sprite Groups ---
