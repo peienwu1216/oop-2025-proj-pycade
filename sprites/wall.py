@@ -15,8 +15,6 @@ class Floor(GameObject):
             settings.TILE_SIZE, # width (會被圖片覆蓋，但 GameObject 需要)
             settings.TILE_SIZE, # height (會被圖片覆蓋，但 GameObject 需要)
             image_path=settings.STONE_0_IMG # 使用地板圖片
-             
-            image_path = pygame.transform.smoothscale(image_path, (settings.TILE_SIZE, settings.TILE_SIZE))
         )
 
 class Wall(GameObject):
