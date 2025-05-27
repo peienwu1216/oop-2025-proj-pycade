@@ -372,7 +372,7 @@ class Game:
         for y in range(tile_height, tile_height*10, tile_height):
             for x in range(tile_width, tile_width*14, tile_width):
                 self.screen.blit(tile_img, (x, y))
-        for y in range(tile_height, screen_height-tile_height, tile_height):
+        for y in range(tile_height, tile_height*15, tile_height):
             for x in range(tile_width*15, screen_width-tile_width, tile_width):
                 self.screen.blit(self.beside_brick, (x, y))
         for y in range(tile_height*11, screen_height-tile_height, tile_height):
