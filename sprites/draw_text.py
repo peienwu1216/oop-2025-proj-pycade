@@ -86,7 +86,7 @@ def draw_text_with_shadow(screen, text, font, pos, text_color=(255,255,255), sha
     text_surf = font.render(text, True, text_color)
     screen.blit(text_surf, (x, y))
 
-def draw_text_with_outline(screen, text, font, pos, text_color=(0,0,0), outline_color=(255,255,255)):
+def draw_text_with_outline(screen, text, font, pos, text_color=(0,0,0), outline_color=(220,220,220)):
     x, y = pos
     of = 2
     offsets = [(-of,0),(of,0),(0,-of),(0,of),(-of,-of),(-of,of),(of,-of),(of,of)]
