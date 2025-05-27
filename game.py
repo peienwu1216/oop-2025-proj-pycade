@@ -475,28 +475,16 @@ class Game:
                 ai_name = class_name.replace("AIController", "")
                 if not ai_name and class_name == "AIController": ai_name = "Standard"
                 state = getattr(self.ai_controller_p2, 'current_state', 'N/A')
-                # ai_state_text = f"AI ({ai_name}): {state}"
                 ai_state_text.append(f"AI ({ai_name}):")
                 ai_state_text.append(f"{state}")
         for i, text in enumerate(ai_texts):
             font_to_use = self.hud_font
             if text.startswith("AI (") and self.ai_status_font: font_to_use = self.ai_status_font
-            # surf = font_to_use.render(text, True, settings.BLACK)
-            # self.screen.blit(surf, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
             draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
         if ai_state_text:
-            
             draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(255,255,255), of=1)
             draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(255,255,255), of=1)
-            # text_surf = self.ai_status_font.render(ai_state_text, True, settings.WHITE)
-            # main_text = self.ai_status_font.render(ai_state_text[1], True, settings.WHITE)
-            # self.screen.blit(main_text, (490, 530))
-            # shadow = smaller_font.render(ai_state_text, True, (0, 0, 0))
-            # shadow_pos = (settings.SCREEN_WIDTH - 160, 100)
-            # text_pos = (settings.SCREEN_WIDTH - 158, 200)
 
-            # self.screen.blit(shadow, shadow_pos)
-            # self.screen.blit(text_surf, text_pos)
     
     def draw_game_over_screen(self):
         if not self.game_over_font or not self.restart_font:
