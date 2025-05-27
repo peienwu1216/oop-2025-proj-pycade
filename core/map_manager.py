@@ -82,9 +82,6 @@ class MapManager:
 
         for row_index, row_content in enumerate(self.map_data):
             for col_index, tile_char in enumerate(row_content):
-                floor_stone = Floor(col_index, row_index) # Floor 也需要格子座標
-                self.floor_group.add(floor_stone)
-                self.game.all_sprites.add(floor_stone)
                 if tile_char == 'W':
                     wall = Wall(col_index, row_index) # Wall 的 __init__ 只需要格子座標
                     self.walls_group.add(wall)
@@ -95,11 +92,6 @@ class MapManager:
                     self.destructible_walls_group.add(d_wall)
                     self.game.all_sprites.add(d_wall)
                     self.game.solid_obstacles_group.add(d_wall)
-                # elif tile_char == '.':
-                #     floor_stone = Floor(col_index, row_index) # Floor 也需要格子座標
-                #     self.floor_group.add(floor_stone)
-                #     self.game.all_sprites.add(floor_stone)
-                    # self.game.solid_obstacles_group.add(floor_stone) # Floor 也算是可走的空格子
                     
                     
 
