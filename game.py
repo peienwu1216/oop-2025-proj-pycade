@@ -115,7 +115,7 @@ class Game:
                     print(f"Game: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗 ({e})，將使用預設字體。")
 
             self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
-            self.ai_status_font = pygame.font.Font(default_font_path, font_status_size)
+            self.ai_status_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_status_size)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
