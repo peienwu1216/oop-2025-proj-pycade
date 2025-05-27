@@ -11,6 +11,7 @@ from core.ai_controller import AIController as OriginalAIController
 from core.ai_conservative import ConservativeAIController
 from core.ai_aggressive import AggressiveAIController
 from core.ai_item_focused import ItemFocusedAIController
+from digit_num_map import DIGIT_MAP
 
 
 class Game:
@@ -28,17 +29,17 @@ class Game:
         self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
         self.brick_tile_image = pygame.transform.smoothscale(
             self.brick_tile_image,
-            (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
         )
         self.border_brick = pygame.image.load(settings.WALL_SOLID_IMG).convert()
         self.border_brick = pygame.transform.smoothscale(
             self.border_brick,
-            (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
         )
         self.beside_brick = pygame.image.load(settings.STONE_1_IMG).convert()
         self.beside_brick = pygame.transform.smoothscale(
             self.beside_brick,
-            (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
         )
         
         
@@ -391,6 +392,18 @@ class Game:
                 self.draw_game_over_screen() 
         
         pygame.display.flip()
+    def draw_pixel_digit(self, digit_char, top_left_x, top_left_y, block_size=settings.TILE_SIZE):
+        pattern = DIGIT_MAP.get(digit_char)
+        if not pattern:
+            return
+
+        for row in range(len(pattern)):
+            for col in range(len(pattern[0])):
+                if pattern[row][col]:
+                    dest_x = top_left_x + col * block_size
+                    dest_y = top_left_y + row * block_size
+                    self.screen.blit(self.border_brick, (dest_x, dest_y))
+
 
     def draw_hud(self):
         if not self.hud_font or not self.timer_font_normal or not self.timer_font_urgent:
@@ -400,6 +413,19 @@ class Game:
         minutes = int(time_left) // 60
         seconds = int(time_left) % 60
         timer_text = f"{minutes:02d}:{seconds:02d}"
+        
+        start_x = settings.TILE_SIZE*16  # 往右邊空白區貼上
+        start_y = settings.TILE_SIZE*2
+        block_size = self.border_brick.get_width()  # 假設是方形圖
+        spacing = settings.TILE_SIZE  # 數字間距
+
+        for i, char in enumerate(timer_text):
+            self.draw_pixel_digit(
+                char,
+                top_left_x=start_x + i * (3 * block_size + spacing),
+                top_left_y=start_y,
+                # block_image=self.border_brick,
+            )
         
         current_timer_font = self.timer_font_normal
         current_timer_color = settings.TIMER_COLOR 
