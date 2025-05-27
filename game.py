@@ -376,8 +376,11 @@ class Game:
             for x in range(tile_width*15, screen_width-tile_width, tile_width):
                 self.screen.blit(self.beside_brick, (x, y))
         for y in range(tile_height*11, screen_height-tile_height, tile_height):
-            for x in range(tile_width, screen_width-tile_width, tile_width):
-                self.screen.blit(self.beside_brick, (x, y))
+            for x in range(tile_width, tile_width*15, tile_width):
+                self.screen.blit(self.text_brick, (x, y))
+        for y in range(tile_height*15, screen_height-tile_height, tile_height):
+            for x in range(tile_width*15, screen_width-tile_width, tile_width):
+                self.screen.blit(self.text_brick, (x, y))
         
         for y in range(0, screen_height, tile_height):
             self.screen.blit(self.border_brick, (0, y))  # 左邊邊框
