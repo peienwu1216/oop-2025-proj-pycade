@@ -35,6 +35,11 @@ class Game:
             self.border_brick,
             (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
         )
+        self.beside_brick = pygame.image.load(settings.STONE_1_IMG).convert()
+        self.beside_brick = pygame.transform.smoothscale(
+            self.beside_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
+        )
         
         
         # --- Sprite Groups ---
@@ -352,9 +357,15 @@ class Game:
 
         screen_width, screen_height = self.screen.get_size()
 
-        for y in range(tile_height, screen_height-tile_height, tile_height):
-            for x in range(tile_width, screen_width-tile_width, tile_width):
+        for y in range(tile_height, tile_height*10, tile_height):
+            for x in range(tile_width, tile_width*14, tile_width):
                 self.screen.blit(tile_img, (x, y))
+        for y in range(tile_height, screen_height-tile_height, tile_height):
+            for x in range(tile_width*15, screen_width-tile_width, tile_width):
+                self.screen.blit(self.beside_brick, (x, y))
+        for y in range(tile_height*11, screen_height-tile_height, tile_height):
+            for x in range(tile_width, screen_width-tile_width, tile_width):
+                self.screen.blit(self.beside_brick, (x, y))
         
         for y in range(0, screen_height, tile_height):
             self.screen.blit(self.border_brick, (0, y))  # 左邊邊框
@@ -362,7 +373,7 @@ class Game:
             self.screen.blit(self.border_brick, (tile_width*14, y))
         for x in range(0, screen_width, tile_width):
             self.screen.blit(self.border_brick, (x, 0)) # 上邊邊框
-            self.screen.blit(self.border_brick, (x, screen_height - tile_height))  # 底邊邊框
+            self.screen.blit(self.border_brick, (x, tile_height*18))  # 底邊邊框
         
         
         if self.game_state == "ENTER_NAME":
