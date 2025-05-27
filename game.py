@@ -30,6 +30,12 @@ class Game:
             self.brick_tile_image,
             (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
         )
+        self.border_brick = pygame.image.load(settings.WALL_SOLID_IMG).convert()
+        self.border_brick = pygame.transform.scale(
+            self.border_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE)  # 或者是遊戲地圖尺寸
+        )
+        
         
         # --- Sprite Groups ---
         self.all_sprites = pygame.sprite.Group()
@@ -346,9 +352,17 @@ class Game:
 
         screen_width, screen_height = self.screen.get_size()
 
-        for y in range(0, screen_height, tile_height):
-            for x in range(0, screen_width, tile_width):
+        for y in range(tile_height, screen_height-tile_height, tile_height):
+            for x in range(tile_width, screen_width-tile_width, tile_width):
                 self.screen.blit(tile_img, (x, y))
+        
+        for y in range(0, screen_height, tile_height):
+            self.screen.blit(self.border_brick, (0, y))  # 左邊邊框
+            self.screen.blit(self.border_brick, (screen_width - tile_width, y))  # 右邊邊框
+        for x in range(0, screen_width, tile_width):
+            self.screen.blit(self.border_brick, (x, 0))
+            self.screen.blit(self.border_brick, (x, screen_height - tile_height))  # 底邊邊框
+        
         
         if self.game_state == "ENTER_NAME":
             self.draw_enter_name_screen()
