@@ -1,7 +1,7 @@
 # oop-2025-proj-pycade/core/map_manager.py
 import pygame
 import settings
-from sprites.wall import Wall, DestructibleWall
+from sprites.wall import Wall, DestructibleWall, Floor
 import random # ！！！需要 random 模組！！！
 
 
@@ -13,6 +13,7 @@ class MapManager:
         self.tile_height = 0
         self.walls_group = pygame.sprite.Group()
         self.destructible_walls_group = pygame.sprite.Group()
+        self.floor_group = pygame.sprite.Group() # 用於地板或空格子
         # self.load_map_from_data(self.get_simple_test_map()) # 不在這裡調用，由 Game.setup_initial_state 調用
 
     def get_randomized_map_layout(self, width, height, p1_start_tile, p2_start_tile, safe_radius=1):
@@ -68,6 +69,7 @@ class MapManager:
     def load_map_from_data(self, map_layout_data):
         self.walls_group.empty()
         self.destructible_walls_group.empty()
+        self.floor_group.empty()
         # 在 Game.setup_initial_state 中，solid_obstacles_group 和 all_sprites 也會被清空
 
         self.map_data = map_layout_data
@@ -90,6 +92,13 @@ class MapManager:
                     self.destructible_walls_group.add(d_wall)
                     self.game.all_sprites.add(d_wall)
                     self.game.solid_obstacles_group.add(d_wall)
+                elif tile_char == '.':
+                    floor_stone = Floor(col_index, row_index) # Floor 也需要格子座標
+                    self.floor_group.add(floor_stone)
+                    self.game.all_sprites.add(floor_stone)
+                    self.game.solid_obstacles_group.add(floor_stone) # Floor 也算是可走的空格子
+                    
+                    
 
     # ... (draw_grid, is_walkable, is_solid_wall_at 保持不變) ...
     def draw_grid(self, surface):
