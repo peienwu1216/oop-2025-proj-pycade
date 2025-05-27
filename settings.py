@@ -150,6 +150,8 @@ TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
 SUB_TITLE_FONT_PATH = os.path.join(FONTS_DIR, "Lora-VariableItalic.ttf") # 副標題字體
 
 # 特定圖片路徑
+# 地圖背景
+STREAM_IMG = os.path.join(IMAGES_DIR, "background", "stream.png") # 流水背景圖片
 # 牆壁
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
