@@ -115,7 +115,7 @@ class Game:
                     print(f"Game: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗 ({e})，將使用預設字體。")
 
             self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
-            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 17)
+            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 18)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
@@ -381,6 +381,8 @@ class Game:
         for x in range(0, screen_width, tile_width):
             self.screen.blit(self.border_brick, (x, 0)) # 上邊邊框
             self.screen.blit(self.border_brick, (x, tile_height*18))  # 底邊邊框
+        for x in range(tile_width*15, screen_width-tile_width, tile_width):
+            self.screen.blit(self.border_brick, (x, tile_height*14)) # 上邊邊框
         
         
         if self.game_state == "ENTER_NAME":
@@ -437,7 +439,7 @@ class Game:
             self.draw_pixel_digit(
                 char,
                 top_left_x=start_x + i * (3 * block_size + spacing),
-                top_left_y=start_y + 6 * block_size + spacing,  # 第二行數字下移
+                top_left_y=start_y + 5 * block_size + spacing,  # 第二行數字下移
             )
 
         line_height = self.hud_font.get_linesize()*1.3
@@ -483,10 +485,12 @@ class Game:
             # self.screen.blit(surf, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
             draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
         if ai_state_text:
+            
             draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(255,255,255), of=1)
             draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(255,255,255), of=1)
             # text_surf = self.ai_status_font.render(ai_state_text, True, settings.WHITE)
-            
+            # main_text = self.ai_status_font.render(ai_state_text[1], True, settings.WHITE)
+            # self.screen.blit(main_text, (490, 530))
             # shadow = smaller_font.render(ai_state_text, True, (0, 0, 0))
             # shadow_pos = (settings.SCREEN_WIDTH - 160, 100)
             # text_pos = (settings.SCREEN_WIDTH - 158, 200)
