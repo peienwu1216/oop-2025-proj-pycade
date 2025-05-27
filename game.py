@@ -413,18 +413,25 @@ class Game:
         minutes = int(time_left) // 60
         seconds = int(time_left) % 60
         timer_text = f"{minutes:02d}:{seconds:02d}"
+        timer_text_1 = f"{minutes:02d}"
+        timer_text_2 = f"{seconds:02d}"
         
         start_x = settings.TILE_SIZE*16  # 往右邊空白區貼上
         start_y = settings.TILE_SIZE*2
         block_size = self.border_brick.get_width()  # 假設是方形圖
         spacing = settings.TILE_SIZE  # 數字間距
 
-        for i, char in enumerate(timer_text):
+        for i, char in enumerate(timer_text_1):
             self.draw_pixel_digit(
                 char,
                 top_left_x=start_x + i * (3 * block_size + spacing),
                 top_left_y=start_y,
-                # block_image=self.border_brick,
+            )
+        for i, char in enumerate(timer_text_2):
+            self.draw_pixel_digit(
+                char,
+                top_left_x=start_x + i * (3 * block_size + spacing),
+                top_left_y=start_y + 6 * block_size + spacing,  # 第二行數字下移
             )
         
         current_timer_font = self.timer_font_normal
