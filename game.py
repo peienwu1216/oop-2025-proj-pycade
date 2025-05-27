@@ -490,8 +490,8 @@ class Game:
             if text.startswith("AI (") and self.ai_status_font: font_to_use = self.ai_status_font
             draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
         if ai_state_text:
-            draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(255,255,255), of=1)
-            draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(255,255,255), of=1)
+            draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(230,230,230), of=1)
+            draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(230,230,230), of=1)
 
     
     def draw_game_over_screen(self):
