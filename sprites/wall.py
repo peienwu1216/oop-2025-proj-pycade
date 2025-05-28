@@ -6,6 +6,16 @@ import settings
 from .item import create_random_item # 用於掉落道具
 import random # 用於 item_drop_chance 的判斷
 
+class Floor(GameObject):
+    def __init__(self, x, y):
+        super().__init__(
+            x * settings.TILE_SIZE,
+            y * settings.TILE_SIZE,
+            settings.TILE_SIZE, # width (會被圖片覆蓋，但 GameObject 需要)
+            settings.TILE_SIZE, # height (會被圖片覆蓋，但 GameObject 需要)
+            image_path=settings.STONE_0_IMG # 使用地板圖片
+        )
+
 class Wall(GameObject):
     """
     Represents an indestructible wall in the game.

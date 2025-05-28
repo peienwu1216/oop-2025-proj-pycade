@@ -11,6 +11,8 @@ from core.ai_controller import AIController as OriginalAIController
 from core.ai_conservative import ConservativeAIController
 from core.ai_aggressive import AggressiveAIController
 from core.ai_item_focused import ItemFocusedAIController
+from sprites.draw_text import DIGIT_MAP
+from sprites.draw_text import draw_text_with_shadow, draw_text_with_outline
 
 
 class Game:
@@ -22,8 +24,35 @@ class Game:
         self.restart_game = False
         # --- 修改：新增遊戲狀態 ---
         self.game_state = "PLAYING"  # "PLAYING", "GAME_OVER", "ENTER_NAME", "SCORE_SUBMITTED"
-        
         self.ai_archetype = ai_archetype
+        
+        # --- Background ---
+        self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
+        self.brick_tile_image = pygame.transform.smoothscale(
+            self.brick_tile_image,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
+        self.border_brick = pygame.image.load(settings.WALL_SOLID_IMG).convert()
+        self.border_brick = pygame.transform.smoothscale(
+            self.border_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
+        self.beside_brick = pygame.image.load(settings.STONE_1_IMG).convert()
+        self.beside_brick = pygame.transform.smoothscale(
+            self.beside_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
+        self.timer_brick = pygame.image.load(settings.STONE_2_IMG).convert()
+        self.timer_brick = pygame.transform.smoothscale(
+            self.timer_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
+        self.text_brick = pygame.image.load(settings.STONE_3_IMG).convert()
+        self.text_brick = pygame.transform.smoothscale(
+            self.text_brick,
+            (settings.TILE_SIZE, settings.TILE_SIZE) 
+        )
+        
         
         # --- Sprite Groups ---
         self.all_sprites = pygame.sprite.Group()
@@ -90,8 +119,8 @@ class Game:
                 except pygame.error as e:
                     print(f"Game: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗 ({e})，將使用預設字體。")
 
-            self.hud_font = pygame.font.Font(default_font_path, font_size)
-            self.ai_status_font = pygame.font.Font(default_font_path, font_status_size)
+            self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
+            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 18)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
@@ -334,7 +363,35 @@ class Game:
 
 
     def draw(self):
-        self.screen.fill(settings.WHITE)
+        # self.screen.fill(settings.WHITE)
+        tile_img = self.brick_tile_image
+        tile_width, tile_height = tile_img.get_size()
+
+        screen_width, screen_height = self.screen.get_size()
+
+        for y in range(tile_height, tile_height*10, tile_height):
+            for x in range(tile_width, tile_width*14, tile_width):
+                self.screen.blit(tile_img, (x, y))
+        for y in range(tile_height, tile_height*15, tile_height):
+            for x in range(tile_width*15, screen_width-tile_width, tile_width):
+                self.screen.blit(self.beside_brick, (x, y))
+        for y in range(tile_height*11, screen_height-tile_height, tile_height):
+            for x in range(tile_width, tile_width*15, tile_width):
+                self.screen.blit(self.text_brick, (x, y))
+        for y in range(tile_height*15, screen_height-tile_height, tile_height):
+            for x in range(tile_width*15, screen_width-tile_width, tile_width):
+                self.screen.blit(self.text_brick, (x, y))
+        
+        for y in range(0, screen_height, tile_height):
+            self.screen.blit(self.border_brick, (0, y))  # 左邊邊框
+            self.screen.blit(self.border_brick, (screen_width - tile_width, y))  # 右邊邊框
+            self.screen.blit(self.border_brick, (tile_width*14, y))
+        for x in range(0, screen_width, tile_width):
+            self.screen.blit(self.border_brick, (x, 0)) # 上邊邊框
+            self.screen.blit(self.border_brick, (x, tile_height*18))  # 底邊邊框
+        for x in range(tile_width*15, screen_width-tile_width, tile_width):
+            self.screen.blit(self.border_brick, (x, tile_height*14)) # 上邊邊框
+        
         
         if self.game_state == "ENTER_NAME":
             self.draw_enter_name_screen()
@@ -351,6 +408,19 @@ class Game:
                 self.draw_game_over_screen() 
         
         pygame.display.flip()
+        
+    def draw_pixel_digit(self, digit_char, top_left_x, top_left_y, block_size=settings.TILE_SIZE):
+        pattern = DIGIT_MAP.get(digit_char)
+        if not pattern:
+            return
+
+        for row in range(len(pattern)):
+            for col in range(len(pattern[0])):
+                if pattern[row][col]:
+                    dest_x = top_left_x + col * block_size
+                    dest_y = top_left_y + row * block_size
+                    self.screen.blit(self.timer_brick, (dest_x, dest_y))
+    
 
     def draw_hud(self):
         if not self.hud_font or not self.timer_font_normal or not self.timer_font_urgent:
@@ -359,25 +429,29 @@ class Game:
         time_left = max(0, settings.GAME_DURATION_SECONDS - self.time_elapsed_seconds)
         minutes = int(time_left) // 60
         seconds = int(time_left) % 60
-        timer_text = f"{minutes:02d}:{seconds:02d}"
+        timer_text_1 = f"{minutes:02d}"
+        timer_text_2 = f"{seconds:02d}"
         
-        current_timer_font = self.timer_font_normal
-        current_timer_color = settings.TIMER_COLOR 
+        start_x = settings.TILE_SIZE*16  # 往右邊空白區貼上
+        start_y = settings.TILE_SIZE*2
+        block_size = self.border_brick.get_width()  # 假設是方形圖
+        spacing = settings.TILE_SIZE  # 數字間距
 
-        if self.game_timer_active and time_left <= settings.TIMER_URGENT_THRESHOLD_SECONDS:
-            current_timer_font = self.timer_font_urgent
-            current_timer_color = settings.TIMER_URGENT_COLOR
-        elif not self.game_timer_active and self.game_state == "PLAYING":
-            timer_text = "00:00"
-            current_timer_font = self.timer_font_urgent
-            current_timer_color = settings.TIMER_URGENT_COLOR
-        
-        timer_surf = current_timer_font.render(timer_text, True, current_timer_color)
-        timer_rect = timer_surf.get_rect(topright=(settings.SCREEN_WIDTH - 15, 10))
-        self.screen.blit(timer_surf, timer_rect)
+        for i, char in enumerate(timer_text_1):
+            self.draw_pixel_digit(
+                char,
+                top_left_x=start_x + i * (3 * block_size + spacing),
+                top_left_y=start_y,
+            )
+        for i, char in enumerate(timer_text_2):
+            self.draw_pixel_digit(
+                char,
+                top_left_x=start_x + i * (3 * block_size + spacing),
+                top_left_y=start_y + 5 * block_size + spacing,  # 第二行數字下移
+            )
 
-        line_height = self.hud_font.get_linesize() 
-        start_x_p1 = 15 
+        line_height = self.hud_font.get_linesize()*1.3
+        start_x_p1 = 48 
         start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280) 
         num_max_hud_lines = 5 
         bottom_padding = 10 
@@ -390,8 +464,11 @@ class Game:
             p1_texts.append(f"P1 Range: {self.player1.bomb_range}")
             p1_texts.append(f"P1 Score: {self.player1.score}")
         for i, text in enumerate(p1_texts):
-            surf = self.hud_font.render(text, True, settings.BLACK)
-            self.screen.blit(surf, (start_x_p1, start_y + i * line_height))
+            #surf = self.hud_font.render(text, True, settings.BLACK)
+            #self.screen.blit(surf, (start_x_p1, start_y + i * line_height))
+            # draw_text_with_shadow(self.screen, text, self.hud_font, (start_x_p1, start_y + i * line_height))
+            draw_text_with_outline(self.screen, text, self.hud_font, (start_x_p1, start_y + i * line_height))
+
 
         ai_texts = []
         if self.player2_ai:
@@ -400,18 +477,23 @@ class Game:
             ai_texts.append(f"AI Bombs: {self.player2_ai.max_bombs - self.player2_ai.bombs_placed_count}/{self.player2_ai.max_bombs}")
             ai_texts.append(f"AI Range: {self.player2_ai.bomb_range}")
             ai_texts.append(f"AI Score: {self.player2_ai.score}")
+            ai_state_text = []
             if self.ai_controller_p2 and self.ai_status_font:
                 class_name = self.ai_controller_p2.__class__.__name__
                 ai_name = class_name.replace("AIController", "")
                 if not ai_name and class_name == "AIController": ai_name = "Standard"
                 state = getattr(self.ai_controller_p2, 'current_state', 'N/A')
-                ai_texts.append(f"AI ({ai_name}): {state}")
+                ai_state_text.append(f"AI ({ai_name}):")
+                ai_state_text.append(f"{state}")
         for i, text in enumerate(ai_texts):
             font_to_use = self.hud_font
             if text.startswith("AI (") and self.ai_status_font: font_to_use = self.ai_status_font
-            surf = font_to_use.render(text, True, settings.BLACK)
-            self.screen.blit(surf, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
+            draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
+        if ai_state_text:
+            draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(230,230,230), of=1)
+            draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(230,230,230), of=1)
 
+    
     def draw_game_over_screen(self):
         if not self.game_over_font or not self.restart_font:
             return
