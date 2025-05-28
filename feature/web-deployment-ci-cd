@@ -1,0 +1,42 @@
+name: Build and Deploy Pycade Bomber to Web
+
+on:
+  push:
+    branches:
+      - main # 或 'master'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pygbag
+
+      - name: Build Web Version
+        run: |
+          pygbag . # 您可以考慮在這裡加上 --audio 參數，例如 pygbag . --audio
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
