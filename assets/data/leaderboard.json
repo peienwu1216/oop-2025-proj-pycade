@@ -6,6 +6,12 @@
         "date": "2025-05-23 21:39"
     },
     {
+        "name": "python",
+        "score": 520,
+        "ai_defeated": "aggressive",
+        "date": "2025-05-28 22:00"
+    },
+    {
         "name": "Benson",
         "score": 320,
         "ai_defeated": "item_focused",

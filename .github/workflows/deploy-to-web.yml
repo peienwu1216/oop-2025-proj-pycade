@@ -36,9 +36,9 @@ jobs:
       - name: Build Web Version with Pygbag
         timeout-minutes: 30
         run: |
-          echo "Starting the corrected and specific pygbag build..."
+          echo "Starting the standard pygbag build..."
           export PYGBAG_DISABLE_AUDIO=1
-          pygbag --build --archive custom_site.py
+          pygbag --build --archive .
           echo "Pygbag build command finished successfully."
 
       - name: Verify build output
