@@ -25,25 +25,29 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt # 確保 pygame 被安裝
-          pip install pygbag               # 安裝 pygbag
+          pip install -r requirements.txt
+          pip install pygbag
 
       - name: Build Web Version
-        timeout-minutes: 20 # 設定一個20分鐘的超時，如果 pygbag 卡住太久會自動終止
+        timeout-minutes: 25 # 保留超時設定
         run: |
           echo "Starting pygbag build with default options..."
-          pygbag .  # 使用最基本、最核心的指令
-          echo "Pygbag build command finished."
+          # 確保如果 pygbag 失敗，此步驟會以失敗結束
+          if ! pygbag . ; then
+            echo "Pygbag command failed!"
+            exit 1
+          fi
+          echo "Pygbag build command finished successfully."
 
-      - name: Verify build output and Upload Artifact
+      - name: Verify build output
         run: |
+          echo "Verifying build output..."
           echo "Listing contents of build/web directory:"
-          ls -R build/web # 列出內容以便除錯
+          ls -R build/web
           if [ -d "build/web" ] && [ "$(ls -A build/web)" ]; then
             echo "build/web directory is valid and contains files."
           else
             echo "Error: build/web directory is empty or does not exist after pygbag build."
-            echo "Pygbag might have failed or produced no output without an error code."
             exit 1 # 如果建置目錄有問題，讓工作流程失敗
           fi
 
