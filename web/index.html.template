@@ -1,0 +1,24 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const unlockAudio = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") {
+        ctx.resume().then(() => {
+          console.log("[AudioContext] resumed by interaction");
+        });
+      }
+    } catch (e) {
+      console.warn("Audio resume failed:", e);
+    }
+
+    document.removeEventListener("mousedown", unlockAudio);
+    document.removeEventListener("keydown", unlockAudio);
+    document.removeEventListener("touchstart", unlockAudio);
+  };
+
+  document.addEventListener("mousedown", unlockAudio);
+  document.addEventListener("keydown", unlockAudio);
+  document.addEventListener("touchstart", unlockAudio);
+});
+</script>
