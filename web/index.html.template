@@ -10,20 +10,50 @@
     <link rel="icon" type="image/png" href="favicon.png" sizes="16x16" />
     <style>
       body {
-        background-color: powderblue;
         margin: 0;
-        padding: none;
+        font-family: sans-serif;
+        background: #1e1e1e;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        overflow: hidden;
       }
-      canvas.emscripten {
+
+      #canvas {
+        display: none;
         width: 100%;
         height: 100%;
         position: absolute;
         top: 0;
         left: 0;
       }
+
+      #loader {
+        text-align: center;
+      }
+
+      #start-button {
+        margin-top: 20px;
+        padding: 12px 24px;
+        font-size: 18px;
+        background-color: #0078d7;
+        border: none;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      #start-button:hover {
+        background-color: #005fa3;
+      }
     </style>
+
     <script src="https://pygame-web.github.io/archives/0.9/browserfs.min.js"></script>
-    <script src="https://pygame-web.github.io/archives/0.9/pythons.js" type="module"
+    <script src="https://pygame-web.github.io/archives/0.9/pythons.js"
+            type="module"
             id="site"
             data-python="python3.12"
             data-os="vtx,fs,snd,gui"
@@ -34,24 +64,24 @@
   </head>
 
   <body>
-    <div id="transfer" align="center">
-      <div class="emscripten" id="status">Downloading...</div>
-      <div class="emscripten">
-        <progress value="0" max="100" id="progress"></progress>
-      </div>
+    <div id="loader">
+      <h1>Loading game...</h1>
+      <progress value="0" max="100" id="progress"></progress>
+      <div id="message">請點擊下方按鈕開始</div>
+      <button id="start-button">點我開始</button>
     </div>
 
-    <canvas class="emscripten" id="canvas" width="1px" height="1px"
-            oncontextmenu="event.preventDefault()" tabindex="1"></canvas>
+    <canvas id="canvas"
+            oncontextmenu="event.preventDefault()"
+            tabindex="1"
+            class="emscripten"></canvas>
 
-    <!-- ✅ Unified Unlocker Script: AudioContext + platform.window.MM -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         let unlocked = false;
 
         const tryUnlock = () => {
           try {
-            // 解鎖 AudioContext（即使無音效，也避免瀏覽器封鎖）
             if (typeof AudioContext !== 'undefined') {
               const ctx = new AudioContext();
               if (ctx.state === "suspended") {
@@ -61,7 +91,6 @@
               }
             }
 
-            // 解鎖 pygbag 多媒體層交互限制
             if (
               typeof platform !== "undefined" &&
               typeof platform.window !== "undefined" &&
@@ -70,13 +99,17 @@
               platform.window.MM.UME = true;
               console.log("[platform.window.MM] UME set to true");
               unlocked = true;
+
+              // ✅ 切換畫面顯示 canvas、隱藏 loader
+              document.getElementById("loader").style.display = "none";
+              document.getElementById("canvas").style.display = "block";
             }
           } catch (e) {
             console.warn("Unlock attempt failed", e);
           }
         };
 
-        const interactionHandler = () => {
+        const unlockWithInterval = () => {
           const interval = setInterval(() => {
             if (!unlocked) {
               tryUnlock();
@@ -84,15 +117,11 @@
               clearInterval(interval);
             }
           }, 200);
-
-          document.removeEventListener("mousedown", interactionHandler);
-          document.removeEventListener("keydown", interactionHandler);
-          document.removeEventListener("touchstart", interactionHandler);
         };
 
-        document.addEventListener("mousedown", interactionHandler);
-        document.addEventListener("keydown", interactionHandler);
-        document.addEventListener("touchstart", interactionHandler);
+        document.getElementById("start-button").addEventListener("click", () => {
+          unlockWithInterval();
+        });
       });
     </script>
   </body>
