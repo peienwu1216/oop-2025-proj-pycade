@@ -31,13 +31,13 @@ jobs:
       - name: Build Web Version with Pygbag
         timeout-minutes: 30
         run: |
-          echo "Starting pygbag build with the modern 'pygbag main.py' command..."
-          # 這是在移除大型字體後，最正確且最可能成功的指令
-          if ! pygbag main.py ; then
-            echo "Pygbag command failed!"
-            ls -la
-            exit 1
-          fi
+          echo "Starting a more specific pygbag build..."
+          # --build: 只進行構建，不啟動測試伺服器。
+          # --archive: 將資源打包成 zip 檔案，提升網頁載入效能。
+          # --no-opt: 跳過程式碼優化步驟，避免因缺少 Black 等工具而報錯。
+          # --dir build/web: 明確指定輸出目錄。
+          pygbag --build --archive --no-opt --dir build/web main.py
+
           echo "Pygbag build command finished successfully."
 
       - name: Verify build output
