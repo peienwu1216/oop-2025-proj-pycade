@@ -68,5 +68,40 @@
       });
     </script>
 
+    <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const unlock = () => {
+    try {
+      if (typeof AudioContext !== 'undefined') {
+        const ctx = new AudioContext();
+        if (ctx.state === "suspended") {
+          ctx.resume();
+        }
+      }
+
+      // 🔥 這一行是關鍵：主動觸發 pygbag 封裝的互動偵測
+      if (typeof MM !== "undefined") {
+        MM.UME = true;
+        console.log("[MM] UME manually set to true");
+      }
+
+    } catch (e) {
+      console.warn("Unlock interaction failed:", e);
+    }
+
+    // 移除事件綁定
+    document.removeEventListener("mousedown", unlock);
+    document.removeEventListener("keydown", unlock);
+    document.removeEventListener("touchstart", unlock);
+  };
+
+  // 綁定使用者互動事件
+  document.addEventListener("mousedown", unlock);
+  document.addEventListener("keydown", unlock);
+  document.addEventListener("touchstart", unlock);
+});
+</script>
+
+
   </body>
 </html>
