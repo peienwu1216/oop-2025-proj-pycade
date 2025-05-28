@@ -26,7 +26,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt # pygame
-          pip install pygbag            # pygbag 0.9.2
+          pip install pygbag 0.9.2
+          
+      - name: Verify that template will be used
+        run: |
+          echo "Verifying presence of custom index.html.template:"
+          test -f web/index.html.template && echo "✅ Template found!" || echo "❌ Template missing!"
 
       - name: Build Web Version with Pygbag
         timeout-minutes: 30
