@@ -31,11 +31,11 @@ jobs:
       - name: Build Web Version with Pygbag
         timeout-minutes: 30 
         run: |
-          echo "Starting pygbag build with --build flag..."
-          # 移除不被 pygbag 0.9.2 支援的 --log 和 --no-server 參數
-          # 保留 --PYBUILD 3.11 和 --build
-          # 將 '.' (路徑) 放在最後
-          if ! pygbag --PYBUILD 3.11 --build . ; then
+          echo "Starting pygbag build by specifying main.py..."
+          # 直接將 main.py 作為參數傳遞給 pygbag
+          # 這會讓 pygbag 自動尋找依賴，並預設包含同目錄下的 assets
+          # 這是更現代且推薦的作法
+          if ! pygbag main.py ; then
             echo "Pygbag command failed!"
             echo "Listing current directory contents after failed pygbag command:"
             ls -la
