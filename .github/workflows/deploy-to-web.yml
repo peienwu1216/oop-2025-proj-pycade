@@ -31,9 +31,9 @@ jobs:
       - name: Build Web Version with Pygbag
         timeout-minutes: 30
         run: |
-          echo "Starting pygbag build with explicit main, assets, and directory..."
-          # 這是最穩健的混合式指令，能避免分析卡住和執行時 404 的問題
-          if ! pygbag --build --main main.py --assets . ; then
+          echo "Starting pygbag build with the modern 'pygbag main.py' command..."
+          # 這是在移除大型字體後，最正確且最可能成功的指令
+          if ! pygbag main.py ; then
             echo "Pygbag command failed!"
             ls -la
             exit 1
