@@ -1,24 +1,72 @@
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const unlockAudio = () => {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === "suspended") {
-        ctx.resume().then(() => {
-          console.log("[AudioContext] resumed by interaction");
-        });
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8" />
+    <title>oop-2025-proj-pycade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/png" href="favicon.png" sizes="16x16" />
+    <style>
+      body {
+        background-color: powderblue;
+        margin: 0;
+        padding: none;
       }
-    } catch (e) {
-      console.warn("Audio resume failed:", e);
-    }
+      canvas.emscripten {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    </style>
+    <script src="https://pygame-web.github.io/archives/0.9/browserfs.min.js"></script>
+    <script src="https://pygame-web.github.io/archives/0.9/pythons.js" type="module"
+            id="site"
+            data-python="python3.12"
+            data-os="vtx,fs,snd,gui"
+            data-CONSOLE="25"
+            data-LINES="57"
+            async defer>
+    </script>
+  </head>
+  <body>
+    <div id="transfer" align="center">
+      <div class="emscripten" id="status">Downloading...</div>
+      <div class="emscripten">
+        <progress value="0" max="100" id="progress"></progress>
+      </div>
+    </div>
 
-    document.removeEventListener("mousedown", unlockAudio);
-    document.removeEventListener("keydown", unlockAudio);
-    document.removeEventListener("touchstart", unlockAudio);
-  };
+    <canvas class="emscripten" id="canvas" width="1px" height="1px"
+            oncontextmenu="event.preventDefault()" tabindex="1"></canvas>
 
-  document.addEventListener("mousedown", unlockAudio);
-  document.addEventListener("keydown", unlockAudio);
-  document.addEventListener("touchstart", unlockAudio);
-});
-</script>
+    <!-- ✅ AudioContext unlocker script (解鎖用戶互動限制) -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const unlockAudio = () => {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.state === "suspended") {
+              ctx.resume().then(() => {
+                console.log("[AudioContext] resumed by user interaction");
+              });
+            }
+          } catch (e) {
+            console.warn("Audio resume error:", e);
+          }
+
+          document.removeEventListener("mousedown", unlockAudio);
+          document.removeEventListener("keydown", unlockAudio);
+          document.removeEventListener("touchstart", unlockAudio);
+        };
+
+        document.addEventListener("mousedown", unlockAudio);
+        document.addEventListener("keydown", unlockAudio);
+        document.addEventListener("touchstart", unlockAudio);
+      });
+    </script>
+
+  </body>
+</html>
