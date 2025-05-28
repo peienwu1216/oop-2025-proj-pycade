@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>oop-2025-proj-pycade</title>
-    <meta name="template-used" content="YES">
+    <meta name="template-used" content="YES" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,6 +32,7 @@
             async defer>
     </script>
   </head>
+
   <body>
     <div id="transfer" align="center">
       <div class="emscripten" id="status">Downloading...</div>
@@ -43,65 +44,56 @@
     <canvas class="emscripten" id="canvas" width="1px" height="1px"
             oncontextmenu="event.preventDefault()" tabindex="1"></canvas>
 
-    <!-- ✅ AudioContext unlocker script (解鎖用戶互動限制) -->
+    <!-- ✅ Unified Unlocker Script: AudioContext + platform.window.MM -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        const unlockAudio = () => {
+        let unlocked = false;
+
+        const tryUnlock = () => {
           try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            if (ctx.state === "suspended") {
-              ctx.resume().then(() => {
-                console.log("[AudioContext] resumed by user interaction");
-              });
+            // 解鎖 AudioContext（即使無音效，也避免瀏覽器封鎖）
+            if (typeof AudioContext !== 'undefined') {
+              const ctx = new AudioContext();
+              if (ctx.state === "suspended") {
+                ctx.resume().then(() => {
+                  console.log("[AudioContext] resumed");
+                });
+              }
+            }
+
+            // 解鎖 pygbag 多媒體層交互限制
+            if (
+              typeof platform !== "undefined" &&
+              typeof platform.window !== "undefined" &&
+              typeof platform.window.MM !== "undefined"
+            ) {
+              platform.window.MM.UME = true;
+              console.log("[platform.window.MM] UME set to true");
+              unlocked = true;
             }
           } catch (e) {
-            console.warn("Audio resume error:", e);
+            console.warn("Unlock attempt failed", e);
           }
-
-          document.removeEventListener("mousedown", unlockAudio);
-          document.removeEventListener("keydown", unlockAudio);
-          document.removeEventListener("touchstart", unlockAudio);
         };
 
-        document.addEventListener("mousedown", unlockAudio);
-        document.addEventListener("keydown", unlockAudio);
-        document.addEventListener("touchstart", unlockAudio);
+        const interactionHandler = () => {
+          const interval = setInterval(() => {
+            if (!unlocked) {
+              tryUnlock();
+            } else {
+              clearInterval(interval);
+            }
+          }, 200);
+
+          document.removeEventListener("mousedown", interactionHandler);
+          document.removeEventListener("keydown", interactionHandler);
+          document.removeEventListener("touchstart", interactionHandler);
+        };
+
+        document.addEventListener("mousedown", interactionHandler);
+        document.addEventListener("keydown", interactionHandler);
+        document.addEventListener("touchstart", interactionHandler);
       });
     </script>
-
-    <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const unlock = () => {
-    try {
-      if (typeof AudioContext !== 'undefined') {
-        const ctx = new AudioContext();
-        if (ctx.state === "suspended") {
-          ctx.resume();
-        }
-      }
-
-      // ❗️此處精準針對 pygbag 平台層解鎖
-      if (typeof platform !== "undefined" &&
-          typeof platform.window !== "undefined" &&
-          typeof platform.window.MM !== "undefined") {
-        platform.window.MM.UME = true;
-        console.log("[platform.window.MM] UME manually set to true");
-      }
-
-    } catch (e) {
-      console.warn("Unlock interaction failed:", e);
-    }
-
-    // 移除事件綁定
-    document.removeEventListener("mousedown", unlock);
-    document.removeEventListener("keydown", unlock);
-    document.removeEventListener("touchstart", unlock);
-  };
-
-  document.addEventListener("mousedown", unlock);
-  document.addEventListener("keydown", unlock);
-  document.addEventListener("touchstart", unlock);
-});
-</script>
   </body>
 </html>
