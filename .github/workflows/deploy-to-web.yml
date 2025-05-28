@@ -39,6 +39,7 @@ jobs:
           echo "Starting the corrected and specific pygbag build..."
           export PYGBAG_DISABLE_AUDIO=1
           pygbag --build --archive main.py
+          pygbag --build --archive custom_site.py
           echo "Pygbag build command finished successfully."
 
       - name: Verify build output

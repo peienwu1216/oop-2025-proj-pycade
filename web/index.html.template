@@ -1,75 +1,99 @@
-<body>
-  <div id="transfer" align="center">
-    <div class="emscripten" id="status">Downloading...</div>
-    <div class="emscripten">
-      <progress value="0" max="100" id="progress"></progress>
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8" />
+    <title>oop-2025-proj-pycade</title>
+    <meta name="template-used" content="YES" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/png" href="favicon.png" sizes="16x16" />
+    <style>
+      body {
+        background-color: powderblue;
+        margin: 0;
+        padding: none;
+      }
+      canvas.emscripten {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    </style>
+    <script src="https://pygame-web.github.io/archives/0.9/browserfs.min.js"></script>
+    <script src="https://pygame-web.github.io/archives/0.9/pythons.js" type="module"
+            id="site"
+            data-python="python3.12"
+            data-os="vtx,fs,snd,gui"
+            data-CONSOLE="25"
+            data-LINES="57"
+            async defer>
+    </script>
+  </head>
+
+  <body>
+    <div id="transfer" align="center">
+      <div class="emscripten" id="status">Downloading...</div>
+      <div class="emscripten">
+        <progress value="0" max="100" id="progress"></progress>
+      </div>
     </div>
-  </div>
 
-  <div id="ume-hint" style="
-    position: absolute;
-    top: 40%;
-    width: 100%;
-    text-align: center;
-    font-size: 32px;
-    color: navy;
-    font-family: sans-serif;
-    z-index: 10;">
-    👉 點一下畫面開始遊戲 👈
-  </div>
+    <canvas class="emscripten" id="canvas" width="1px" height="1px"
+            oncontextmenu="event.preventDefault()" tabindex="1"></canvas>
 
-  <canvas class="emscripten" id="canvas" width="1px" height="1px"
-          oncontextmenu="event.preventDefault()" tabindex="1"></canvas>
+    <!-- ✅ Unified Unlocker Script: AudioContext + platform.window.MM -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        let unlocked = false;
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      let unlocked = false;
-
-      const tryUnlock = () => {
-        try {
-          if (typeof AudioContext !== 'undefined') {
-            const ctx = new AudioContext();
-            if (ctx.state === "suspended") {
-              ctx.resume().then(() => {
-                console.log("[AudioContext] resumed");
-              });
+        const tryUnlock = () => {
+          try {
+            // 解鎖 AudioContext（即使無音效，也避免瀏覽器封鎖）
+            if (typeof AudioContext !== 'undefined') {
+              const ctx = new AudioContext();
+              if (ctx.state === "suspended") {
+                ctx.resume().then(() => {
+                  console.log("[AudioContext] resumed");
+                });
+              }
             }
+
+            // 解鎖 pygbag 多媒體層交互限制
+            if (
+              typeof platform !== "undefined" &&
+              typeof platform.window !== "undefined" &&
+              typeof platform.window.MM !== "undefined"
+            ) {
+              platform.window.MM.UME = true;
+              console.log("[platform.window.MM] UME set to true");
+              unlocked = true;
+            }
+          } catch (e) {
+            console.warn("Unlock attempt failed", e);
           }
+        };
 
-          if (
-            typeof platform !== "undefined" &&
-            typeof platform.window !== "undefined" &&
-            typeof platform.window.MM !== "undefined"
-          ) {
-            platform.window.MM.UME = true;
-            console.log("[platform.window.MM] UME set to true");
-            unlocked = true;
+        const interactionHandler = () => {
+          const interval = setInterval(() => {
+            if (!unlocked) {
+              tryUnlock();
+            } else {
+              clearInterval(interval);
+            }
+          }, 200);
 
-            // ✅ 清除提示文字
-            document.getElementById("ume-hint")?.remove();
-          }
-        } catch (e) {
-          console.warn("Unlock attempt failed", e);
-        }
-      };
+          document.removeEventListener("mousedown", interactionHandler);
+          document.removeEventListener("keydown", interactionHandler);
+          document.removeEventListener("touchstart", interactionHandler);
+        };
 
-      const interactionHandler = () => {
-        const interval = setInterval(() => {
-          if (!unlocked) {
-            tryUnlock();
-          } else {
-            clearInterval(interval);
-          }
-        }, 200);
-
-        document.removeEventListener("mousedown", interactionHandler);
-        document.removeEventListener("keydown", interactionHandler);
-        document.removeEventListener("touchstart", interactionHandler);
-      };
-
-      document.addEventListener("mousedown", interactionHandler);
-      document.addEventListener("keydown", interactionHandler);
-      document.addEventListener("touchstart", interactionHandler);
-    });
-  </script>
-</body>
+        document.addEventListener("mousedown", interactionHandler);
+        document.addEventListener("keydown", interactionHandler);
+        document.addEventListener("touchstart", interactionHandler);
+      });
+    </script>
+  </body>
+</html>
