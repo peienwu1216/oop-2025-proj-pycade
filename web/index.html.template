@@ -79,10 +79,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // 🔥 這一行是關鍵：主動觸發 pygbag 封裝的互動偵測
-      if (typeof MM !== "undefined") {
-        MM.UME = true;
-        console.log("[MM] UME manually set to true");
+      // ❗️此處精準針對 pygbag 平台層解鎖
+      if (typeof platform !== "undefined" &&
+          typeof platform.window !== "undefined" &&
+          typeof platform.window.MM !== "undefined") {
+        platform.window.MM.UME = true;
+        console.log("[platform.window.MM] UME manually set to true");
       }
 
     } catch (e) {
@@ -95,13 +97,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.removeEventListener("touchstart", unlock);
   };
 
-  // 綁定使用者互動事件
   document.addEventListener("mousedown", unlock);
   document.addEventListener("keydown", unlock);
   document.addEventListener("touchstart", unlock);
 });
 </script>
-
-
   </body>
 </html>
