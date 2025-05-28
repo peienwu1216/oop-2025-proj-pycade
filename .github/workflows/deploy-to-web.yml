@@ -33,11 +33,8 @@ jobs:
         timeout-minutes: 25 
         run: |
           echo "Starting pygbag build with verbose logging, --audio, no optimizations, and no archive generation..."
-          # 使用 --log 3 獲取更詳細的日誌
-          # --audio 嘗試更好地處理音訊上下文
-          # --no-opt 跳過可能耗時的優化步驟
-          # --no-archive 跳過生成 .apk/.zip 歸檔文件
-          pygbag --log 3 . --audio --no-opt --no-archive
+          # 【重要修改】將 '.' (代表當前目錄，即您的專案根目錄) 移到所有選項參數之後
+          pygbag --log 3 --audio --no-opt --no-archive .
           echo "Pygbag build command finished."
 
       - name: Check and Upload GitHub Pages artifact
