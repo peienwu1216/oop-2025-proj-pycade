@@ -5,7 +5,6 @@ import settings
 from core.map_manager import MapManager
 from sprites.player import Player
 from core.leaderboard_manager import LeaderboardManager
-from core.menu import Menu # 【新增】為了能返回 Menu 場景
 
 # AI 控制器匯入
 from core.ai_controller import AIController as OriginalAIController
