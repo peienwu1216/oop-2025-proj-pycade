@@ -19,3 +19,6 @@ env.bak/
 
 # macOS
 .DS_Store
+
+# Build artifacts
+build/
