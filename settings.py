@@ -145,7 +145,7 @@ FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 用於存放 leaderboard.json 等數據檔案
 
 # 特定字體路徑
-CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.otf") # 確保字體檔案在此路徑
+CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.ttf") # 確保字體檔案在此路徑
 TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
 SUB_TITLE_FONT_PATH = os.path.join(FONTS_DIR, "Lora-VariableItalic.ttf") # 副標題字體
 PIXEL_FONT_PATH = os.path.join(FONTS_DIR, "Minecraftia-Regular.ttf") # 像素風格字體

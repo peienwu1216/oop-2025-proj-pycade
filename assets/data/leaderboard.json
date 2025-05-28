@@ -12,24 +12,6 @@
         "date": "2025-05-23 21:56"
     },
     {
-        "name": "Jumbo",
-        "score": 320,
-        "ai_defeated": "item_focused",
-        "date": "2025-05-26 23:46"
-    },
-    {
-        "name": "Patty",
-        "score": 270,
-        "ai_defeated": "aggressive",
-        "date": "2025-05-23 21:55"
-    },
-    {
-        "name": "Jumbo",
-        "score": 190,
-        "ai_defeated": "item_focused",
-        "date": "2025-05-28 02:12"
-    },
-    {
         "name": "Player",
         "score": 180,
         "ai_defeated": "original",
@@ -40,23 +22,5 @@
         "score": 140,
         "ai_defeated": "aggressive",
         "date": "2025-05-28 04:11"
-    },
-    {
-        "name": "Jumbo",
-        "score": 70,
-        "ai_defeated": "aggressive",
-        "date": "2025-05-28 04:12"
-    },
-    {
-        "name": "Patrick",
-        "score": 40,
-        "ai_defeated": "original",
-        "date": "2025-05-23 21:40"
-    },
-    {
-        "name": "Daniel",
-        "score": 20,
-        "ai_defeated": "conservative",
-        "date": "2025-05-23 21:42"
     }
 ]
