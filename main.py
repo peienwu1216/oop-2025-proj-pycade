@@ -9,7 +9,7 @@ from core.thank_you_scene import ThankYouScene # 【新增】在頂部匯入 Tha
 
 async def main():
     await asyncio.sleep(0.1)
-    pygame.init()
+    pygame.display.init()
     screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
     pygame.display.set_caption(settings.TITLE)
     clock = pygame.time.Clock()
