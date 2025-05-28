@@ -35,3 +35,7 @@ async def custom_site():
 
     print("🎮 custom_site(): User clicked. Launching game main().")
     await real_main()
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(custom_site())
