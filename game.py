@@ -1,10 +1,11 @@
-# oop-2025-proj-pycade/game.py
+# oop-2025-proj-pycade/game.py (REVISED FOR WEBGAME)
 
 import pygame
 import settings
 from core.map_manager import MapManager
-from sprites.player import Player 
+from sprites.player import Player
 from core.leaderboard_manager import LeaderboardManager
+from core.menu import Menu # 【新增】為了能返回 Menu 場景
 
 # AI 控制器匯入
 from core.ai_controller import AIController as OriginalAIController
@@ -19,41 +20,39 @@ class Game:
     def __init__(self, screen, clock, ai_archetype="original"):
         self.screen = screen
         self.clock = clock
-        self.running = True
-        self.dt = self.clock.tick(settings.FPS) / 1000.0 # 每秒遊戲更新次數
-        self.restart_game = False
-        # --- 修改：新增遊戲狀態 ---
-        self.game_state = "PLAYING"  # "PLAYING", "GAME_OVER", "ENTER_NAME", "SCORE_SUBMITTED"
+        self.running = True # 這個 self.running 仍然有用，用來標記 Game 場景是否應該繼續
+        self.dt = 0 # dt 會在 run_one_frame 中更新
+        self.restart_game = False # 這個旗標用來告訴 main.py 是否要回到選單
+        self.game_state = "PLAYING"
         self.ai_archetype = ai_archetype
-        
+
         # --- Background ---
         self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
         self.brick_tile_image = pygame.transform.smoothscale(
             self.brick_tile_image,
-            (settings.TILE_SIZE, settings.TILE_SIZE) 
+            (settings.TILE_SIZE, settings.TILE_SIZE)
         )
         self.border_brick = pygame.image.load(settings.WALL_SOLID_IMG).convert()
         self.border_brick = pygame.transform.smoothscale(
             self.border_brick,
-            (settings.TILE_SIZE, settings.TILE_SIZE) 
+            (settings.TILE_SIZE, settings.TILE_SIZE)
         )
         self.beside_brick = pygame.image.load(settings.STONE_1_IMG).convert()
         self.beside_brick = pygame.transform.smoothscale(
             self.beside_brick,
-            (settings.TILE_SIZE, settings.TILE_SIZE) 
+            (settings.TILE_SIZE, settings.TILE_SIZE)
         )
         self.timer_brick = pygame.image.load(settings.STONE_2_IMG).convert()
         self.timer_brick = pygame.transform.smoothscale(
             self.timer_brick,
-            (settings.TILE_SIZE, settings.TILE_SIZE) 
+            (settings.TILE_SIZE, settings.TILE_SIZE)
         )
         self.text_brick = pygame.image.load(settings.STONE_3_IMG).convert()
         self.text_brick = pygame.transform.smoothscale(
             self.text_brick,
-            (settings.TILE_SIZE, settings.TILE_SIZE) 
+            (settings.TILE_SIZE, settings.TILE_SIZE)
         )
-        
-        
+
         # --- Sprite Groups ---
         self.all_sprites = pygame.sprite.Group()
         self.players_group = pygame.sprite.Group()
@@ -69,9 +68,9 @@ class Game:
         self.ai_controller_p2 = None
 
         # --- Timer related attributes ---
-        self.time_elapsed_seconds = 0 
-        self.game_timer_active = True   
-        self.time_up_winner = None      
+        self.time_elapsed_seconds = 0
+        self.game_timer_active = True
+        self.time_up_winner = None
 
         # --- Leaderboard Manager ---
         self.leaderboard_manager = LeaderboardManager()
@@ -80,35 +79,34 @@ class Game:
         self.player_name_input = ""
         self.input_box_active = False
         self.name_input_rect = pygame.Rect(
-            settings.SCREEN_WIDTH // 2 - 140, 
-            settings.SCREEN_HEIGHT // 2 - 20, 
-            280, 40 # 預設大小，可在 draw_enter_name_screen 中調整
+            settings.SCREEN_WIDTH // 2 - 140,
+            settings.SCREEN_HEIGHT // 2 - 20,
+            280, 40
         )
         self.score_to_submit = 0
-        
-        # --- 新增：分數提交後提示訊息的計時器 ---
+
         self.score_submitted_message_timer = 0.0
-        self.score_submitted_message_duration = 3.0 # 提示訊息顯示 3 秒
+        self.score_submitted_message_duration = 3.0
 
         # --- Font attributes ---
         self.hud_font = None
         self.game_over_font = None
         self.restart_font = None
         self.ai_status_font = None
-        self.timer_font_normal = None 
+        self.timer_font_normal = None
         self.timer_font_urgent = None
-        self.text_input_font = None 
-        self.prompt_font = None     
-        self.message_font = None # 用於提交成功訊息的字體
+        self.text_input_font = None
+        self.prompt_font = None
+        self.message_font = None
 
         try:
             font_size = 22
             font_status_size = 18
             timer_font_size_normal = 28
-            timer_font_size_urgent = 36 
+            timer_font_size_urgent = 36
             text_input_font_size = getattr(settings, "TEXT_INPUT_FONT_SIZE", 32)
-            prompt_font_size = 48 
-            message_font_size = 38 # 新增：用於提交成功訊息的字體大小
+            prompt_font_size = 48
+            message_font_size = 38
 
             default_font_path = None
             if hasattr(settings, 'CHINESE_FONT_PATH') and settings.CHINESE_FONT_PATH:
@@ -124,9 +122,9 @@ class Game:
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
-            self.prompt_font = pygame.font.Font(default_font_path, prompt_font_size) 
+            self.prompt_font = pygame.font.Font(default_font_path, prompt_font_size)
             self.message_font = pygame.font.Font(default_font_path, message_font_size)
-            
+
             self.game_over_font = pygame.font.Font(default_font_path, 74)
             self.restart_font = pygame.font.Font(default_font_path, 30)
 
@@ -141,10 +139,11 @@ class Game:
             self.message_font = pygame.font.SysFont("arial", 38)
             self.game_over_font = pygame.font.SysFont('arial', 74)
             self.restart_font = pygame.font.SysFont('arial', 30)
-        
+
         self.setup_initial_state()
 
     def setup_initial_state(self):
+        # (此函式保持不變)
         self.all_sprites.empty()
         self.players_group.empty()
         self.bombs_group.empty()
@@ -158,13 +157,13 @@ class Game:
         self.game_state = "PLAYING"
 
         self.player_name_input = ""
-        self.input_box_active = False 
+        self.input_box_active = False
         self.score_to_submit = 0
-        self.score_submitted_message_timer = 0.0 # 重置提交訊息計時器
+        self.score_submitted_message_timer = 0.0
 
         grid_width = getattr(settings, 'GRID_WIDTH', 15)
         grid_height = getattr(settings, 'GRID_HEIGHT', 11)
-        
+
         p1_start_tile = (1, 1)
         p2_start_tile_x = grid_width - 2 if grid_width > 2 else 1
         p2_start_tile_y = grid_height - 2 if grid_height > 2 else 1
@@ -177,7 +176,7 @@ class Game:
             safe_radius
         )
         self.map_manager.load_map_from_data(random_map_layout)
-        
+
         player1_sprite_config = {
             "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP,
             "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES
@@ -200,51 +199,85 @@ class Game:
                                  is_ai=True)
         self.all_sprites.add(self.player2_ai)
         self.players_group.add(self.player2_ai)
-        
+
         ai_controller_class = None
         if self.ai_archetype == "original": ai_controller_class = OriginalAIController
         elif self.ai_archetype == "conservative": ai_controller_class = ConservativeAIController
         elif self.ai_archetype == "aggressive": ai_controller_class = AggressiveAIController
         elif self.ai_archetype == "item_focused": ai_controller_class = ItemFocusedAIController
         else: ai_controller_class = OriginalAIController
-        
+
         self.ai_controller_p2 = ai_controller_class(self.player2_ai, self)
 
         if hasattr(self.ai_controller_p2, 'reset_state') and callable(getattr(self.ai_controller_p2, 'reset_state')):
             self.ai_controller_p2.reset_state()
-        
+
         self.player2_ai.ai_controller = self.ai_controller_p2
-        if self.ai_controller_p2: 
+        if self.ai_controller_p2:
             self.ai_controller_p2.human_player_sprite = self.player1
         
-    def run(self):
-        self.clock.tick(settings.FPS) 
-        self.time_elapsed_seconds = 0.0
-        self.game_timer_active = True
-        while self.running:
-            self.dt = self.clock.tick(settings.FPS) / 1000.0
-            self.events()
-            self.update()
-            self.draw()
-        return self.restart_game
+        # 【新增】重置 running 和 restart_game 旗標，確保每次 Game 場景開始時都是乾淨的狀態
+        self.running = True
+        self.restart_game = False
 
-    def events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-                self.restart_game = False
-            
+
+    # 【修改】移除舊的 run 方法
+    # def run(self):
+    #     self.clock.tick(settings.FPS)
+    #     self.time_elapsed_seconds = 0.0
+    #     self.game_timer_active = True
+    #     while self.running:
+    #         self.dt = self.clock.tick(settings.FPS) / 1000.0
+    #         self.events()
+    #         self.update()
+    #         self.draw()
+    #     return self.restart_game
+
+    # 【新增】run_one_frame 方法，由 main.py 的主迴圈呼叫
+    def run_one_frame(self, events_from_main_loop):
+        # 如果 Game 場景已經設定為不再運行 (例如，玩家按 ESC 或遊戲結束)
+        if not self.running:
+            # 根據 restart_game 旗標決定返回 Menu 還是 "QUIT" 指令
+            from core.menu import Menu
+            return Menu(self.screen) if self.restart_game else "QUIT"
+
+        # 計算 dt (delta time)
+        self.dt = self.clock.tick(settings.FPS) / 1000.0
+
+        # 處理事件
+        self._process_events_internal(events_from_main_loop) # 使用內部方法處理事件
+
+        # 更新遊戲邏輯
+        self._update_internal() # 使用內部方法更新邏輯
+
+        # 繪製畫面
+        self._draw_internal() # 使用內部方法繪製
+
+        # 檢查場景是否應該結束
+        if not self.running:
+            from core.menu import Menu
+            return Menu(self.screen) if self.restart_game else "QUIT"
+        
+        return self # 返回 self 表示繼續運行 Game 場景
+
+
+    # 【修改】將原本的 events() 改名為 _process_events_internal() 並接收外部傳入的事件
+    def _process_events_internal(self, events_from_main_loop):
+        for event in events_from_main_loop:
+            # pygame.QUIT 事件已由 main.py 處理，這裡可以不用再處理
+            # 但為了安全，保留也可以
+
             if self.game_state == "ENTER_NAME":
                 self.handle_enter_name_state_events(event)
             elif self.game_state == "SCORE_SUBMITTED":
                 if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
                     self.restart_game = True
-                    self.running = False
-            else: 
+                    self.running = False # 標記 Game 場景結束
+            else:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                        self.running = False
-                        self.restart_game = False
+                        self.running = False # 標記 Game 場景結束
+                        self.restart_game = False # 不是要重新開始，是真的退出
                     
                     if self.game_state == "PLAYING":
                         if event.key == pygame.K_f:
@@ -254,9 +287,135 @@ class Game:
                     elif self.game_state == "GAME_OVER":
                         if event.key == pygame.K_r:
                             self.restart_game = True
-                            self.running = False
-    
+                            self.running = False # 標記 Game 場景結束
+
+    # 【修改】將原本的 update() 改名為 _update_internal()
+    def _update_internal(self):
+        # (update 函式的內容保持不變)
+        if self.game_state == "PLAYING":
+            p1_won_by_ko = False
+            p1_won_by_time = False
+
+            if self.game_timer_active:
+                self.time_elapsed_seconds += self.dt
+                if self.time_elapsed_seconds >= settings.GAME_DURATION_SECONDS:
+                    self.game_timer_active = False
+                    if self.player1.is_alive and self.player2_ai.is_alive:
+                        if self.player1.lives > self.player2_ai.lives:
+                            self.time_up_winner = "P1"; p1_won_by_time = True
+                        elif self.player2_ai.lives > self.player1.lives:
+                            self.time_up_winner = "AI"
+                        else:
+                            if self.player1.score > self.player2_ai.score:
+                                self.time_up_winner = "P1"; p1_won_by_time = True
+                            elif self.player2_ai.score > self.player1.score:
+                                self.time_up_winner = "AI"
+                            else: self.time_up_winner = "DRAW"
+                    elif self.player1.is_alive:
+                        self.time_up_winner = "P1"; p1_won_by_time = True
+                    elif self.player2_ai.is_alive: self.time_up_winner = "AI"
+                    else: self.time_up_winner = "DRAW"
+                    self.game_state = "GAME_OVER"
+
+            if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
+                self.ai_controller_p2.update()
+            self.all_sprites.update(self.dt, self.solid_obstacles_group)
+
+            for player in list(self.players_group):
+                if player.is_alive:
+                    if pygame.sprite.spritecollide(player, self.explosions_group, False, pygame.sprite.collide_rect):
+                        player.take_damage()
+
+            if hasattr(self.map_manager, 'destructible_walls_group'):
+                for d_wall in list(self.map_manager.destructible_walls_group):
+                    if d_wall.alive():
+                        if pygame.sprite.spritecollide(d_wall, self.explosions_group, False):
+                            d_wall.take_damage()
+
+            for player in list(self.players_group):
+                if player.is_alive:
+                    items_collected = pygame.sprite.spritecollide(player, self.items_group, True, pygame.sprite.collide_rect)
+                    for item in items_collected: item.apply_effect(player)
+
+            if self.game_timer_active:
+                human_player_alive = self.player1 and self.player1.is_alive
+                ai_player_alive = self.player2_ai and self.player2_ai.is_alive
+                if not human_player_alive or not ai_player_alive:
+                    self.game_state = "GAME_OVER"
+                    self.game_timer_active = False
+                    if human_player_alive: p1_won_by_ko = True
+
+            if self.game_state == "GAME_OVER":
+                is_p1_winner = (p1_won_by_ko or p1_won_by_time)
+                if is_p1_winner and self.player1 and self.leaderboard_manager.is_score_high_enough(self.player1.score):
+                    self.score_to_submit = self.player1.score
+                    self.player_name_input = ""
+                    self.input_box_active = True
+                    self.game_state = "ENTER_NAME"
+
+        elif self.game_state == "ENTER_NAME":
+            pass
+
+        elif self.game_state == "SCORE_SUBMITTED":
+            self.score_submitted_message_timer += self.dt
+            if self.score_submitted_message_timer >= self.score_submitted_message_duration:
+                self.restart_game = True
+                self.running = False # 標記 Game 場景結束
+
+    # 【修改】將原本的 draw() 改名為 _draw_internal()
+    def _draw_internal(self):
+        # (draw 函式的內容保持不變)
+        # self.screen.fill(settings.WHITE)
+        tile_img = self.brick_tile_image
+        tile_width, tile_height = tile_img.get_size()
+
+        screen_width, screen_height = self.screen.get_size()
+
+        for y in range(tile_height, tile_height*10, tile_height):
+            for x in range(tile_width, tile_width*14, tile_width):
+                self.screen.blit(tile_img, (x, y))
+        for y in range(tile_height, tile_height*15, tile_height):
+            for x in range(tile_width*15, screen_width-tile_width, tile_width):
+                self.screen.blit(self.beside_brick, (x, y))
+        for y in range(tile_height*11, screen_height-tile_height, tile_height):
+            for x in range(tile_width, tile_width*15, tile_width):
+                self.screen.blit(self.text_brick, (x, y))
+        for y in range(tile_height*15, screen_height-tile_height, tile_height):
+            for x in range(tile_width*15, screen_width-tile_width, tile_width):
+                self.screen.blit(self.text_brick, (x, y))
+
+        for y in range(0, screen_height, tile_height):
+            self.screen.blit(self.border_brick, (0, y))
+            self.screen.blit(self.border_brick, (screen_width - tile_width, y))
+            self.screen.blit(self.border_brick, (tile_width*14, y))
+        for x in range(0, screen_width, tile_width):
+            self.screen.blit(self.border_brick, (x, 0))
+            self.screen.blit(self.border_brick, (x, tile_height*18))
+        for x in range(tile_width*15, screen_width-tile_width, tile_width):
+            self.screen.blit(self.border_brick, (x, tile_height*14))
+
+
+        if self.game_state == "ENTER_NAME":
+            self.draw_enter_name_screen()
+        elif self.game_state == "SCORE_SUBMITTED":
+            self.draw_score_submitted_screen()
+        else:
+            self.all_sprites.draw(self.screen)
+            if self.game_state == "PLAYING":
+                if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
+                    if hasattr(self.ai_controller_p2, 'debug_draw_path'):
+                        self.ai_controller_p2.debug_draw_path(self.screen)
+                self.draw_hud()
+            elif self.game_state == "GAME_OVER":
+                self.draw_game_over_screen()
+
+        # pygame.display.flip() # 由 main.py 的主迴圈呼叫
+
+    # handle_enter_name_state_events, draw_pixel_digit, draw_hud, draw_game_over_screen,
+    # draw_enter_name_screen, draw_score_submitted_screen 這些方法保持不變，
+    # 因為它們是被 _process_events_internal 或 _draw_internal 內部呼叫的。
     def handle_enter_name_state_events(self, event):
+        # (此函式保持不變)
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.name_input_rect.collidepoint(event.pos):
                 self.input_box_active = not self.input_box_active
@@ -286,130 +445,12 @@ class Game:
                         if event.unicode.isprintable() and event.key not in (pygame.K_TAB, pygame.K_ESCAPE, pygame.K_RETURN):
                              self.player_name_input += event.unicode
             elif event.key == pygame.K_ESCAPE: 
-                self.game_state = "GAME_OVER" 
+                self.game_state = "GAME_OVER" # 這裡其實會被 _process_events_internal 的 ESC 處理覆蓋
                 self.restart_game = True 
-                self.running = False     
+                self.running = False
 
-    def update(self):
-        if self.game_state == "PLAYING":
-            p1_won_by_ko = False 
-            p1_won_by_time = False
-
-            if self.game_timer_active:
-                self.time_elapsed_seconds += self.dt
-                if self.time_elapsed_seconds >= settings.GAME_DURATION_SECONDS:
-                    self.game_timer_active = False                     
-                    if self.player1.is_alive and self.player2_ai.is_alive:
-                        if self.player1.lives > self.player2_ai.lives:
-                            self.time_up_winner = "P1"; p1_won_by_time = True
-                        elif self.player2_ai.lives > self.player1.lives:
-                            self.time_up_winner = "AI"
-                        else: 
-                            if self.player1.score > self.player2_ai.score:
-                                self.time_up_winner = "P1"; p1_won_by_time = True
-                            elif self.player2_ai.score > self.player1.score:
-                                self.time_up_winner = "AI"
-                            else: self.time_up_winner = "DRAW"
-                    elif self.player1.is_alive:
-                        self.time_up_winner = "P1"; p1_won_by_time = True
-                    elif self.player2_ai.is_alive: self.time_up_winner = "AI"
-                    else: self.time_up_winner = "DRAW"
-                    self.game_state = "GAME_OVER"
-
-            if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
-                self.ai_controller_p2.update()
-            self.all_sprites.update(self.dt, self.solid_obstacles_group)
-
-            for player in list(self.players_group):
-                if player.is_alive:
-                    if pygame.sprite.spritecollide(player, self.explosions_group, False, pygame.sprite.collide_rect):
-                        player.take_damage()
-            
-            if hasattr(self.map_manager, 'destructible_walls_group'):
-                for d_wall in list(self.map_manager.destructible_walls_group):
-                    if d_wall.alive():
-                        if pygame.sprite.spritecollide(d_wall, self.explosions_group, False):
-                            d_wall.take_damage()
-            
-            for player in list(self.players_group):
-                if player.is_alive:
-                    items_collected = pygame.sprite.spritecollide(player, self.items_group, True, pygame.sprite.collide_rect)
-                    for item in items_collected: item.apply_effect(player)
-            
-            if self.game_timer_active:
-                human_player_alive = self.player1 and self.player1.is_alive
-                ai_player_alive = self.player2_ai and self.player2_ai.is_alive
-                if not human_player_alive or not ai_player_alive:
-                    self.game_state = "GAME_OVER"
-                    self.game_timer_active = False 
-                    if human_player_alive: p1_won_by_ko = True
-
-            if self.game_state == "GAME_OVER": # 在 GAME_OVER 狀態設定後，檢查是否需要輸入名字
-                is_p1_winner = (p1_won_by_ko or p1_won_by_time)
-                if is_p1_winner and self.player1 and self.leaderboard_manager.is_score_high_enough(self.player1.score):
-                    self.score_to_submit = self.player1.score
-                    self.player_name_input = "" 
-                    self.input_box_active = True 
-                    self.game_state = "ENTER_NAME" 
-        
-        elif self.game_state == "ENTER_NAME":
-            pass 
-
-        elif self.game_state == "SCORE_SUBMITTED":
-            self.score_submitted_message_timer += self.dt
-            if self.score_submitted_message_timer >= self.score_submitted_message_duration:
-                self.restart_game = True 
-                self.running = False     
-
-
-    def draw(self):
-        # self.screen.fill(settings.WHITE)
-        tile_img = self.brick_tile_image
-        tile_width, tile_height = tile_img.get_size()
-
-        screen_width, screen_height = self.screen.get_size()
-
-        for y in range(tile_height, tile_height*10, tile_height):
-            for x in range(tile_width, tile_width*14, tile_width):
-                self.screen.blit(tile_img, (x, y))
-        for y in range(tile_height, tile_height*15, tile_height):
-            for x in range(tile_width*15, screen_width-tile_width, tile_width):
-                self.screen.blit(self.beside_brick, (x, y))
-        for y in range(tile_height*11, screen_height-tile_height, tile_height):
-            for x in range(tile_width, tile_width*15, tile_width):
-                self.screen.blit(self.text_brick, (x, y))
-        for y in range(tile_height*15, screen_height-tile_height, tile_height):
-            for x in range(tile_width*15, screen_width-tile_width, tile_width):
-                self.screen.blit(self.text_brick, (x, y))
-        
-        for y in range(0, screen_height, tile_height):
-            self.screen.blit(self.border_brick, (0, y))  # 左邊邊框
-            self.screen.blit(self.border_brick, (screen_width - tile_width, y))  # 右邊邊框
-            self.screen.blit(self.border_brick, (tile_width*14, y))
-        for x in range(0, screen_width, tile_width):
-            self.screen.blit(self.border_brick, (x, 0)) # 上邊邊框
-            self.screen.blit(self.border_brick, (x, tile_height*18))  # 底邊邊框
-        for x in range(tile_width*15, screen_width-tile_width, tile_width):
-            self.screen.blit(self.border_brick, (x, tile_height*14)) # 上邊邊框
-        
-        
-        if self.game_state == "ENTER_NAME":
-            self.draw_enter_name_screen()
-        elif self.game_state == "SCORE_SUBMITTED": 
-            self.draw_score_submitted_screen()
-        else: 
-            self.all_sprites.draw(self.screen) 
-            if self.game_state == "PLAYING":
-                if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
-                    if hasattr(self.ai_controller_p2, 'debug_draw_path'):
-                        self.ai_controller_p2.debug_draw_path(self.screen)
-                self.draw_hud() 
-            elif self.game_state == "GAME_OVER":
-                self.draw_game_over_screen() 
-        
-        pygame.display.flip()
-        
     def draw_pixel_digit(self, digit_char, top_left_x, top_left_y, block_size=settings.TILE_SIZE):
+        # (此函式保持不變)
         pattern = DIGIT_MAP.get(digit_char)
         if not pattern:
             return
@@ -420,9 +461,9 @@ class Game:
                     dest_x = top_left_x + col * block_size
                     dest_y = top_left_y + row * block_size
                     self.screen.blit(self.timer_brick, (dest_x, dest_y))
-    
 
     def draw_hud(self):
+        # (此函式保持不變)
         if not self.hud_font or not self.timer_font_normal or not self.timer_font_urgent:
             return
 
@@ -432,10 +473,10 @@ class Game:
         timer_text_1 = f"{minutes:02d}"
         timer_text_2 = f"{seconds:02d}"
         
-        start_x = settings.TILE_SIZE*16  # 往右邊空白區貼上
+        start_x = settings.TILE_SIZE*16
         start_y = settings.TILE_SIZE*2
-        block_size = self.border_brick.get_width()  # 假設是方形圖
-        spacing = settings.TILE_SIZE  # 數字間距
+        block_size = self.border_brick.get_width()
+        spacing = settings.TILE_SIZE
 
         for i, char in enumerate(timer_text_1):
             self.draw_pixel_digit(
@@ -447,15 +488,15 @@ class Game:
             self.draw_pixel_digit(
                 char,
                 top_left_x=start_x + i * (3 * block_size + spacing),
-                top_left_y=start_y + 5 * block_size + spacing,  # 第二行數字下移
+                top_left_y=start_y + 5 * block_size + spacing,
             )
 
         line_height = self.hud_font.get_linesize()*1.3
-        start_x_p1 = 48 
-        start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280) 
-        num_max_hud_lines = 5 
-        bottom_padding = 10 
-        start_y = settings.SCREEN_HEIGHT - (num_max_hud_lines * line_height) - bottom_padding
+        start_x_p1 = 48
+        start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280)
+        num_max_hud_lines = 5
+        bottom_padding = 10
+        hud_start_y = settings.SCREEN_HEIGHT - (num_max_hud_lines * line_height) - bottom_padding # 重新命名避免與上面的 start_y 衝突
 
         p1_texts = []
         if self.player1:
@@ -464,10 +505,7 @@ class Game:
             p1_texts.append(f"P1 Range: {self.player1.bomb_range}")
             p1_texts.append(f"P1 Score: {self.player1.score}")
         for i, text in enumerate(p1_texts):
-            #surf = self.hud_font.render(text, True, settings.BLACK)
-            #self.screen.blit(surf, (start_x_p1, start_y + i * line_height))
-            # draw_text_with_shadow(self.screen, text, self.hud_font, (start_x_p1, start_y + i * line_height))
-            draw_text_with_outline(self.screen, text, self.hud_font, (start_x_p1, start_y + i * line_height))
+            draw_text_with_outline(self.screen, text, self.hud_font, (start_x_p1, hud_start_y + i * line_height))
 
 
         ai_texts = []
@@ -488,13 +526,14 @@ class Game:
         for i, text in enumerate(ai_texts):
             font_to_use = self.hud_font
             if text.startswith("AI (") and self.ai_status_font: font_to_use = self.ai_status_font
-            draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, start_y + i * line_height))
+            draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, hud_start_y + i * line_height))
         if ai_state_text:
             draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(230,230,230), of=1)
             draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(230,230,230), of=1)
 
-    
+
     def draw_game_over_screen(self):
+        # (此函式保持不變)
         if not self.game_over_font or not self.restart_font:
             return
 
@@ -502,11 +541,11 @@ class Game:
         p1_alive = self.player1 and self.player1.is_alive
         ai_alive = self.player2_ai and self.player2_ai.is_alive
 
-        if self.time_up_winner: 
+        if self.time_up_winner:
             if self.time_up_winner == "P1": msg = "TIME'S UP! P1 WINS!"; color = settings.GREEN
             elif self.time_up_winner == "AI": msg = "TIME'S UP! AI WINS!"; color = settings.RED
             else: msg = "TIME'S UP! DRAW!"; color = settings.GREY
-        else: 
+        else:
             if not p1_alive and not ai_alive: msg = "DRAW!"; color = settings.GREY
             elif not p1_alive: msg = "GAME OVER - YOU LOST!"; color = settings.RED
             elif not ai_alive: msg = "VICTORY - AI DEFEATED!"; color = settings.GREEN
@@ -520,12 +559,11 @@ class Game:
         self.screen.blit(restart_text, restart_rect)
 
     def draw_enter_name_screen(self):
-        """繪製讓玩家輸入姓名的介面。"""
-        if not self.text_input_font or not self.prompt_font or not self.hud_font: # 確保所有需要的字體都已載入
-            # print("DEBUG: Fonts for enter name screen not loaded") # 可以取消註解用於調試
+        # (此函式保持不變)
+        if not self.text_input_font or not self.prompt_font or not self.hud_font:
             return
 
-        self.screen.fill((180, 200, 255)) 
+        self.screen.fill((180, 200, 255))
 
         prompt_text = "VICTORY! New High Score!"
         prompt_surf = self.prompt_font.render(prompt_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", settings.BLACK))
@@ -550,10 +588,10 @@ class Game:
             text_rect = text_surf.get_rect(midleft=(self.name_input_rect.x + 15, self.name_input_rect.centery))
             self.screen.blit(text_surf, text_rect)
 
-            if self.input_box_active and pygame.time.get_ticks() % 1000 < 500: 
+            if self.input_box_active and pygame.time.get_ticks() % 1000 < 500:
                 cursor_x_pos = text_rect.right + 3 if self.player_name_input else self.name_input_rect.x + 15
-                pygame.draw.line(self.screen, getattr(settings, "TEXT_INPUT_TEXT_COLOR", settings.BLACK), 
-                                (cursor_x_pos, self.name_input_rect.y + 10), 
+                pygame.draw.line(self.screen, getattr(settings, "TEXT_INPUT_TEXT_COLOR", settings.BLACK),
+                                (cursor_x_pos, self.name_input_rect.y + 10),
                                 (cursor_x_pos, self.name_input_rect.bottom - 10), 2)
 
         submit_prompt_text = "Press ENTER to Submit, ESC to Skip"
@@ -562,20 +600,19 @@ class Game:
             submit_rect = submit_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, self.name_input_rect.bottom + 40))
             self.screen.blit(submit_surf, submit_rect)
 
-    # --- 新增方法：繪製分數提交成功畫面 ---
     def draw_score_submitted_screen(self):
-        """繪製分數已記錄的提示訊息。"""
-        if not self.message_font or not self.hud_font : 
+        # (此函式保持不變)
+        if not self.message_font or not self.hud_font :
             return
 
-        self.screen.fill((200, 255, 200)) 
+        self.screen.fill((200, 255, 200))
 
         message_text = "Score Recorded on Leaderboard!"
         message_surf = self.message_font.render(message_text, True, settings.BLACK)
         message_rect = message_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 30))
         self.screen.blit(message_surf, message_rect)
 
-        continue_prompt_text = "Press any key or click to continue..." # 修改提示
+        continue_prompt_text = "Press any key or click to continue..."
         continue_surf = self.hud_font.render(continue_prompt_text, True, settings.GREY)
         continue_rect = continue_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, message_rect.bottom + 40))
         self.screen.blit(continue_surf, continue_rect)

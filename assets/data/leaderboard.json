@@ -30,6 +30,12 @@
         "date": "2025-05-28 02:12"
     },
     {
+        "name": "Player",
+        "score": 180,
+        "ai_defeated": "original",
+        "date": "2025-05-28 14:34"
+    },
+    {
         "name": "Jumbo",
         "score": 140,
         "ai_defeated": "aggressive",
