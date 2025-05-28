@@ -25,18 +25,21 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt # pygame
-          pip install pygbag            # pygbag 0.9.2
+          # requirements.txt 中已包含 pygame
+          pip install -r requirements.txt
+          # pygbag 0.9.2
+          pip install pygbag
 
       - name: Build Web Version with Pygbag
         timeout-minutes: 30
         run: |
-          echo "Starting a more specific pygbag build..."
-          # --build: 只進行構建，不啟動測試伺服器。
-          # --archive: 將資源打包成 zip 檔案，提升網頁載入效能。
-          # --no-opt: 跳過程式碼優化步驟，避免因缺少 Black 等工具而報錯。
-          # --dir build/web: 明確指定輸出目錄。
-          pygbag --build --archive --no-opt --dir build/web main.py
+          echo "Starting the corrected and specific pygbag build..."
+          # 這個指令是推薦的最終版本:
+          # 1. 明確指定 'main.py' 作為遊戲入口點。
+          # 2. --build 確保只構建而不運行伺服器。
+          # 3. --archive 將資源打包成 zip 檔以提升網頁載入效能。
+          # 4. --no-opt 避免因缺少 Black 等程式碼格式化工具而報錯。
+          pygbag --build --archive --no-opt main.py
 
           echo "Pygbag build command finished successfully."
 
@@ -55,6 +58,7 @@ jobs:
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # pygbag 預設會輸出到 build/web 目錄
           path: build/web
 
       - name: Deploy to GitHub Pages
