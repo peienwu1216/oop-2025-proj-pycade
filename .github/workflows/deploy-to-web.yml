@@ -28,17 +28,27 @@ jobs:
           pip install -r requirements.txt
           pip install pygbag
 
-      - name: Build Web Version
-        timeout-minutes: 25 # 保留超時設定
+      - name: Build Web Version with Pygbag (More Verbose)
+        timeout-minutes: 35 # 再稍微延長一點超時，以防萬一
         run: |
-          echo "Starting pygbag build with default options..."
-          # 確保如果 pygbag 失敗，此步驟會以失敗結束
-          if ! pygbag . ; then
+          echo "Starting pygbag build with MAX verbose logging (level 4) and specific Python build..."
+          # --log 4 是 pygbag 更詳細的日誌級別
+          # --PYBUILD 3.11 明確告知 pygbag 使用 Python 3.11 的 WASM build
+          # --build 參數確保執行建置
+          # 保留 --no-server 嘗試避免 CI 環境中的伺服器啟動問題
+          # 移除 --no-opt 和 --no-archive，看看預設行為是否更穩定
+          if ! pygbag --log 4 --PYBUILD 3.11 --build --no-server . ; then
             echo "Pygbag command failed!"
+            echo "Listing current directory contents after failed pygbag command:"
+            ls -la
+            echo "Listing build directory (if any):"
+            ls -la build
+            echo "Listing web-cache directory (if any):"
+            ls -la build/web-cache
             exit 1
           fi
           echo "Pygbag build command finished successfully."
-
+        
       - name: Verify build output
         run: |
           echo "Verifying build output..."
