@@ -32,10 +32,8 @@ jobs:
         timeout-minutes: 30
         run: |
           echo "Starting the corrected and specific pygbag build..."
-          # 移除了不被支援的 --no-opt 參數。
-          # 保留了 --build (僅構建) 和 --archive (打包資源) 這兩個關鍵參數。
-          # 'main.py' 作為入口點是必須的，以確保遊戲能正確載入。
-          PYGBAG_DISABLE_AUDIO=1 pygbag --build --archive main.py
+          export PYGBAG_DISABLE_AUDIO=1
+          pygbag --build --archive main.py
           echo "Pygbag build command finished successfully."
 
       - name: Verify build output
