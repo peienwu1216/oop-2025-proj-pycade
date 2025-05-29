@@ -15,3 +15,12 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual(self.player.score, 100)
         self.player.add_score(50)
         self.assertEqual(self.player.score, 150)
+    def test_lose_life(self):
+        self.player.lose_life()
+        self.assertEqual(self.player.lives, 2)
+        self.player.lose_life()
+        self.player.lose_life()
+        self.assertEqual(self.player.lives, 0)
+        # 測試生命值不會變成負數
+        self.player.lose_life()
+        self.assertEqual(self.player.lives, 0)
