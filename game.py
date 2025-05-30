@@ -100,7 +100,7 @@ class Game:
 
         try:
             font_size = 22
-            font_status_size = 18
+            # font_status_size = 18
             timer_font_size_normal = 28
             timer_font_size_urgent = 36
             text_input_font_size = getattr(settings, "TEXT_INPUT_FONT_SIZE", 32)

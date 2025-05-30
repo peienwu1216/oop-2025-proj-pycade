@@ -1,0 +1,35 @@
+[flake8]
+# 設定要檢查的目錄 (相對於專案根目錄)
+# 假設你的主要程式碼在 sprites, core, 和根目錄的 main.py, game.py, settings.py
+# 以及 test 資料夾
+# 你可以根據你的實際專案結構調整
+# 通常我們會檢查我們自己寫的程式碼和測試程式碼
+# 用逗號分隔多個路徑
+# filename = sprites,core,main.py,game.py,settings.py,test
+
+# 或者更簡單的方式是，預設檢查當前目錄，然後排除不想檢查的
+# 排除 venv, __pycache__, build, dist 等通常不需要檢查的資料夾
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    venv,  # <--- 非常重要！排除虛擬環境資料夾
+    .venv, # 有些人虛擬環境取名 .venv
+    docs,
+    # 如果還有其他不想檢查的第三方庫或自動產生檔案的目錄，也加進來
+
+# 設定最大行長度 (可以根據團隊習慣調整，PEP 8 建議 79，但很多人用 88, 100 或 120)
+max-line-length = 150
+
+select = F
+
+# 忽略某些你暫時不想處理的錯誤代碼 (可以先執行一次 flake8，看看有哪些主要的，再決定是否忽略)
+# 例如，先暫時忽略行太長 (E501) 和 import 不在檔案頂部 (E402)
+ignore  = F401, F541
+
+# 顯示原始程式碼
+show-source = true
+
+# 計算錯誤和警告的數量
+count = true

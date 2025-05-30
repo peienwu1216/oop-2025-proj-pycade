@@ -365,7 +365,7 @@ class ItemFocusedAIController(AIControllerBase):
         if self.current_movement_sub_path: return #
 
         if ai_current_tile == retreat_target_for_this_wait: #
-            all_my_bombs_cleared = True # 假設所有炸彈都清了
+            # all_my_bombs_cleared = True # 假設所有炸彈都清了
             # 在更複雜的實現中，這裡應該檢查 self.game.bombs_group 中由該AI放置且未爆炸的炸彈
             # 但 self.is_bomb_still_active(self.last_bomb_placed_time) 只看最後一顆
             # 為了簡化，我們假設如果最後一顆清了，可能其他的也差不多了 (或者依賴 stuck detection)
@@ -380,7 +380,7 @@ class ItemFocusedAIController(AIControllerBase):
                 ai_has_bombs = self.ai_player.bombs_placed_count < self.ai_player.max_bombs
 
                 # 只有在清場後，才重置連鎖狀態，準備下一次可能的序列
-                was_chaining = self.is_chain_bombing_active
+                # was_chaining = self.is_chain_bombing_active
                 self._reset_chain_bombing_state()
 
 

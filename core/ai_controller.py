@@ -533,14 +533,14 @@ class AIController:
             self.last_known_tile = current_decision_tile # 更新 last_known_tile
 
             # 振盪檢測 (A-B-A-B)
-            is_oscillating = False
+            # is_oscillating = False
             if len(self.movement_history) == self.movement_history.maxlen:
                 if self.movement_history[0] == self.movement_history[2] and \
                    self.movement_history[1] == self.movement_history[3] and \
                    self.movement_history[0] != self.movement_history[1] and \
                    ai_current_tile == self.movement_history[3]:
                     self.oscillation_stuck_counter += 1
-                    is_oscillating = True
+                    # is_oscillating = True
                     ai_log(f"[AI_OSCILLATION_DETECT] Oscillation detected. Count: {self.oscillation_stuck_counter}. History: {list(self.movement_history)}")
                 else:
                     self.oscillation_stuck_counter = 0
