@@ -153,3 +153,4 @@ python main.py
 * **長期目標**：
     * 探索強化學習 AI 的可能性。
     * 為 Pygbag 網頁化部署做準備。
+* 2025/05/30: add feature/setup-ci-checks
