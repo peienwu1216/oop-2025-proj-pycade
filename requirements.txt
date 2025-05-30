@@ -1,3 +1,9 @@
+# 遊戲執行必要的套件
 pygame==2.6.1
+
+# 測試必要的套件
 pytest
 pytest-mock
+
+# 程式碼品質檢查工具
+flake8

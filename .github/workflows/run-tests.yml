@@ -37,7 +37,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-mock # 確保測試需要的套件也被安裝
-
+      
+      # 新增的 Flake8 檢查步驟
+      - name: Lint with Flake8
+        run: |
+          # Flake8 會讀取專案根目錄下的 .flake8 設定檔 (如果存在)
+          # 預設情況下，如果 Flake8 找到任何問題，它會回傳非零結束碼，導致此步驟失敗
+          flake8 .
+      
       # 步驟四：執行 pytest
       # 這個指令會自動找到 pytest.ini 設定檔和 test/ 資料夾
       - name: Run tests with pytest
