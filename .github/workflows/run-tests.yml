@@ -1,52 +1,39 @@
-# .github/workflows/run-tests.yml
+name: 🧪 Run Pygame Tests
 
-# 1. Workflow 的名稱
-name: Run Pygame Tests
-
-# 2. 觸發這個 workflow 的時機
 on:
-  # 當有程式碼被 push 到 main 分支時
   push:
     branches: [ "main" ]
-  # 當有人建立 Pull Request 到 main 分支時
   pull_request:
     branches: [ "main" ]
 
-# 3. 定義要執行的工作
 jobs:
-  # 工作的 ID，可以自訂，這裡取名為 test
-  test:
-    # 執行這個工作所使用的虛擬機器環境
+  Run-Pygame-Tests:
     runs-on: ubuntu-latest
 
-    # 工作的步驟
     steps:
-      # 步驟一：從 GitHub 下載你的程式碼到虛擬機器中
-      - name: Checkout repository
+      - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      # 步驟二：設定 Python 環境
-      - name: Set up Python
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # 指定使用的 Python 版本
+          python-version: '3.11'
 
-      # 步驟三：安裝專案依賴套件
-      - name: Install dependencies
+      - name: 📚 Install dependencies
         run: |
+          echo "🛠️ Installing required packages..."
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-mock # 確保測試需要的套件也被安裝
-      
-      # 新增的 Flake8 檢查步驟
-      - name: Lint with Flake8
+          pip install pytest pytest-mock
+          echo "✅ Dependencies installed."
+
+      - name: 🧹 Lint code with Flake8
         run: |
-          # Flake8 會讀取專案根目錄下的 .flake8 設定檔 (如果存在)
-          # 預設情況下，如果 Flake8 找到任何問題，它會回傳非零結束碼，導致此步驟失敗
+          echo "🔎 Running flake8 for style check..."
           flake8 .
-      
-      # 步驟四：執行 pytest
-      # 這個指令會自動找到 pytest.ini 設定檔和 test/ 資料夾
-      - name: Run tests with pytest
+          echo "✅ Flake8 completed."
+
+      - name: 🧪 Run tests with Pytest
         run: |
+          echo "🚀 Launching test suite..."
           pytest

@@ -1,9 +1,10 @@
-name: Build and Deploy Pycade Bomber to Web
+name: 🚀 Build and Deploy Pycade Bomber to Web
 
 on:
   push:
-    branches:
-      - main # 或 'master'
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 permissions:
   contents: read
@@ -14,50 +15,51 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Dependencies
+      - name: 📚 Install Dependencies
         run: |
+          echo "🛠️ Installing dependencies..."
           python -m pip install --upgrade pip
-          pip install -r requirements.txt # pygame
+          pip install -r requirements.txt  # 🎮 pygame
           pip install pygbag
+          echo "✅ Dependencies installed!"
 
-      - name: Verify that template will be used
+      - name: 🧪 Verify Template File Presence
         run: |
-          echo "Verifying presence of custom index.html.template:"
+          echo "🔍 Checking for custom index.html.template..."
           test -f web/index.html.template && echo "✅ Template found!" || echo "❌ Template missing!"
 
-      - name: Build Web Version with Pygbag
+      - name: 🏗️ Build Web Version with Pygbag
         timeout-minutes: 30
         run: |
-          echo "Starting the standard pygbag build..."
+          echo "🔧 Building web version with pygbag..."
           export PYGBAG_DISABLE_AUDIO=1
           pygbag --build --archive .
-          echo "Pygbag build command finished successfully."
+          echo "✅ Pygbag build completed."
 
-      - name: Verify build output
+      - name: 🔎 Verify Build Output
         run: |
-          echo "Verifying build output..."
-          echo "Listing contents of build/web directory:"
+          echo "📁 Checking contents of build/web..."
           ls -R build/web
           if [ -d "build/web" ] && [ "$(ls -A build/web)" ]; then
-            echo "build/web directory is valid and contains files."
+            echo "✅ build/web is valid and not empty."
           else
-            echo "Error: build/web directory is empty or does not exist after pygbag build."
-            exit 1 
+            echo "❌ Error: build/web is empty or missing!"
+            exit 1
           fi
 
-      - name: Upload GitHub Pages artifact
+      - name: 📤 Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
 
-      - name: Deploy to GitHub Pages
+      - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
