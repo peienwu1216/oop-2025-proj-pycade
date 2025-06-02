@@ -112,5 +112,19 @@ class TestMenu:
                "Game instance should be configured with the selected AI archetype."
         assert next_scene.screen is screen, "Game instance should use the same screen."
         # next_scene.clock should be menu.clock, which is fine.
+    
+    def test_menu_escape_from_leaderboard_returns_to_main(self, mock_menu_env):
+        """Test if pressing ESC in leaderboard view returns to the main menu state."""
+        screen, _ = mock_menu_env
+        menu = Menu(screen)
+        menu.menu_state = "LEADERBOARD" # Manually set state for the test
+
+        escape_key_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
+        
+        # Update should return self after this internal state change
+        next_scene_or_action = menu.update([escape_key_event])
+        
+        assert menu.menu_state == "MAIN", "Pressing ESC in leaderboard should return to 'MAIN' state."
+        assert next_scene_or_action is menu, "Update should return self."
 
     
