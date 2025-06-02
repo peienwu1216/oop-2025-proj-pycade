@@ -5,6 +5,11 @@
 
 本專案是物件導向程式設計 (OOP) 課程專案，旨在使用 Pygame 函式庫複刻經典遊戲《瘋狂炸彈人》。遊戲提供多種 AI 對手供玩家挑戰，並包含排行榜系統以記錄玩家的最佳戰績。
 
+## Github Action 狀態
+[![🚀 Build and Deploy Pycade Bomber to Web](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/deploy-to-web.yml/badge.svg)](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/deploy-to-web.yml)
+[![🧪 Run Pygame Tests](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/run-tests.yml/badge.svg)](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/run-tests.yml)
+
+
 ## 目錄
 
 - [Pycade Bomber (瘋狂炸彈人 Pygame 複刻版)](#pycade-bomber-瘋狂炸彈人-pygame-複刻版)
