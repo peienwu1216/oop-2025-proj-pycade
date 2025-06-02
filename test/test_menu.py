@@ -40,5 +40,15 @@ class TestMenu:
                "Menu should have a button for each AI, plus leaderboard and quit."
         assert isinstance(menu.leaderboard_manager, LeaderboardManager), \
                "Menu should have a LeaderboardManager instance."
-
+    
+    def find_button_by_action(self, buttons, action_type, archetype_key=None):
+        """Helper to find a button by its action_type and optionally archetype_key."""
+        for button in buttons:
+            if button.get("action_type") == action_type:
+                if archetype_key:
+                    if button.get("archetype") == archetype_key:
+                        return button
+                else:
+                    return button
+        return None
     
