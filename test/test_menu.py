@@ -87,5 +87,30 @@ class TestMenu:
         
         action = menu.update([mouse_click_event])
         assert action == "QUIT", "Clicking quit button should return 'QUIT' action."
+    
+    def test_menu_select_ai_starts_game(self, mock_menu_env):
+        """Test if selecting an AI opponent returns a Game instance."""
+        screen, _ = mock_menu_env # Clock is taken care of by Menu's own clock
+        menu = Menu(screen)
+
+        # Select the first AI archetype available in settings for the test
+        first_ai_display_name = list(settings.AVAILABLE_AI_ARCHETYPES.keys())[0]
+        first_ai_archetype_key = settings.AVAILABLE_AI_ARCHETYPES[first_ai_display_name]
+
+        ai_button = self.find_button_by_action(menu.buttons, "SELECT_AI", first_ai_archetype_key)
+        assert ai_button is not None, f"AI button for archetype '{first_ai_archetype_key}' not found."
+
+        mouse_click_event = pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN,
+            {'button': 1, 'pos': ai_button["rect"].center}
+        )
+        
+        next_scene = menu.update([mouse_click_event])
+        
+        assert isinstance(next_scene, Game), "Selecting an AI should return a Game instance."
+        assert next_scene.ai_archetype == first_ai_archetype_key, \
+               "Game instance should be configured with the selected AI archetype."
+        assert next_scene.screen is screen, "Game instance should use the same screen."
+        # next_scene.clock should be menu.clock, which is fine.
 
     
