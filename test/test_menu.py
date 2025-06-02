@@ -126,5 +126,17 @@ class TestMenu:
         
         assert menu.menu_state == "MAIN", "Pressing ESC in leaderboard should return to 'MAIN' state."
         assert next_scene_or_action is menu, "Update should return self."
+    
+    def test_menu_escape_from_main_menu_quits(self, mock_menu_env):
+        """Test if pressing ESC in the main menu returns the 'QUIT' action."""
+        screen, _ = mock_menu_env
+        menu = Menu(screen)
+        
+        assert menu.menu_state == "MAIN", "Menu should start in 'MAIN' state."
+
+        escape_key_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
+        
+        action = menu.update([escape_key_event])
+        assert action == "QUIT", "Pressing ESC in main menu should return 'QUIT' action."
 
     
