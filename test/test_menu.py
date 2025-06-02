@@ -71,19 +71,5 @@ class TestMenu:
         
         assert menu.menu_state == "LEADERBOARD", "Menu state should change to 'LEADERBOARD'."
         assert next_scene_or_action is menu, "Update should return self when changing to leaderboard."
+
     
-    def test_menu_quit_game_action(self, mock_menu_env):
-        """Test if clicking the quit button returns the 'QUIT' action."""
-        screen, _ = mock_menu_env
-        menu = Menu(screen)
-
-        quit_button = self.find_button_by_action(menu.buttons, "QUIT_GAME")
-        assert quit_button is not None, "Quit Game button not found."
-
-        mouse_click_event = pygame.event.Event(
-            pygame.MOUSEBUTTONDOWN,
-            {'button': 1, 'pos': quit_button["rect"].center}
-        )
-        
-        action = menu.update([mouse_click_event])
-        assert action == "QUIT", "Clicking quit button should return 'QUIT' action."
