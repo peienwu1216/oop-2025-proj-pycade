@@ -100,9 +100,11 @@ class Menu:
             
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
+                    click_position = event.pos # 使用事件提供的點擊位置
+                    
                     if self.menu_state == "MAIN":
                         for button in self.buttons:
-                            if button["rect"].collidepoint(mouse_pos):
+                            if button["rect"].collidepoint(click_position): # 使用 click_position 進行碰撞檢測
                                 action = button.get("action_type")
                                 if action == "SELECT_AI":
                                     # 返回一個新的 Game 物件作為下一個場景
