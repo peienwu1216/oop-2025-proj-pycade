@@ -52,3 +52,22 @@ class TestMenu:
                     return button
         return None
     
+    def test_menu_shows_leaderboard(self, mock_menu_env):
+        """Test if clicking the leaderboard button changes the menu state."""
+        screen, _ = mock_menu_env
+        menu = Menu(screen)
+
+        leaderboard_button = self.find_button_by_action(menu.buttons, "SHOW_LEADERBOARD")
+        assert leaderboard_button is not None, "Leaderboard button not found."
+
+        # Simulate a mouse click event on the leaderboard button
+        mouse_click_event = pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN,
+            {'button': 1, 'pos': leaderboard_button["rect"].center}
+        )
+        
+        # Menu's update should return self if it just changes internal state
+        next_scene_or_action = menu.update([mouse_click_event])
+        
+        assert menu.menu_state == "LEADERBOARD", "Menu state should change to 'LEADERBOARD'."
+        assert next_scene_or_action is menu, "Update should return self when changing to leaderboard."
