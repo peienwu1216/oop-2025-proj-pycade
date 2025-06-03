@@ -98,3 +98,7 @@ class TestPlayer:
         initial_lives = player.lives
         player.lives -= 1
         assert player.lives == initial_lives - 1
+        player.lives += 1
+        assert player.lives == initial_lives
+        player.score += 100
+        assert player.score == 100
