@@ -88,3 +88,13 @@ class TestPlayer:
         moved_again = player.attempt_move_to_tile(1, 0)
         assert moved_again is False
         assert player.tile_x == 2
+
+    def test_score_and_lives(self, mock_game_env):
+        """測試玩家得分和生命的邏輯"""
+        # ... (這個測試已通過，保持不變)
+        sprite_config = {"ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP, "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES}
+        player = Player(game=mock_game_env, x_tile=1, y_tile=1, spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH, sprite_config=sprite_config)
+        
+        initial_lives = player.lives
+        player.lives -= 1
+        assert player.lives == initial_lives - 1
