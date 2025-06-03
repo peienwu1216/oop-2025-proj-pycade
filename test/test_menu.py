@@ -138,5 +138,19 @@ class TestMenu:
         
         action = menu.update([escape_key_event])
         assert action == "QUIT", "Pressing ESC in main menu should return 'QUIT' action."
+    
+    def test_menu_leaderboard_display(self, mock_menu_env):
+        """Test if the leaderboard displays correctly."""
+        screen, _ = mock_menu_env
+        menu = Menu(screen)
+
+        # Simulate the leaderboard button click to enter leaderboard state
+        leaderboard_button = self.find_button_by_action(menu.buttons, "SHOW_LEADERBOARD")
+        mouse_click_event = pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN,
+            {'button': 1, 'pos': leaderboard_button["rect"].center}
+        )
+        
+        
 
     
