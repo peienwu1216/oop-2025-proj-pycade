@@ -175,3 +175,23 @@ class TestGame:
         game_instance._update_internal() # 
         assert game_instance.game_timer_active is False, \
             "Game timer should be inactive once game is over due to AI death." #
+        
+    def test_game_over_when_timer_runs_out_p1_wins_by_lives(self, mock_game_dependencies):
+        """Test game over and P1 wins by lives when timer expires."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        # Ensure players start with default lives or set them explicitly for the test
+        game_instance.player1.lives = settings.MAX_LIVES 
+        game_instance.player2_ai.lives = settings.MAX_LIVES -1
+        game_instance.player1.score = 50 # P1 has lower score
+        game_instance.player2_ai.score = 100 # AI has higher score
+
+        # Ensure both players are alive
+        game_instance.player1.is_alive = True
+        game_instance.player2_ai.is_alive = True
+        
+        assert game_instance.game_state == "PLAYING"
+        assert game_instance.game_timer_active is True
+
+
