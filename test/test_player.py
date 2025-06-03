@@ -122,3 +122,14 @@ class TestPlayer:
         initial_tile_x = ai_player.tile_x
         initial_tile_y = ai_player.tile_y
         
+    def ai_move(self, mock_game_env):
+        """測試 AI 玩家移動邏輯"""
+        sprite_config = {"ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP, "NUM_FRAMES": settings.PLAYER_NUM_WALK_FRAMES}
+        ai_player = Player(game=mock_game_env, x_tile=1, y_tile=1, spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH, sprite_config=sprite_config, is_ai=True)
+        
+        # 模擬 AI 玩家嘗試移動
+        ai_player.attempt_move_to_tile(1, 0)
+        assert ai_player.tile_x == 2, "AI player should move to the right tile"
+
+
+        
