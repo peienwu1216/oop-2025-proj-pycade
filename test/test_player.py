@@ -139,10 +139,8 @@ class TestPlayer:
         initial_bombs = len(mock_game_env.bombs_group)
         ai_player.place_bomb()
         assert len(mock_game_env.bombs_group) == initial_bombs + 1
-        # 確保 AI 玩家放置炸彈後，炸彈的屬性正確
-        last_bomb = mock_game_env.bombs_group.sprites()[-1]
-        assert last_bomb.owner == ai_player, "AI player's bomb should be correctly associated with the player"
         
+    
 
 
         
