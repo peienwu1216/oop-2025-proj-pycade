@@ -150,7 +150,29 @@ class TestMenu:
             pygame.MOUSEBUTTONDOWN,
             {'button': 1, 'pos': leaderboard_button["rect"].center}
         )
-        
-        
+        menu.update([mouse_click_event])
+        assert menu.menu_state == "LEADERBOARD", "Menu should be in 'LEADERBOARD' state."
+        assert menu.leaderboard_manager is not None, "LeaderboardManager should be initialized."
+        assert menu.leaderboard_manager.scores == [], "Leaderboard should be empty initially."
+        # Check if the leaderboard is displayed correctly
+        # This would typically involve checking the rendered text on the screen,
+        # but since we can't render in tests, we can only check the state.
+    
+    def test_menu_button_positions(self, mock_menu_env):
+        """Test if buttons are positioned correctly."""
+        screen, _ = mock_menu_env
+        menu = Menu(screen)
 
+        # Check if the buttons are positioned within the screen bounds
+        for button in menu.buttons:
+            assert button["rect"].x >= 0, "Button x position should be non-negative."
+            assert button["rect"].y >= 0, "Button y position should be non-negative."
+            assert button["rect"].right <= settings.SCREEN_WIDTH, \
+                   "Button right edge should not exceed screen width."
+            assert button["rect"].bottom <= settings.SCREEN_HEIGHT, \
+                   "Button bottom edge should not exceed screen height."
+            # Check if the button rect is of reasonable size
+            assert button["rect"].width > 0, "Button width should be positive."
+            assert button["rect"].height > 0, "Button height should be positive."
+    
     
