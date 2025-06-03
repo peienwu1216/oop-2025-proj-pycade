@@ -116,3 +116,41 @@ class TestGame:
             "game_timer_active should be True initially."
         assert game_instance.time_up_winner is None, \
             "time_up_winner should be None initially."
+    
+    def test_game_initial_player_scores(self, mock_game_dependencies):
+        """Test the initial scores of both players."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock)
+
+        assert game_instance.player1.score == 0, "Player 1's initial score should be 0."
+        assert game_instance.player2_ai.score == 0, "Player 2 AI's initial score should be 0."
+
+    def test_game_over_when_player_loses_all_lives(self, mock_game_dependencies):
+        """Test that the game state changes to GAME_OVER when P1 loses all lives."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        assert game_instance.game_state == "PLAYING"
+        assert game_instance.player1.is_alive is True
+        
+        # Simulate player1 taking damage until no lives are left
+        # Need to handle invincibility frames for Player.take_damage()
+        initial_lives = game_instance.player1.lives
+        for _ in range(initial_lives):
+            game_instance.player1.last_hit_time = pygame.time.get_ticks() - (settings.PLAYER_INVINCIBLE_DURATION + 100) # Bypass invincibility
+            game_instance.player1.take_damage()
+            # Player.die() is called, which should then trigger game over logic in Game.update()
+            # However, Player.die() itself does not directly change Game.game_state.
+            # Game.update() checks player aliveness.
+
+        assert game_instance.player1.lives == 0
+        assert game_instance.player1.is_alive is False
+
+        # Manually call update to process the game state change based on player aliveness
+        # In a real game loop, events would be empty, dt would be small.
+        game_instance._update_internal() # Call the internal update method
+
+        assert game_instance.game_state == "GAME_OVER", \
+            f"Game state should be GAME_OVER, but is {game_instance.game_state}"
+        assert game_instance.game_timer_active is False, \
+            "Game timer should be inactive once game is over due to player death."
