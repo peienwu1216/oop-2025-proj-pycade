@@ -154,3 +154,24 @@ class TestGame:
             f"Game state should be GAME_OVER, but is {game_instance.game_state}"
         assert game_instance.game_timer_active is False, \
             "Game timer should be inactive once game is over due to player death."
+    
+    def test_game_over_when_ai_loses_all_lives(self, mock_game_dependencies):
+        """Test that the game state changes to GAME_OVER when AI P2 loses all lives."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original") #
+
+        assert game_instance.game_state == "PLAYING" #
+        assert game_instance.player2_ai.is_alive is True #
+        
+        initial_lives_ai = game_instance.player2_ai.lives #
+        for _ in range(initial_lives_ai):
+            game_instance.player2_ai.last_hit_time = pygame.time.get_ticks() - (settings.PLAYER_INVINCIBLE_DURATION + 100) #
+            game_instance.player2_ai.take_damage() #
+
+        assert game_instance.player2_ai.lives == 0 #
+        assert game_instance.player2_ai.is_alive is False #
+
+        # Manually call update to process the game state change
+        game_instance._update_internal() # 
+        assert game_instance.game_timer_active is False, \
+            "Game timer should be inactive once game is over due to AI death." #
