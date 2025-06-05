@@ -66,6 +66,8 @@ class Game:
         self.player1 = None
         self.player2_ai = None
         self.ai_controller_p2 = None
+        self.player1_bomb_toggle = 0
+
 
         # --- Timer related attributes ---
         self.time_elapsed_seconds = 0
@@ -184,7 +186,7 @@ class Game:
         self.player1 = Player(self, p1_start_tile[0], p1_start_tile[1],
                               spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH,
                               sprite_config=player1_sprite_config,
-                              is_ai=False)
+                              is_ai=False, is_player1=True)
         self.all_sprites.add(self.player1)
         self.players_group.add(self.player1)
 
