@@ -269,4 +269,22 @@ class TestItems:
     
         # Check types in a set to ensure all are unique
         item_types = {type(item) for item in items}
+        assert len(item_types) == 4, "Should create 4 unique item types in this test."
+        assert ScoreItem in item_types, "Should have created a ScoreItem."
+        assert LifeItem in item_types, "Should have created a LifeItem."
+        assert BombCapacityItem in item_types, "Should have created a BombCapacityItem."
+        assert BombRangeItem in item_types, "Should have created a BombRangeItem."
+
+    def test_create_random_item_invalid_type(self, mock_item_env, mocker):
+        """Test create_random_item returns None for an invalid item type."""
+        game, player = mock_item_env
+        
+        # Mock random.choices to return an invalid type
+        mocker.patch('random.choices', return_value=["invalid_type"])
+        
+        item = create_random_item(10, 10, game)
+        
+        assert item is None, "Should return None for an invalid item type."
+
+
         
