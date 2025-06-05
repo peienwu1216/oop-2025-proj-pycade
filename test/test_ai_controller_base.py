@@ -1,4 +1,5 @@
-# test/test_ai_controller_base.py
+# test/test_ai_controller_base.py 
+# (originally named test_ai_controller.py in your repository)
 
 import pygame
 import pytest
@@ -235,33 +236,45 @@ class TestAIControllerBase:
         ai_player.tile_x, ai_player.tile_y = 1, 1 # 設定 AI 起點
         start_coords = (1, 1)
         target_coords = (1, 3)
-        # 更新 map_data 以確保 (1,2) 是可通行的 '.'
-        game.map_manager.map_data = [
-            "WWWWW",
-            "W.W.W", # (1,1) is '.', (2,1) is 'W', (3,1) is '.'
-            "W.W.W", # (1,2) is '.', (2,2) is 'W', (3,2) is '.'
-            "W...W", # (1,3) is '.', (2,3) is '.', (3,3) is '.'
-            "WWWWW"
-        ]
-        game.map_manager.tile_height = len(game.map_manager.map_data)
-        game.map_manager.tile_width = len(game.map_manager.map_data[0])
-        # 重新設定 AI 控制器的 map_manager 參考 (如果 MapManager 是深度複製的話)
-        # 或者確保 AIControllerBase 中的 _get_node_at_coords 使用最新的 map_data
+        # 使用 mock_ai_base_env 預設的地圖:
+        # WWWWW
+        # W.D.W  (1,1)='.', (2,1)='D', (3,1)='.'
+        # W.W.W  (1,2)='.', (2,2)='W', (3,2)='.'
+        # W...W  (1,3)='.', (2,3)='.', (3,3)='.'
+        # WWWWW
+        # A* 應該找到路徑 (1,1) -> (1,2) -> (1,3) (繞過 (2,1) 的 'D' 和 (2,2) 的 'W')
+
         path_nodes = ai_controller.astar_find_path(start_coords, target_coords)
+        
         assert path_nodes is not None, "A* 演算法應找到一條路徑。"
         assert len(path_nodes) > 0, "路徑不應為空。"
+        
         # 驗證路徑的起點和終點
         assert (path_nodes[0].x, path_nodes[0].y) == start_coords, "路徑起點應為 AI 目前位置。"
         assert (path_nodes[-1].x, path_nodes[-1].y) == target_coords, "路徑終點應為目標位置。"
-        # 驗證路徑的連續性和每個節點的類型 (在這個例子中，應該是 '.' 或 'D')
+        
+        # 預期路徑 (1,1) -> (1,2) -> (1,3)
         expected_path_coords = [(1,1), (1,2), (1,3)]
         actual_path_coords = [(n.x, n.y) for n in path_nodes]
+        
         assert actual_path_coords == expected_path_coords, \
             f"預期路徑 {expected_path_coords}，但實際路徑為 {actual_path_coords}。"
-        for node in path_nodes:
-            assert node.tile_char in ['.', 'D'], \
-                f"Node {node} in path should be '.' or 'D' but is '{node.tile_char}'"
-            
-    
-
         
+        # 驗證路徑上節點的類型
+        assert path_nodes[0].tile_char == '.' # (1,1) is '.'
+        assert path_nodes[1].tile_char == '.' # (1,2) is '.'
+        assert path_nodes[2].tile_char == '.' # (1,3) is '.'
+        
+        # 測試繞過 'D' 的情況，例如從 (1,1) 到 (3,1)
+        target_coords_around_d = (3,1)
+        path_around_d = ai_controller.astar_find_path(start_coords, target_coords_around_d)
+        assert path_around_d is not None
+        # 預期路徑可能包含 (1,1) -> (node for D at (2,1) ) -> (3,1) if D is walkable for A*
+        # 或者 (1,1) -> (1,0) or (1,2) -> ... -> (3,1) if it has to go around
+        # Given TileNode.is_walkable_for_astar_planning() includes 'D':
+        expected_path_around_d_coords = [(1,1), (2,1), (3,1)] # A* can plan through 'D'
+        actual_path_around_d_coords = [(n.x, n.y) for n in path_around_d]
+        assert actual_path_around_d_coords == expected_path_around_d_coords
+        assert path_around_d[1].tile_char == 'D' # The middle node should be 'D'
+
+    
