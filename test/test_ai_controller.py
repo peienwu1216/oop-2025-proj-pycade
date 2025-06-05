@@ -261,6 +261,7 @@ class TestAIControllerBase:
         for node in path_nodes:
             assert node.tile_char in ['.', 'D'], \
                 f"Node {node} in path should be '.' or 'D' but is '{node.tile_char}'"
+            
     
-    
-    
+
+        
