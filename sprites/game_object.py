@@ -22,8 +22,17 @@ class GameObject(pygame.sprite.Sprite):
         
         if loaded_image:
             self.original_image = loaded_image # 保存原始載入的圖像
-            if width or height:
-                self.image = pygame.transform.smoothscale(self.original_image, (width, height))
+            if width is None and height is not None:
+                width = int(self.original_image.get_width() * (height / self.original_image.get_height()))
+                self.original_image = pygame.transform.smoothscale(self.original_image, (width, height))
+                self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
+            elif height is None and width is not None:
+                height = int(self.original_image.get_height() * (width / self.original_image.get_width()))
+                self.original_image = pygame.transform.smoothscale(self.original_image, (width, height))
+                self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
+            elif width is not None and height is not None:
+                self.original_image = pygame.transform.smoothscale(self.original_image, (width, height))
+                self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
             else:
                 self.image = self.original_image.copy() # self.image 是實際繪製和可能被修改的圖像
             
