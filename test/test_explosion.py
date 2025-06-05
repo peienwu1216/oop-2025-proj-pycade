@@ -257,7 +257,193 @@ class TestExplosion:
         assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
         assert explosion.rect.x == 0, "Explosion 的 X 位置應為 0。"
         assert explosion.rect.y == 0, "Explosion 的 Y 位置應為 0。"
+    
+    def test_explosion_update_with_negative_position(self, mock_explosion_env):
+        """測試 Explosion 在負位置的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(-1, -1, game)
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == -settings.TILE_SIZE, "Explosion 的 X 位置應為 -TILE_SIZE。"
+        assert explosion.rect.y == -settings.TILE_SIZE, "Explosion 的 Y 位置應為 -TILE_SIZE。"
+    
+    def test_explosion_update_with_large_negative_position(self, mock_explosion_env):
+        """測試 Explosion 在大負位置的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(-1000, -2000, game)
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == -1000 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {-1000 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == -2000 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {-2000 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+    
+    def test_explosion_update_with_non_integer_duration(self, mock_explosion_env):
+        """測試 Explosion 在非整數持續時間的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
         
+        # 模擬非整數持續時間
+        explosion.duration = 2.5
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+    
+    def test_explosion_update_with_large_non_integer_duration(self, mock_explosion_env):
+        """測試 Explosion 在大非整數持續時間的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
+        
+        # 模擬大非整數持續時間
+        explosion.duration = 1000.5
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+        
+    def test_explosion_update_with_zero_duration(self, mock_explosion_env):
+        """測試 Explosion 在持續時間為零的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
+        
+        # 模擬持續時間為零
+        explosion.duration = 0.0
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+        
+    def test_explosion_update_with_negative_duration(self, mock_explosion_env):
+        """測試 Explosion 在持續時間為負的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
+        
+        # 模擬持續時間為負
+        explosion.duration = -1.0
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+    
+    def test_explosion_update_with_large_negative_duration(self, mock_explosion_env):
+        """測試 Explosion 在大負持續時間的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
+        
+        # 模擬大負持續時間
+        explosion.duration = -1000.5
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+    
+    def test_explosion_update_with_non_integer_spawn_time(self, mock_explosion_env):
+        """測試 Explosion 在非整數 spawn_time 的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
+        
+        # 模擬非整數 spawn_time
+        explosion.spawn_time = 1234.5
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+    
+    def test_explosion_update_with_large_non_integer_spawn_time(self, mock_explosion_env):
+        """測試 Explosion 在大非整數 spawn_time 的情況下，update 方法不應該改變狀態。"""
+        game = mock_explosion_env
+        explosion = Explosion(1, 1, game)
+        
+        # 模擬大非整數 spawn_time
+        explosion.spawn_time = 1234567.89
+
+        initial_spawn_time = explosion.spawn_time
+        initial_duration = explosion.duration
+
+        # 模擬時間流逝為零
+        explosion.update(0.0)
+
+        assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
+        assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
+        assert explosion.rect.x == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 X 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.x}。"
+        assert explosion.rect.y == 1 * settings.TILE_SIZE, \
+            f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
+        
+    
+
+    
+
+
 
 
 
