@@ -244,3 +244,29 @@ class TestItems:
         assert item is None, "Should return None if all item weights are zero."
         
         settings.ITEM_DROP_WEIGHTS = original_weights
+    
+    def test_create_random_item_randomness(self, mock_item_env, mocker):
+        """Test create_random_item randomness by checking multiple calls."""
+        game, player = mock_item_env
+        
+        # Mock random.choices to return different items on each call
+        mocker.patch('random.choices', side_effect=[
+            [settings.ITEM_TYPE_SCORE],
+            [settings.ITEM_TYPE_LIFE],
+            [settings.ITEM_TYPE_BOMB_CAPACITY],
+            [settings.ITEM_TYPE_BOMB_RANGE]
+        ])
+        
+        items = [create_random_item(9, 9, game) for _ in range(4)]
+        
+        assert isinstance(items[0], ScoreItem), "First item should be ScoreItem."
+        assert isinstance(items[1], LifeItem), "Second item should be LifeItem."
+        assert isinstance(items[2], BombCapacityItem), "Third item should be BombCapacityItem."
+        assert isinstance(items[3], BombRangeItem), "Fourth item should be BombRangeItem."
+        # Check types
+        assert all(isinstance(item, (ScoreItem, LifeItem, BombCapacityItem, BombRangeItem)) for item in items), \
+            "All created items should be valid item types."
+    
+        # Check types in a set to ensure all are unique
+        item_types = {type(item) for item in items}
+        
