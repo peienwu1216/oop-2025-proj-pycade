@@ -46,6 +46,19 @@ class Bomb(GameObject):
 
         self.is_solidified = False # 炸彈初始不是固態的，允許放置者離開
         self.owner_has_left_tile = False # 標記擁有者是否已離開此格
+        
+        # Bomb animation
+        self.animation_images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img).convert_alpha(),
+                (settings.TILE_SIZE, settings.TILE_SIZE)
+            )
+            for img in settings.PLAYER1_BOMB_IMAGES
+        ]
+        self.animation_index = 0
+        self.last_animation_time = pygame.time.get_ticks()
+        self.animation_interval = 300  # 毫秒，調整為你想要的動畫速度
+
 
         # For visual countdown (optional)
         try:
@@ -72,8 +85,27 @@ class Bomb(GameObject):
                 self.owner_has_left_tile = True
                 self.is_solidified = True 
         
-        if not self.exploded and time_elapsed >= self.timer:
-            self.explode() # 觸發爆炸
+        # if not self.exploded and time_elapsed >= self.timer:
+        #     self.explode() # 觸發爆炸
+            
+        if not self.exploded:
+            # 動畫切換邏輯
+            if current_time - self.last_animation_time >= self.animation_interval:
+                self.animation_index = (self.animation_index + 1) % len(self.animation_images)
+                self.original_image = self.animation_images[self.animation_index]
+                self.last_animation_time = current_time
+
+            # 更新圖像（先清除，再加倒數字）
+            self.image = self.original_image.copy()
+            time_left_sec = max(0, (self.timer - time_elapsed) / 1000)
+            countdown_text = f"{time_left_sec:.1f}"
+            text_surface = self.font.render(countdown_text, True, self.text_color)
+            text_rect = text_surface.get_rect(center=(self.image.get_width() / 2, self.image.get_height() / 2))
+            self.image.blit(text_surface, text_rect)
+
+            # 判斷是否該爆炸
+            if time_elapsed >= self.timer:
+                self.explode()
         
         if not self.exploded:
             time_left_sec = max(0, (self.timer - time_elapsed) / 1000)
