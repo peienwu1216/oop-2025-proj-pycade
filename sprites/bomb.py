@@ -30,10 +30,10 @@ class Bomb(GameObject):
             bomb_img = settings.BOMB_IMG  # 預設圖
 
         super().__init__(
-            x_tile * settings.TILE_SIZE, # 視覺位置基於格子座標
+            x_tile * settings.TILE_SIZE+6, # 視覺位置基於格子座標
             y_tile * settings.TILE_SIZE, # 視覺位置基於格子座標
-            settings.TILE_SIZE,
-            settings.TILE_SIZE,
+            width=None, # 寬度基於圖片比例
+            height=settings.TILE_SIZE,
             image_path=bomb_img
         )
         self.placed_by_player = placed_by_player
