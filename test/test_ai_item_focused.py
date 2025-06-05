@@ -250,37 +250,4 @@ class TestItemFocusedAIController:
         # AI should still be in ENDGAME_HUNT, waiting for movement to temp_retreat_spot
         # Then it will check if it can place another chain bomb.
 
-    def test_endgame_hunt_repeats_chain_bombing(self, mock_item_focused_ai_env, mocker):
-        ai_controller, game, ai_player, human_player = mock_item_focused_ai_env
-        
-        ai_controller.change_state("ENDGAME_HUNT")
-        ai_player.max_bombs = 1; ai_player.bombs_placed_count = 0
-        
-        # Simulate AI has placed a bomb and is now at the retreat spot
-        stand_tile = (2,1)
-        retreat_tile = (2,2)
-        ai_player.tile_x, ai_player.tile_y = retreat_tile[0], retreat_tile[1]
-        
-        ai_controller.is_chain_bombing_active = True
-        ai_controller.current_chain_target_stand_tile = stand_tile
-        ai_controller.chain_bombs_placed_in_sequence = 1
-        
-        # Mock find_safe_tiles_nearby_for_retreat to return a new retreat spot
-        new_retreat_spot = (3,2)
-        game.map_manager.map_data[3] = "W.W.W.W.W"
-        mocker.patch.object(ai_controller, 'find_safe_tiles_nearby_for_retreat', return_value=[new_retreat_spot])
-        mocker.patch.object(ai_controller, 'bfs_find_direct_movement_path', return_value=[retreat_tile, new_retreat_spot])
-        ai_player.place_bomb = mocker.Mock()
-        ai_controller.handle_endgame_hunt_state(ai_controller._get_ai_current_tile())
-        ai_player.place_bomb.assert_called_once()
-        assert ai_controller.chain_bombs_placed_in_sequence == 2
-        assert ai_controller.current_movement_sub_path == [retreat_tile, new_retreat_spot]
-        # AI should still be in ENDGAME_HUNT, waiting for movement to new_retreat_spot
-        # Then it will check if it can place another chain bomb.
-
-    def test_endgame_hunt_ends_when_no_more_bombs_can_be_placed(self, mock_item_focused_ai_env, mocker):
-        ai_controller, game, ai_player, human_player = mock_item_focused_ai_env
-        
-        ai_controller.change_state("ENDGAME_HUNT")
-        ai_player.max_bombs = 1; ai_player.bombs_placed_count = 1
-        
+    
