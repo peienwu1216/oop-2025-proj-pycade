@@ -21,12 +21,20 @@ class Bomb(GameObject):
             placed_by_player (Player): The player instance that placed this bomb.
             game_instance (Game): The main game instance.
         """
+        # 判斷是否是 player1 放的炸彈
+        if placed_by_player.is_player1:
+            toggle_index = game_instance.player1_bomb_toggle
+            bomb_img = settings.PLAYER1_BOMB_IMAGES[toggle_index]
+            game_instance.player1_bomb_toggle = (toggle_index + 1) % len(settings.PLAYER1_BOMB_IMAGES)
+        else:
+            bomb_img = settings.BOMB_IMG  # 預設圖
+
         super().__init__(
             x_tile * settings.TILE_SIZE, # 視覺位置基於格子座標
             y_tile * settings.TILE_SIZE, # 視覺位置基於格子座標
             settings.TILE_SIZE,
             settings.TILE_SIZE,
-            image_path=settings.BOMB_IMG
+            image_path=bomb_img
         )
         self.placed_by_player = placed_by_player
         self.game = game_instance # 儲存 Game 實例，以便訪問 Sprite Group 等
