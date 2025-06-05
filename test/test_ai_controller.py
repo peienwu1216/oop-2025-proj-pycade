@@ -263,3 +263,4 @@ class TestAIControllerBase:
                 f"Node {node} in path should be '.' or 'D' but is '{node.tile_char}'"
     
     
+    
