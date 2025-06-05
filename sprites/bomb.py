@@ -51,7 +51,7 @@ class Bomb(GameObject):
         self.animation_images = [
             pygame.transform.smoothscale(
                 pygame.image.load(img).convert_alpha(),
-                (settings.TILE_SIZE, settings.TILE_SIZE)
+                (self.original_image.get_width() * (settings.TILE_SIZE / self.original_image.get_height()), settings.TILE_SIZE)
             )
             for img in settings.PLAYER1_BOMB_IMAGES
         ]
