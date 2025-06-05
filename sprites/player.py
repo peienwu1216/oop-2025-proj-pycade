@@ -6,12 +6,13 @@ import settings
 # from .bomb import Bomb # Bomb 在 Player 中放置炸彈時才需要
 
 class Player(GameObject):
-    def __init__(self, game, x_tile, y_tile, spritesheet_path, sprite_config, is_ai=False, ai_controller=None):
+    def __init__(self, game, x_tile, y_tile, spritesheet_path, sprite_config, is_ai=False, ai_controller=None, is_player1=False):
         pygame.sprite.Sprite.__init__(self) 
 
         self.game = game
         self.is_ai = is_ai
         self.ai_controller = ai_controller 
+        self.is_player1 = is_player1
 
         self.tile_x = x_tile
         self.tile_y = y_tile
