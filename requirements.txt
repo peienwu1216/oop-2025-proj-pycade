@@ -7,3 +7,10 @@ pytest-mock
 
 # 程式碼品質檢查工具
 flake8
+
+#AI 強化學習
+gymnasium
+stable-baselines3[extra]>=2.0.0
+torch>=1.13
+numpy
+tensorboard
