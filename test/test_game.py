@@ -473,6 +473,143 @@ class TestGame:
             f"Game state should be GAME_OVER, but is {game_instance.game_state}"
         assert game_instance.time_up_winner is None, \
             "No winner should be declared when both players have the same score, no lives left, and no players are alive."
+    def test_game_over_when_both_players_have_same_score_and_no_lives_and_no_players_alive_and_no_winner(self, mock_game_dependencies):
+        """Test game over when both players have the same score, no lives left, no players are alive, and no winner."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        # Ensure both players start alive
+        game_instance.player1.is_alive = True
+        game_instance.player2_ai.is_alive = True
+        
+        # Simulate both players dying
+        game_instance.player1.lives = 0
+        game_instance.player2_ai.lives = 0
+        game_instance.player1.is_alive = False
+        game_instance.player2_ai.is_alive = False
+
+        assert game_instance.game_state == "PLAYING"
+        
+        # Simulate a tie situation with no lives left, no players alive, and no winner
+        game_instance.game_state = "GAME_OVER"
+        game_instance.time_up_winner = None
+        game_instance._update_internal()
+        
+        assert game_instance.game_state == "GAME_OVER", \
+            f"Game state should be GAME_OVER, but is {game_instance.game_state}"
+        assert game_instance.time_up_winner is None, \
+            "No winner should be declared when both players have the same score, no lives left, no players are alive, and no winner."
+    def test_game_over_when_both_players_have_same_score_and_no_lives_and_no_players_alive_and_no_winner_and_no_time(self, mock_game_dependencies):
+        """Test game over when both players have the same score, no lives left, no players are alive, no winner, and no time."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        # Ensure both players start alive
+        game_instance.player1.is_alive = True
+        game_instance.player2_ai.is_alive = True
+        
+        # Simulate both players dying
+        game_instance.player1.lives = 0
+        game_instance.player2_ai.lives = 0
+        game_instance.player1.is_alive = False
+        game_instance.player2_ai.is_alive = False
+
+        assert game_instance.game_state == "PLAYING"
+        
+        # Simulate a tie situation with no lives left, no players alive, no winner, and no time
+        game_instance.game_state = "GAME_OVER"
+        game_instance.time_up_winner = None
+        game_instance.time_elapsed_seconds = 0.0
+        game_instance.game_timer_active = False
+        game_instance._update_internal()
+        assert game_instance.game_state == "GAME_OVER", \
+            f"Game state should be GAME_OVER, but is {game_instance.game_state}"
+        assert game_instance.time_up_winner is None, \
+            "No winner should be declared when both players have the same score, no lives left, no players are alive, no winner, and no time."
+    def test_game_over_when_both_players_have_same_score_and_no_lives_and_no_players_alive_and_no_winner_and_no_time_and_no_scores(self, mock_game_dependencies):
+        """Test game over when both players have the same score, no lives left, no players are alive, no winner, no time, and no scores."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        # Ensure both players start alive
+        game_instance.player1.is_alive = True
+        game_instance.player2_ai.is_alive = True
+        
+        # Simulate both players dying
+        game_instance.player1.lives = 0
+        game_instance.player2_ai.lives = 0
+        game_instance.player1.is_alive = False
+        game_instance.player2_ai.is_alive = False
+
+        assert game_instance.game_state == "PLAYING"
+        
+        # Simulate a tie situation with no lives left, no players alive, no winner, no time, and no scores
+        game_instance.game_state = "GAME_OVER"
+        game_instance.time_up_winner = None
+        game_instance.time_elapsed_seconds = 0.0
+        game_instance.game_timer_active = False
+        game_instance._update_internal()
+        
+        assert game_instance.game_state == "GAME_OVER", \
+            f"Game state should be GAME_OVER, but is {game_instance.game_state}"
+        assert game_instance.time_up_winner is None, \
+            "No winner should be declared when both players have the same score, no lives left, no players are alive, no winner, no time, and no scores."
+    def test_game_over_when_both_players_have_same_score_and_no_lives_and_no_players_alive_and_no_winner_and_no_time_and_no_scores_and_no_leaderboard(self, mock_game_dependencies):
+        """Test game over when both players have the same score, no lives left, no players are alive, no winner, no time, no scores, and no leaderboard."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        # Ensure both players start alive
+        game_instance.player1.is_alive = True
+        game_instance.player2_ai.is_alive = True
+        
+        # Simulate both players dying
+        game_instance.player1.lives = 0
+        game_instance.player2_ai.lives = 0
+        game_instance.player1.is_alive = False
+        game_instance.player2_ai.is_alive = False
+
+        assert game_instance.game_state == "PLAYING"
+        
+        # Simulate a tie situation with no lives left, no players alive, no winner, no time, no scores, and no leaderboard
+        game_instance.game_state = "GAME_OVER"
+        game_instance.time_up_winner = None
+        game_instance.time_elapsed_seconds = 0.0
+        game_instance.game_timer_active = False
+        game_instance._update_internal()
+        
+        assert game_instance.game_state == "GAME_OVER", \
+            f"Game state should be GAME_OVER, but is {game_instance.game_state}"
+        assert game_instance.time_up_winner is None, \
+            "No winner should be declared when both players have the same score, no lives left, no players are alive, no winner, no time, no scores, and no leaderboard."
+    def test_game_over_when_both_players_have_same_score_and_no_lives_and_no_players_alive_and_no_winner_and_no_time_and_no_scores_and_no_leaderboard_and_no_events(self, mock_game_dependencies):
+        """Test game over when both players have the same score, no lives left, no players are alive, no winner, no time, no scores, no leaderboard, and no events."""
+        screen, clock = mock_game_dependencies
+        game_instance = Game(screen, clock, ai_archetype="original")
+
+        # Ensure both players start alive
+        game_instance.player1.is_alive = True
+        game_instance.player2_ai.is_alive = True
+        
+        # Simulate both players dying
+        game_instance.player1.lives = 0
+        game_instance.player2_ai.lives = 0
+        game_instance.player1.is_alive = False
+        game_instance.player2_ai.is_alive = False
+
+        assert game_instance.game_state == "PLAYING"
+        
+        # Simulate a tie situation with no lives left, no players alive, no winner, no time, no scores, no leaderboard, and no events
+        game_instance.game_state = "GAME_OVER"
+        game_instance.time_up_winner = None
+        game_instance.time_elapsed_seconds = 0.0
+        game_instance.game_timer_active = False
+        game_instance._update_internal()
+        
+        assert game_instance.game_state == "GAME_OVER", \
+            f"Game state should be GAME_OVER, but is {game_instance.game_state}"
+        assert game_instance.time_up_winner is None, \
+            "No winner should be declared when both players have the same score, no lives left, no players are alive, no winner, no time, no scores, no leaderboard, and no events."
    
 
 
