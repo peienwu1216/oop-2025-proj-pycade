@@ -189,5 +189,4 @@ class TestBomb:
         bomb.update(0.1)
         assert bomb.owner_has_left_tile is True, "即使玩家返回，owner_has_left_tile 應保持 True。"
         assert bomb.is_solidified is True, "即使玩家返回，is_solidified 應保持 True。"
-
     

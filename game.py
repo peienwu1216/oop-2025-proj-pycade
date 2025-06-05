@@ -16,7 +16,8 @@ from sprites.draw_text import draw_text_with_shadow, draw_text_with_outline
 
 
 class Game:
-    def __init__(self, screen, clock, ai_archetype="original"):
+    def __init__(self, screen, clock, ai_archetype="original", headless=False):
+        self.headless = headless 
         self.screen = screen
         self.clock = clock
         self.running = True # 這個 self.running 仍然有用，用來標記 Game 場景是否應該繼續
@@ -363,6 +364,8 @@ class Game:
 
     # 【修改】將原本的 draw() 改名為 _draw_internal()
     def _draw_internal(self):
+        if self.headless:
+            return
         # (draw 函式的內容保持不變)
         # self.screen.fill(settings.WHITE)
         tile_img = self.brick_tile_image
