@@ -285,6 +285,5 @@ class TestItems:
         item = create_random_item(10, 10, game)
         
         assert item is None, "Should return None for an invalid item type."
-
-
-        
+    
+    
