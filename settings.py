@@ -166,6 +166,8 @@ PLAYER1_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player.png")
 PLAYER2_AI_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player2.png") 
 # 炸彈與爆炸
 BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
+BOMB_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_1.png")
+BOMB_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_2.png")
 EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png")
 # 道具
 ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
