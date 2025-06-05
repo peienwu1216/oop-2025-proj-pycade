@@ -4,6 +4,7 @@ import pygame
 from .game_object import GameObject # 從同一個 sprites 套件中匯入 GameObject
 import settings
 from .explosion import Explosion
+import math
 
 class Bomb(GameObject):
     """
@@ -31,7 +32,7 @@ class Bomb(GameObject):
 
         super().__init__(
             x_tile * settings.TILE_SIZE+6, # 視覺位置基於格子座標
-            y_tile * settings.TILE_SIZE, # 視覺位置基於格子座標
+            y_tile * settings.TILE_SIZE-2, # 視覺位置基於格子座標
             width=None, # 寬度基於圖片比例
             height=settings.TILE_SIZE,
             image_path=bomb_img
@@ -85,17 +86,26 @@ class Bomb(GameObject):
                 self.owner_has_left_tile = True
                 self.is_solidified = True 
         
-        # if not self.exploded and time_elapsed >= self.timer:
-        #     self.explode() # 觸發爆炸
-            
         if not self.exploded:
-            # 動畫切換邏輯
+            # 計算動畫縮放因子（以原始尺寸為上限，只會縮小再還原）
+            elapsed = (pygame.time.get_ticks() - self.spawn_time) / 1000  # 秒
+            frequency = 1  # 每秒跳動次數，可調整
+            scale_variation = 0.1  # 最大縮小比例（0.15 = 最多縮小到 85%）
+            # 縮小到最小值後又還原 → 在 [1 - variation, 1.0] 之間擺動
+            scale_factor = 1 - scale_variation * (0.5 * (1 + math.sin(2 * math.pi * frequency * elapsed)))
+
+            # 動畫圖片切換
             if current_time - self.last_animation_time >= self.animation_interval:
                 self.animation_index = (self.animation_index + 1) % len(self.animation_images)
-                self.original_image = self.animation_images[self.animation_index]
                 self.last_animation_time = current_time
 
-            # 更新圖像（先清除，再加倒數字）
+            # 使用動畫圖像 + 縮放
+            base_image = self.animation_images[self.animation_index]
+            w, h = base_image.get_width(), base_image.get_height()
+            new_size = ((w * scale_factor), (h * scale_factor))
+            self.original_image = pygame.transform.smoothscale(base_image, new_size)
+
+            # 加倒數文字
             self.image = self.original_image.copy()
             time_left_sec = max(0, (self.timer - time_elapsed) / 1000)
             countdown_text = f"{time_left_sec:.1f}"
@@ -103,7 +113,11 @@ class Bomb(GameObject):
             text_rect = text_surface.get_rect(center=(self.image.get_width() / 2, self.image.get_height() / 2))
             self.image.blit(text_surface, text_rect)
 
-            # 判斷是否該爆炸
+            # 為了讓中心點不變，重設 rect
+            old_center = self.rect.center
+            self.rect = self.image.get_rect(center=old_center)
+
+            # 判斷是否爆炸
             if time_elapsed >= self.timer:
                 self.explode()
         
