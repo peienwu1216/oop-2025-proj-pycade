@@ -145,7 +145,7 @@ class Bomb(GameObject):
             time_left = max(0, self.timer - (pygame.time.get_ticks() - self.spawn_time))
             time_ratio = time_left / self.timer  # 從 1.0 -> 0.0
 
-            bar_width = self.image.get_width() * 0.9
+            bar_width = settings.TILE_SIZE * 0.9
             bar_height = 3
             bar_x = (self.image.get_width() - bar_width) / 2
             bar_y = self.image.get_height() - bar_height  # 往下移動會貼近底部
