@@ -51,3 +51,19 @@ class TouchControls:
         color = self.BUTTON_PRESSED_COLOR if bomb_button['pressed'] else self.BUTTON_COLOR
         center = bomb_button['rect'].center
         pygame.draw.circle(surface, color, center, bomb_button['radius'])
+
+    def handle_event(self, event):
+        """處理觸控事件，返回觸發的動作 (e.g., 'UP', 'BOMB')"""
+        # Pygbag 會將手機觸控事件轉換為滑鼠事件
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            for key, button in self.buttons.items():
+                if button['rect'].collidepoint(event.pos):
+                    button['pressed'] = True
+                    return key # 返回被按下的按鍵對應的動作
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            # 釋放所有按鍵
+            for button in self.buttons.values():
+                button['pressed'] = False
+
+        return None
