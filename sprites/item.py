@@ -32,8 +32,8 @@ class Item(GameObject):
         super().__init__(
             x_tile * settings.TILE_SIZE,
             y_tile * settings.TILE_SIZE,
-            settings.TILE_SIZE,
-            settings.TILE_SIZE,
+            settings.TILE_SIZE-3,
+            None,
             image_path=image_path
         )
         self.type = item_type

@@ -26,7 +26,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 60
+GAME_DURATION_SECONDS = 60+1
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -60,7 +60,7 @@ PLAYER_INVINCIBLE_DURATION = 1000 # 毫秒
 # 炸彈與爆炸設定 (Bomb & Explosion Settings)
 # -----------------------------------------------------------------------------
 BOMB_TIMER = 3000  # 毫秒
-EXPLOSION_DURATION = 300  # 毫秒
+EXPLOSION_DURATION = 500  # 毫秒
 USE_EXPLOSION_IMAGES = True
 EXPLOSION_COLOR = (255, 165, 0) # 如果 USE_EXPLOSION_IMAGES 為 False
 
@@ -164,10 +164,21 @@ STONE_3_IMG = os.path.join(IMAGES_DIR, "walls", "stone3.png") # 石頭牆壁圖�
 # 玩家
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png") # 備用/單幀圖片
 PLAYER1_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player.png") 
-PLAYER2_AI_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player2.png") 
+PLAYER2_AI_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player2.png")
+AI_RETREAT_IMG = os.path.join(IMAGES_DIR, "player", "ai_retreat.png") # AI 退後時的圖片
 # 炸彈與爆炸
 BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
-EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png")
+BOMB_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_1.png")
+BOMB_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_2.png")
+PLAYER1_BOMB_IMAGES = [BOMB_PLAYER_1_IMG, BOMB_PLAYER_2_IMG]
+BOMB_AI_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_ai_player_1.png")
+BOMB_AI_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_ai_player_2.png")
+AI_PLAYER_BOMB_IMAGES = [BOMB_AI_PLAYER_1_IMG, BOMB_AI_PLAYER_2_IMG]
+# EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png")
+EXPLOSION_1_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_1.png")
+EXPLOSION_2_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_2.png")
+EXPLOSION_3_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_3.png")
+EXPLOSION_IMGS = [EXPLOSION_1_IMG, EXPLOSION_2_IMG, EXPLOSION_3_IMG]
 # 道具
 ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
 ITEM_LIFE_IMG = os.path.join(IMAGES_DIR, "items", "item_life_placeholder.png")

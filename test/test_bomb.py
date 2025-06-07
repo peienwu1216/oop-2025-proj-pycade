@@ -75,7 +75,7 @@ class TestBomb:
         assert bomb.timer == settings.BOMB_TIMER
         assert bomb.exploded is False
         assert bomb.image is not None, "炸彈應有圖片。"
-        expected_rect_pos = (bomb_x_tile * settings.TILE_SIZE, bomb_y_tile * settings.TILE_SIZE)
+        expected_rect_pos = (bomb_x_tile * settings.TILE_SIZE + 6, bomb_y_tile * settings.TILE_SIZE - 2)
         assert bomb.rect.topleft == expected_rect_pos, "炸彈 rect 位置不正確。"
         assert bomb.owner_has_left_tile is False, "初始時，owner_has_left_tile 應為 False。"
         assert bomb.is_solidified is False, "初始時，is_solidified 應為 False。"

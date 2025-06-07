@@ -67,10 +67,12 @@ class Game:
         self.player1 = None
         self.player2_ai = None
         self.ai_controller_p2 = None
+        self.player1_bomb_toggle = 0
+
 
         # --- Timer related attributes ---
         self.time_elapsed_seconds = 0
-        self.game_timer_active = True
+        self.game_timer_active = False
         self.time_up_winner = None
 
         # --- Leaderboard Manager ---
@@ -150,8 +152,8 @@ class Game:
             self.prompt_font = pygame.font.Font(default_font_path, prompt_font_size)
             self.message_font = pygame.font.Font(default_font_path, message_font_size)
 
-            self.game_over_font = pygame.font.Font(default_font_path, 74)
-            self.restart_font = pygame.font.Font(default_font_path, 30)
+            self.game_over_font = pygame.font.Font(settings.TITLE_FONT_PATH, 50)
+            self.restart_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 25)
 
         except Exception as e:
             print(f"Error initializing fonts in Game: {e}")
@@ -167,6 +169,10 @@ class Game:
 
         self.setup_initial_state()
 
+    def start_timer(self):
+        self.time_elapsed_seconds = 0
+        self.game_timer_active = True
+    
     def setup_initial_state(self):
         # (此函式保持不變)
         self.all_sprites.empty()
@@ -177,7 +183,7 @@ class Game:
         self.solid_obstacles_group.empty()
 
         self.time_elapsed_seconds = 0.0
-        self.game_timer_active = True
+        self.game_timer_active = False
         self.time_up_winner = None
         self.game_state = "PLAYING"
 
@@ -209,7 +215,7 @@ class Game:
         self.player1 = Player(self, p1_start_tile[0], p1_start_tile[1],
                               spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH,
                               sprite_config=player1_sprite_config,
-                              is_ai=False)
+                              is_ai=False, is_player1=True)
         self.all_sprites.add(self.player1)
         self.players_group.add(self.player1)
 
@@ -267,7 +273,11 @@ class Game:
             return Menu(self.screen) if self.restart_game else "QUIT"
 
         # 計算 dt (delta time)
-        self.dt = self.clock.tick(settings.FPS) / 1000.0
+        if self.dt == 0:
+            self.clock.tick()
+            self.dt = 0.01
+        else:
+            self.dt = self.clock.tick(settings.FPS) / 1000.0
 
         # 處理事件
         self._process_events_internal(events_from_main_loop) # 使用內部方法處理事件
@@ -367,6 +377,7 @@ class Game:
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
             self.all_sprites.update(self.dt, self.solid_obstacles_group)
+            self.bombs_group.update(self.dt, self.solid_obstacles_group)
 
             for player in list(self.players_group):
                 if player.is_alive:
@@ -448,8 +459,11 @@ class Game:
             self.draw_enter_name_screen()
         elif self.game_state == "SCORE_SUBMITTED":
             self.draw_score_submitted_screen()
-        else:
-            self.all_sprites.draw(self.screen)
+        else: 
+            self.all_sprites.draw(self.screen) 
+            self.bombs_group.draw(self.screen)
+            for bomb in self.bombs_group:
+                bomb.draw_timer_bar(self.screen)
             if self.game_state == "PLAYING":
                 if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                     if hasattr(self.ai_controller_p2, 'debug_draw_path'):
@@ -585,6 +599,9 @@ class Game:
 
     def draw_game_over_screen(self):
         # (此函式保持不變)
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 180))  # R, G, B, A (180 ≈ 70% 不透明)
+        self.screen.blit(overlay, (0, 0))
         if not self.game_over_font or not self.restart_font:
             return
 
