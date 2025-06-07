@@ -28,6 +28,7 @@ class Game:
         self.restart_game = False # 這個旗標用來告訴 main.py 是否要回到選單
         self.game_state = "PLAYING"
         self.ai_archetype = ai_archetype
+        
 
         # --- Background ---
         self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
