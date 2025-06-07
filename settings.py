@@ -59,7 +59,7 @@ PLAYER_INVINCIBLE_DURATION = 1000 # 毫秒
 # 炸彈與爆炸設定 (Bomb & Explosion Settings)
 # -----------------------------------------------------------------------------
 BOMB_TIMER = 3000  # 毫秒
-EXPLOSION_DURATION = 300  # 毫秒
+EXPLOSION_DURATION = 500  # 毫秒
 USE_EXPLOSION_IMAGES = True
 EXPLOSION_COLOR = (255, 165, 0) # 如果 USE_EXPLOSION_IMAGES 為 False
 
@@ -173,7 +173,11 @@ PLAYER1_BOMB_IMAGES = [BOMB_PLAYER_1_IMG, BOMB_PLAYER_2_IMG]
 BOMB_AI_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_ai_player_1.png")
 BOMB_AI_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_ai_player_2.png")
 AI_PLAYER_BOMB_IMAGES = [BOMB_AI_PLAYER_1_IMG, BOMB_AI_PLAYER_2_IMG]
-EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png")
+# EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png")
+EXPLOSION_1_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_1.png")
+EXPLOSION_2_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_2.png")
+EXPLOSION_3_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_3.png")
+EXPLOSION_IMGS = [EXPLOSION_1_IMG, EXPLOSION_2_IMG, EXPLOSION_3_IMG]
 # 道具
 ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
 ITEM_LIFE_IMG = os.path.join(IMAGES_DIR, "items", "item_life_placeholder.png")
