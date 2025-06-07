@@ -322,6 +322,7 @@ class Game:
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
             self.all_sprites.update(self.dt, self.solid_obstacles_group)
+            self.bombs_group.update(self.dt, self.solid_obstacles_group)
 
             for player in list(self.players_group):
                 if player.is_alive:
@@ -403,8 +404,11 @@ class Game:
             self.draw_enter_name_screen()
         elif self.game_state == "SCORE_SUBMITTED":
             self.draw_score_submitted_screen()
-        else:
-            self.all_sprites.draw(self.screen)
+        else: 
+            self.all_sprites.draw(self.screen) 
+            self.bombs_group.draw(self.screen)
+            for bomb in self.bombs_group:
+                bomb.draw_timer_bar(self.screen)
             if self.game_state == "PLAYING":
                 if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                     if hasattr(self.ai_controller_p2, 'debug_draw_path'):
