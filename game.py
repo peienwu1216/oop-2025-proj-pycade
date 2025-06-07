@@ -20,6 +20,9 @@ class Game:
         self.headless = headless 
         self.screen = screen
         self.clock = clock
+        pygame.mixer.music.load(settings.GAME_MUSIC_PATH)
+        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+        pygame.mixer.music.play(-1) 
         self.running = True # 這個 self.running 仍然有用，用來標記 Game 場景是否應該繼續
         self.dt = 0 # dt 會在 run_one_frame 中更新
         self.restart_game = False # 這個旗標用來告訴 main.py 是否要回到選單
