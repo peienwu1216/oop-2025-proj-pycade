@@ -591,6 +591,9 @@ class Game:
             return
 
         self.screen.fill((180, 200, 255))
+        pygame.mixer.music.load(settings.GAME_VICTORY_PATH)
+        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+        pygame.mixer.music.play(-1)
 
         prompt_text = "VICTORY! New High Score!"
         prompt_surf = self.prompt_font.render(prompt_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", settings.BLACK))
