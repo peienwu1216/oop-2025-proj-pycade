@@ -29,6 +29,9 @@ class Game:
         self.game_state = "PLAYING"
         self.ai_archetype = ai_archetype
         
+        self.victory_music_played = False
+        self.game_over_played = False
+        
 
         # --- Background ---
         self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
@@ -151,6 +154,22 @@ class Game:
     def start_timer(self):
         self.time_elapsed_seconds = 0
         self.game_timer_active = True
+    
+    def game_over(self):
+        if self.game_over_played == False:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load(settings.GAME_OVER_PATH)
+            pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+            pygame.mixer.music.play(-1)  # 播放一次遊戲結束音樂
+            self.game_over_played = True
+    
+    def victory(self):
+        if self.victory_music_played == False:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load(settings.GAME_VICTORY_PATH)
+            pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+            pygame.mixer.music.play(-1)
+            self.victory_music_played = True
     
     def setup_initial_state(self):
         # (此函式保持不變)
@@ -299,6 +318,12 @@ class Game:
                                 self.player1.place_bomb()
                     
                     elif self.game_state == "GAME_OVER":
+                        if self.game_over_played == False:
+                            pygame.mixer.music.stop()
+                            pygame.mixer.music.load(settings.GAME_OVER_PATH)
+                            pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+                            pygame.mixer.music.play(-1)  # 播放一次遊戲結束音樂
+                            self.game_over_played = True
                         if event.key == pygame.K_r:
                             self.restart_game = True
                             self.running = False # 標記 Game 場景結束
@@ -330,6 +355,9 @@ class Game:
                     elif self.player2_ai.is_alive: self.time_up_winner = "AI"
                     else: self.time_up_winner = "DRAW"
                     self.game_state = "GAME_OVER"
+                    self.game_over() # 播放遊戲結束音樂
+                    
+                    
 
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
@@ -361,6 +389,7 @@ class Game:
                 ai_player_alive = self.player2_ai and self.player2_ai.is_alive
                 if not human_player_alive or not ai_player_alive:
                     self.game_state = "GAME_OVER"
+                    self.game_over()
                     self.game_timer_active = False
                     if human_player_alive: p1_won_by_ko = True
 
@@ -371,6 +400,7 @@ class Game:
                     self.player_name_input = ""
                     self.input_box_active = True
                     self.game_state = "ENTER_NAME"
+                    self.victory()
 
         elif self.game_state == "ENTER_NAME":
             pass
@@ -591,9 +621,6 @@ class Game:
             return
 
         self.screen.fill((180, 200, 255))
-        pygame.mixer.music.load(settings.GAME_VICTORY_PATH)
-        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
-        pygame.mixer.music.play(-1)
 
         prompt_text = "VICTORY! New High Score!"
         prompt_surf = self.prompt_font.render(prompt_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", settings.BLACK))
