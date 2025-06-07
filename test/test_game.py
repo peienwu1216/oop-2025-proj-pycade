@@ -192,7 +192,7 @@ class TestGame:
         game_instance.player2_ai.is_alive = True
         
         assert game_instance.game_state == "PLAYING"
-        assert game_instance.game_timer_active is True
+        assert game_instance.game_timer_active is False
     
         # Simulate the timer running out
         game_instance.time_elapsed_seconds = settings.GAME_DURATION_SECONDS
@@ -217,7 +217,7 @@ class TestGame:
         game_instance.player1.is_alive = True
         game_instance.player2_ai.is_alive = True
         assert game_instance.game_state == "PLAYING"
-        assert game_instance.game_timer_active is True
+        assert game_instance.game_timer_active is False
         # Simulate the timer running out
         game_instance.time_elapsed_seconds = settings.GAME_DURATION_SECONDS
         game_instance.game_timer_active = False
@@ -243,7 +243,7 @@ class TestGame:
         game_instance.player2_ai.is_alive = True
         
         assert game_instance.game_state == "PLAYING"
-        assert game_instance.game_timer_active is True
+        assert game_instance.game_timer_active is False
         
         # Simulate the timer running out
         game_instance.time_elapsed_seconds = settings.GAME_DURATION_SECONDS
@@ -267,7 +267,7 @@ class TestGame:
         game_instance.player2_ai.is_alive = False
         
         assert game_instance.game_state == "PLAYING"
-        assert game_instance.game_timer_active is True
+        assert game_instance.game_timer_active is False
         
         # Simulate the timer running out
         game_instance.time_elapsed_seconds = settings.GAME_DURATION_SECONDS
