@@ -2,7 +2,7 @@
 import pygame
 import os
 
-FORCE_SHOW_TOUCH_CONTROLS = False
+FORCE_SHOW_TOUCH_CONTROLS = True
 # -----------------------------------------------------------------------------
 # 遊戲基本設定 (General Game Settings)
 # -----------------------------------------------------------------------------
