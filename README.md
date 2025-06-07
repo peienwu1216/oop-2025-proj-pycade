@@ -1,7 +1,8 @@
 # Pycade Bomber (瘋狂炸彈人 Pygame 複刻版)
 
 <img src="https://github.com/user-attachments/assets/d82658bc-e547-4290-b0fb-48a8f3e954ce" width="600"/>
-<img src="https://github.com/user-attachments/assets/0a8d1f0f-c46b-4f9c-9136-28bbbdbd9ed5" width="600"/>
+<img src="https://github.com/user-attachments/assets/0d935633-7aa0-4f1f-b07c-3cd09ed21bb2" width="600"/>
+
 
 本專案是物件導向程式設計 (OOP) 課程專案，旨在使用 Pygame 函式庫複刻經典遊戲《瘋狂炸彈人》。遊戲提供多種 AI 對手供玩家挑戰，並包含排行榜系統以記錄玩家的最佳戰績。
 
