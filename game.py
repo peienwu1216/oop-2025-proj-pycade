@@ -167,7 +167,7 @@ class Game:
         if self.victory_music_played == False:
             pygame.mixer.music.stop()
             pygame.mixer.music.load(settings.GAME_VICTORY_PATH)
-            pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+            pygame.mixer.music.set_volume(0.6)
             pygame.mixer.music.play(-1)
             self.victory_music_played = True
     
