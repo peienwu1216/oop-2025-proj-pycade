@@ -40,6 +40,7 @@ class Bomb(GameObject):
         self.spawn_time = pygame.time.get_ticks() # 記錄放置時間
         self.timer = settings.BOMB_TIMER # 毫秒
         self.exploded = False
+        self.ticking = None
         self.current_tile_x = x_tile # [SPS_BOMB_NO_CHANGE_NEEDED] 記錄炸彈所在的格子座標，這很好。
         self.current_tile_y = y_tile # [SPS_BOMB_NO_CHANGE_NEEDED] 記錄炸彈所在的格子座標，這很好。
 
@@ -112,16 +113,22 @@ class Bomb(GameObject):
         """
         Updates the bomb's state (timer, visual countdown).
         """
+
         # [SPS_BOMB_NO_CHANGE_NEEDED] 倒數計時和爆炸邏輯與玩家移動方式無直接關聯。
         current_time = pygame.time.get_ticks()
 
         if not self.owner_has_left_tile and self.placed_by_player:
             if self.placed_by_player.tile_x != self.current_tile_x or \
-               self.placed_by_player.tile_y != self.current_tile_y:
+                self.placed_by_player.tile_y != self.current_tile_y:
                 self.owner_has_left_tile = True
                 self.is_solidified = True 
         
         if not self.exploded:
+            if (settings.ticking_playing == False):
+                self.ticking = pygame.mixer.Sound(settings.BOMB_TICK_PATH)
+                self.ticking.set_volume(0.3)  # 可調整音量大小 0.0 ~ 1.0
+                self.ticking.play(-1)  # 循環播放
+                settings.ticking_playing = True
             # === 1. 計算縮放因子 ===
             elapsed = (pygame.time.get_ticks() - self.spawn_time) / 1000  # 秒
             frequency = 1  # 每秒跳動次數
@@ -151,6 +158,9 @@ class Bomb(GameObject):
 
             # === 6. 爆炸判斷 ===
             if time_left <= 0:
+                if self.ticking != None:
+                    self.ticking.stop()
+                settings.ticking_playing = False
                 self.explode()
 
     def explode(self):
@@ -191,7 +201,11 @@ class Bomb(GameObject):
 
                     if is_destructible_here:
                         break 
-
+            
+            explosion_sound = pygame.mixer.Sound(settings.EXPLOSION_PATH)
+            explosion_sound.set_volume(0.5)  # 可調整音量大小 0.0 ~ 1.0
+            explosion_sound.play()
+            
             for ex_tile_x, ex_tile_y in explosion_tiles:
                 expl_sprite = Explosion(ex_tile_x, ex_tile_y, self.game, self.images)
                 self.game.all_sprites.add(expl_sprite)
