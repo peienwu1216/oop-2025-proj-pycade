@@ -22,7 +22,7 @@ class TouchControls:
                 full_path = os.path.join(ui_path, fname)
                 self.images[key] = pygame.image.load(full_path).convert_alpha()
         except pygame.error as e:
-            print(f"FATAL: Error loading touch control image '{full_path}'. Please check image files. Error: {e}")
+            logging.critical(f"FATAL: Error loading touch control image '{full_path}'. Please check image files. Error: {e}")
             # 讓按鈕字典保持為空，這樣後續的函式呼叫會安全地失敗
             return
 
