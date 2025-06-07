@@ -66,6 +66,15 @@ class Bomb(GameObject):
         self.animation_index = 0
         self.last_animation_time = pygame.time.get_ticks()
         self.animation_interval = 300  # 毫秒，調整為你想要的動畫速度
+        
+        # -- Explosion images --
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img).convert_alpha(),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
 
 
         # For visual countdown (optional)
@@ -184,7 +193,7 @@ class Bomb(GameObject):
                         break 
 
             for ex_tile_x, ex_tile_y in explosion_tiles:
-                expl_sprite = Explosion(ex_tile_x, ex_tile_y, self.game)
+                expl_sprite = Explosion(ex_tile_x, ex_tile_y, self.game, self.images)
                 self.game.all_sprites.add(expl_sprite)
                 self.game.explosions_group.add(expl_sprite)
             
