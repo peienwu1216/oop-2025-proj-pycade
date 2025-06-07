@@ -6,12 +6,13 @@ import settings
 # from .bomb import Bomb # Bomb 在 Player 中放置炸彈時才需要
 
 class Player(GameObject):
-    def __init__(self, game, x_tile, y_tile, spritesheet_path, sprite_config, is_ai=False, ai_controller=None):
+    def __init__(self, game, x_tile, y_tile, spritesheet_path, sprite_config, is_ai=False, ai_controller=None, is_player1=False):
         pygame.sprite.Sprite.__init__(self) 
 
         self.game = game
         self.is_ai = is_ai
         self.ai_controller = ai_controller 
+        self.is_player1 = is_player1
 
         self.tile_x = x_tile
         self.tile_y = y_tile
@@ -127,6 +128,7 @@ class Player(GameObject):
             # （8）！！！ 修改：使用 settings.py 中的 HUMAN_GRID_MOVE_ACTION_DURATION ！！！（8）
             self.ACTION_ANIMATION_DURATION = settings.HUMAN_GRID_MOVE_ACTION_DURATION 
             # （8）！！！ 修改結束 ！！！（8）
+            
 
     def attempt_move_to_tile(self, dx, dy):
         print(f"[DEBUG_ATTEMPT_MOVE] AI at ({self.tile_x},{self.tile_y}), trying dx={dx}, dy={dy}. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
@@ -311,7 +313,7 @@ class Player(GameObject):
             if can_place:
                 from .bomb import Bomb 
                 new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game) 
-                self.game.all_sprites.add(new_bomb) 
+                # self.game.all_sprites.add(new_bomb) 
                 self.game.bombs_group.add(new_bomb) 
                 self.bombs_placed_count += 1 
                 

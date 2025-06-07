@@ -3,6 +3,7 @@
 import pygame
 import settings
 from core.map_manager import MapManager
+from core.touch_controls import TouchControls
 from sprites.player import Player
 from core.leaderboard_manager import LeaderboardManager
 
@@ -66,10 +67,12 @@ class Game:
         self.player1 = None
         self.player2_ai = None
         self.ai_controller_p2 = None
+        self.player1_bomb_toggle = 0
+
 
         # --- Timer related attributes ---
         self.time_elapsed_seconds = 0
-        self.game_timer_active = True
+        self.game_timer_active = False
         self.time_up_winner = None
 
         # --- Leaderboard Manager ---
@@ -87,6 +90,30 @@ class Game:
 
         self.score_submitted_message_timer = 0.0
         self.score_submitted_message_duration = 3.0
+
+        # --- 觸控控制建立邏輯 ---
+        self.touch_controls = None
+        if not headless:
+            touch_available = False
+            # 1. 首先，用 hasattr() 安全地檢查 pygame 是否有 'touch' 這個模組
+            if hasattr(pygame, 'touch'):
+                try:
+                    # 2. 如果模組存在，再嘗試呼叫函式
+                    if pygame.touch.get_num_devices() > 0:
+                        touch_available = True
+                except pygame.error as e:
+                    # 處理極端情況：模組存在但初始化失敗
+                    print(f"Pygame touch module available but failed to initialize: {e}")
+            else:
+                # 如果連 'touch' 模組都沒有，直接印出提示
+                print("Pygame 'touch' module not found (expected on non-touch desktop builds).")
+
+            # 3. 根據偵測結果或手動設定的旗標來決定是否建立 TouchControls
+            if touch_available or getattr(settings, "FORCE_SHOW_TOUCH_CONTROLS", False):
+                print("Touch controls ENABLED (Touch device detected or force flag is on).")
+                self.touch_controls = TouchControls(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT)
+            else:
+                print("Touch controls DISABLED (No touch device or module unavailable).")
 
         # --- Font attributes ---
         self.hud_font = None
@@ -125,8 +152,8 @@ class Game:
             self.prompt_font = pygame.font.Font(default_font_path, prompt_font_size)
             self.message_font = pygame.font.Font(default_font_path, message_font_size)
 
-            self.game_over_font = pygame.font.Font(default_font_path, 74)
-            self.restart_font = pygame.font.Font(default_font_path, 30)
+            self.game_over_font = pygame.font.Font(settings.TITLE_FONT_PATH, 50)
+            self.restart_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 25)
 
         except Exception as e:
             print(f"Error initializing fonts in Game: {e}")
@@ -142,6 +169,10 @@ class Game:
 
         self.setup_initial_state()
 
+    def start_timer(self):
+        self.time_elapsed_seconds = 0
+        self.game_timer_active = True
+    
     def setup_initial_state(self):
         # (此函式保持不變)
         self.all_sprites.empty()
@@ -152,7 +183,7 @@ class Game:
         self.solid_obstacles_group.empty()
 
         self.time_elapsed_seconds = 0.0
-        self.game_timer_active = True
+        self.game_timer_active = False
         self.time_up_winner = None
         self.game_state = "PLAYING"
 
@@ -184,7 +215,7 @@ class Game:
         self.player1 = Player(self, p1_start_tile[0], p1_start_tile[1],
                               spritesheet_path=settings.PLAYER1_SPRITESHEET_PATH,
                               sprite_config=player1_sprite_config,
-                              is_ai=False)
+                              is_ai=False, is_player1=True)
         self.all_sprites.add(self.player1)
         self.players_group.add(self.player1)
 
@@ -242,7 +273,11 @@ class Game:
             return Menu(self.screen) if self.restart_game else "QUIT"
 
         # 計算 dt (delta time)
-        self.dt = self.clock.tick(settings.FPS) / 1000.0
+        if self.dt == 0:
+            self.clock.tick()
+            self.dt = 0.01
+        else:
+            self.dt = self.clock.tick(settings.FPS) / 1000.0
 
         # 處理事件
         self._process_events_internal(events_from_main_loop) # 使用內部方法處理事件
@@ -264,35 +299,57 @@ class Game:
     # 【修改】將原本的 events() 改名為 _process_events_internal() 並接收外部傳入的事件
     def _process_events_internal(self, events_from_main_loop):
         for event in events_from_main_loop:
-            # pygame.QUIT 事件已由 main.py 處理，這裡可以不用再處理
-            # 但為了安全，保留也可以
-
+            # 優先處理需要獨佔輸入的遊戲狀態
             if self.game_state == "ENTER_NAME":
                 self.handle_enter_name_state_events(event)
-            elif self.game_state == "SCORE_SUBMITTED":
+                continue  # 處理完直接跳到下一個事件
+
+            if self.game_state == "SCORE_SUBMITTED":
                 if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
                     self.restart_game = True
-                    self.running = False # 標記 Game 場景結束
-            else:
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.running = False # 標記 Game 場景結束
-                        self.restart_game = False # 不是要重新開始，是真的退出
-                    
-                    if self.game_state == "PLAYING":
-                        if event.key == pygame.K_f:
-                            if self.player1 and self.player1.is_alive:
-                                self.player1.place_bomb()
-                    
-                    elif self.game_state == "GAME_OVER":
-                        if event.key == pygame.K_r:
-                            self.restart_game = True
-                            self.running = False # 標記 Game 場景結束
+                    self.running = False
+                continue
 
-    # 【修改】將原本的 update() 改名為 _update_internal()
+            # --- 處理觸控事件 (事件型，如單次點擊) ---
+            if self.game_state == "PLAYING" and self.touch_controls:
+                # handle_event 只在按下炸彈鈕時返回 'BOMB'
+                action = self.touch_controls.handle_event(event)
+                if action == 'BOMB' and self.player1 and self.player1.is_alive:
+                    self.player1.place_bomb()
+
+            # --- 處理鍵盤事件 ---
+            if event.type == pygame.KEYDOWN:
+                # 通用 ESC 鍵
+                if event.key == pygame.K_ESCAPE:
+                    self.running = False
+                    self.restart_game = False
+                
+                # 'PLAYING' 狀態下的鍵盤事件
+                if self.game_state == "PLAYING":
+                    if event.key == pygame.K_f:
+                        if self.player1 and self.player1.is_alive:
+                            self.player1.place_bomb()
+                
+                # 'GAME_OVER' 狀態下的鍵盤事件
+                elif self.game_state == "GAME_OVER":
+                    if event.key == pygame.K_r:
+                        self.restart_game = True
+                        self.running = False
+
     def _update_internal(self):
-        # (update 函式的內容保持不變)
         if self.game_state == "PLAYING":
+            # --- 新增：處理持續性的觸控移動 ---
+            if self.touch_controls and self.player1 and self.player1.is_alive:
+                if self.touch_controls.is_pressed('UP'):
+                    self.player1.attempt_move_to_tile(0, -1)
+                elif self.touch_controls.is_pressed('DOWN'):
+                    self.player1.attempt_move_to_tile(0, 1)
+                elif self.touch_controls.is_pressed('LEFT'):
+                    self.player1.attempt_move_to_tile(-1, 0)
+                elif self.touch_controls.is_pressed('RIGHT'):
+                    self.player1.attempt_move_to_tile(1, 0)
+            # --- 觸控移動處理結束 ---
+
             p1_won_by_ko = False
             p1_won_by_time = False
 
@@ -320,6 +377,7 @@ class Game:
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
             self.all_sprites.update(self.dt, self.solid_obstacles_group)
+            self.bombs_group.update(self.dt, self.solid_obstacles_group)
 
             for player in list(self.players_group):
                 if player.is_alive:
@@ -401,13 +459,18 @@ class Game:
             self.draw_enter_name_screen()
         elif self.game_state == "SCORE_SUBMITTED":
             self.draw_score_submitted_screen()
-        else:
-            self.all_sprites.draw(self.screen)
+        else: 
+            self.all_sprites.draw(self.screen) 
+            self.bombs_group.draw(self.screen)
+            for bomb in self.bombs_group:
+                bomb.draw_timer_bar(self.screen)
             if self.game_state == "PLAYING":
                 if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                     if hasattr(self.ai_controller_p2, 'debug_draw_path'):
                         self.ai_controller_p2.debug_draw_path(self.screen)
                 self.draw_hud()
+                if self.touch_controls:
+                    self.touch_controls.draw(self.screen)
             elif self.game_state == "GAME_OVER":
                 self.draw_game_over_screen()
 
@@ -536,6 +599,9 @@ class Game:
 
     def draw_game_over_screen(self):
         # (此函式保持不變)
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 180))  # R, G, B, A (180 ≈ 70% 不透明)
+        self.screen.blit(overlay, (0, 0))
         if not self.game_over_font or not self.restart_font:
             return
 

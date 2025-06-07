@@ -39,7 +39,7 @@ class Menu:
             self.option_font = pygame.font.Font(font_path, 30)
             self.description_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 24)
             self.leaderboard_text_font = pygame.font.Font(font_path, 22)
-            self.leaderboard_header_font = pygame.font.Font(font_path, 24)
+            self.leaderboard_header_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 24)
         except Exception as e:
             print(f"Menu Font Error: {e}. Falling back to default.")
             self.title_font = pygame.font.Font(None, 80)
@@ -109,7 +109,9 @@ class Menu:
                                 if action == "SELECT_AI":
                                     # 返回一個新的 Game 物件作為下一個場景
                                     from game import Game
-                                    return Game(self.screen, self.clock, ai_archetype=button["archetype"])
+                                    game = Game(self.screen, self.clock, ai_archetype=button["archetype"])
+                                    game.start_timer()
+                                    return game
                                 elif action == "SHOW_LEADERBOARD":
                                     self.menu_state = "LEADERBOARD"
                                 elif action == "QUIT_GAME":
@@ -160,8 +162,16 @@ class Menu:
 
     def draw_leaderboard_content(self):
         # (此函式保持不變...)
-        self.screen.fill((230, 230, 250))
-        lb_title_surf = self.title_font.render("Leaderboard", True, settings.BLACK)
+        # === 1. 背景圖片 ===
+        bg_image = pygame.image.load(settings.MENU_BACKGROUND_IMG).convert()
+        bg_image = pygame.transform.scale(bg_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
+        self.screen.blit(bg_image, (0, 0))
+
+        # === 2. 半透明白色覆蓋層 ===
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 200))  # 半透明白色 (alpha = 200)
+        self.screen.blit(overlay, (0, 0))
+        lb_title_surf = self.title_font.render("Leaderboard", True, (16, 39, 54))
         lb_title_rect = lb_title_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, 70))
         self.screen.blit(lb_title_surf, lb_title_rect)
 
@@ -178,10 +188,10 @@ class Menu:
             header_surf = self.leaderboard_header_font.render(header_text, True, settings.BLACK)
             header_rect = header_surf.get_rect(centerx=header_positions[i][1], y=start_y)
             if header_text == "Rank": header_rect.left = 50
-            elif header_text == "Score": header_rect.centerx = 300
+            elif header_text == "Score": header_rect.centerx = 240
             elif header_text == "Name": header_rect.left = 120
-            elif header_text == "Defeated AI": header_rect.centerx = 450
-            elif header_text == "Date": header_rect.centerx = settings.SCREEN_WIDTH - 150
+            elif header_text == "Defeated AI": header_rect.centerx = 550
+            elif header_text == "Date": header_rect.centerx = settings.SCREEN_WIDTH - 100
             self.screen.blit(header_surf, header_rect)
         
         current_y = start_y + line_height * 1.5
@@ -191,18 +201,26 @@ class Menu:
             no_scores_rect = no_scores_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2))
             self.screen.blit(no_scores_surf, no_scores_rect)
         else:
+            max_score = max(entry.get('score', 1) for entry in scores) or 1
+            bar_max_width = 200
+            bar_height = 20
             for i, entry in enumerate(scores):
                 rank = str(i + 1)
                 name = entry.get('name', 'N/A')
                 score = str(entry.get('score', 0))
+                score_val = entry.get('score', 0)
                 ai_archetype_key = entry.get('ai_defeated', 'N/A')
+                date = entry.get('date', 'N/A').split(" ")[0]
                 ai_display_name = ai_archetype_key
                 if hasattr(settings, 'AVAILABLE_AI_ARCHETYPES'):
                     for display, key_in_settings in settings.AVAILABLE_AI_ARCHETYPES.items():
                         if key_in_settings == ai_archetype_key:
                             ai_display_name = display
                             break
-                date = entry.get('date', 'N/A').split(" ")[0]
+                bar_length = int((score_val / max_score) * bar_max_width)
+                bar_rect = pygame.Rect(260+5, current_y+8, bar_length, bar_height)
+                pygame.draw.rect(self.screen, (32, 80, 103), bar_rect)
+
 
                 entry_data = [rank, name, score, ai_display_name, date]
                 for col, data_text in enumerate(entry_data):
@@ -210,9 +228,9 @@ class Menu:
                     data_rect = data_surf.get_rect(y=current_y)
                     if col == 0: data_rect.left = 50
                     elif col == 1: data_rect.left = 120
-                    elif col == 2: data_rect.centerx = 300
-                    elif col == 3: data_rect.centerx = 450
-                    elif col == 4: data_rect.centerx = settings.SCREEN_WIDTH - 150
+                    elif col == 2: data_rect.centerx = 240
+                    elif col == 3: data_rect.centerx = 550
+                    elif col == 4: data_rect.centerx = settings.SCREEN_WIDTH - 100
                     self.screen.blit(data_surf, data_rect)
                 current_y += line_height
 

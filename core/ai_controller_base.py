@@ -82,6 +82,9 @@ class AIControllerBase:
         self.evasion_urgency_seconds = getattr(settings, "AI_EVASION_SAFETY_CHECK_FUTURE_SECONDS", 0.5)
 
         self.reset_state()
+        
+        self.retreat_img = pygame.image.load(settings.AI_RETREAT_IMG)
+        self.retreat_img = pygame.transform.smoothscale(self.retreat_img, (settings.TILE_SIZE, settings.TILE_SIZE))
 
     def reset_state(self):
         ai_log(f"Resetting AI state for Player ID: {id(self.ai_player)}.")
@@ -803,12 +806,16 @@ class AIControllerBase:
             if hasattr(self, 'chosen_bombing_spot_coords') and self.chosen_bombing_spot_coords:
                 bx, by = self.chosen_bombing_spot_coords
                 b_px, b_py = bx * tile_size + half_tile, by * tile_size + half_tile
-                pygame.draw.circle(surface, COLOR_BOMBING_SPOT, (b_px, b_py), half_tile//2); pygame.draw.circle(surface, settings.BLACK, (b_px,b_py), half_tile//2,1); pygame.draw.line(surface, settings.BLACK, (b_px, b_py-half_tile//2-2),(b_px,b_py-half_tile//2+3),2)
+                #pygame.draw.circle(surface, COLOR_BOMBING_SPOT, (b_px, b_py), half_tile//2); pygame.draw.circle(surface, settings.BLACK, (b_px,b_py), half_tile//2,1); pygame.draw.line(surface, settings.BLACK, (b_px, b_py-half_tile//2-2),(b_px,b_py-half_tile//2+3),2)
             
             if hasattr(self, 'chosen_retreat_spot_coords') and self.chosen_retreat_spot_coords and \
                (self.current_state == "TACTICAL_RETREAT_AND_WAIT" or self.current_state == "EVADING_DANGER" or self.ai_just_placed_bomb):
                 rx, ry = self.chosen_retreat_spot_coords
-                pygame.draw.rect(surface, COLOR_RETREAT_SPOT, (rx*tile_size+4,ry*tile_size+4,tile_size-8,tile_size-8),0,border_radius=3); pygame.draw.rect(surface, settings.BLACK, (rx*tile_size+4,ry*tile_size+4,tile_size-8,tile_size-8),1,border_radius=3)
+                img_rect = self.retreat_img.get_rect()
+                img_rect.topleft = (rx * tile_size, ry * tile_size)
+                surface.blit(self.retreat_img, img_rect)
+
+                #pygame.draw.rect(surface, COLOR_RETREAT_SPOT, (rx*tile_size+4,ry*tile_size+4,tile_size-8,tile_size-8),0,border_radius=3); pygame.draw.rect(surface, settings.BLACK, (rx*tile_size+4,ry*tile_size+4,tile_size-8,tile_size-8),1,border_radius=3)
             
             obstacle = getattr(self, 'target_obstacle_to_bomb', None) or getattr(self, 'target_destructible_wall_node_in_astar', None)
             if obstacle:
