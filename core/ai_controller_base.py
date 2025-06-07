@@ -812,7 +812,7 @@ class AIControllerBase:
                (self.current_state == "TACTICAL_RETREAT_AND_WAIT" or self.current_state == "EVADING_DANGER" or self.ai_just_placed_bomb):
                 rx, ry = self.chosen_retreat_spot_coords
                 img_rect = self.retreat_img.get_rect()
-                img_rect.topleft = (rx * tile_size + 4, ry * tile_size + 4)
+                img_rect.topleft = (rx * tile_size, ry * tile_size)
                 surface.blit(self.retreat_img, img_rect)
 
                 #pygame.draw.rect(surface, COLOR_RETREAT_SPOT, (rx*tile_size+4,ry*tile_size+4,tile_size-8,tile_size-8),0,border_radius=3); pygame.draw.rect(surface, settings.BLACK, (rx*tile_size+4,ry*tile_size+4,tile_size-8,tile_size-8),1,border_radius=3)
