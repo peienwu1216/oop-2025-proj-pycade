@@ -37,3 +37,17 @@ class TouchControls:
             action_button_radius * 2
         )
         self.buttons['BOMB'] = {'rect': self.action_button_rect, 'pressed': False, 'radius': action_button_radius}
+
+    def draw(self, surface):
+        """繪製所有虛擬按鍵到畫面上"""
+        # 繪製方向鍵
+        for key in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
+            button = self.buttons[key]
+            color = self.BUTTON_PRESSED_COLOR if button['pressed'] else self.BUTTON_COLOR
+            pygame.draw.rect(surface, color, button['rect'], border_radius=10)
+
+        # 繪製動作按鈕
+        bomb_button = self.buttons['BOMB']
+        color = self.BUTTON_PRESSED_COLOR if bomb_button['pressed'] else self.BUTTON_COLOR
+        center = bomb_button['rect'].center
+        pygame.draw.circle(surface, color, center, bomb_button['radius'])
