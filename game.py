@@ -127,8 +127,8 @@ class Game:
             self.prompt_font = pygame.font.Font(default_font_path, prompt_font_size)
             self.message_font = pygame.font.Font(default_font_path, message_font_size)
 
-            self.game_over_font = pygame.font.Font(default_font_path, 74)
-            self.restart_font = pygame.font.Font(default_font_path, 30)
+            self.game_over_font = pygame.font.Font(settings.TITLE_FONT_PATH, 50)
+            self.restart_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 25)
 
         except Exception as e:
             print(f"Error initializing fonts in Game: {e}")
@@ -550,6 +550,9 @@ class Game:
 
     def draw_game_over_screen(self):
         # (此函式保持不變)
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 180))  # R, G, B, A (180 ≈ 70% 不透明)
+        self.screen.blit(overlay, (0, 0))
         if not self.game_over_font or not self.restart_font:
             return
 
