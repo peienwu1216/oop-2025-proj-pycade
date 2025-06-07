@@ -170,6 +170,9 @@ BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
 BOMB_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_1.png")
 BOMB_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_2.png")
 PLAYER1_BOMB_IMAGES = [BOMB_PLAYER_1_IMG, BOMB_PLAYER_2_IMG]
+BOMB_AI_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_ai_player_1.png")
+BOMB_AI_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_ai_player_2.png")
+AI_PLAYER_BOMB_IMAGES = [BOMB_AI_PLAYER_1_IMG, BOMB_AI_PLAYER_2_IMG]
 EXPLOSION_PARTICLE_IMG = os.path.join(IMAGES_DIR, "explosion", "explosion_particle.png")
 # 道具
 ITEM_SCORE_IMG = os.path.join(IMAGES_DIR, "items", "item_score_placeholder.png")
