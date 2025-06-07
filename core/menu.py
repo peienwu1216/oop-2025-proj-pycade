@@ -11,6 +11,13 @@ class Menu:
     def __init__(self, screen):
         self.screen = screen
         self.clock = pygame.time.Clock()
+        pygame.mixer.music.load(settings.MENU_MUSIC_PATH)
+        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+        pygame.mixer.music.play(-1)  # 循環播放音樂
+        self.hover_sound = pygame.mixer.Sound(settings.MENU_HOVER_SOUND_PATH)
+        self.hover_sound.set_volume(0.5)  # 可調整音量
+        self.last_hovered_button = None  # 用來追蹤上次滑過的按鈕
+
         
         # 【修改】不再需要 is_running 和 selected_ai_archetype
         # self.is_running = True
@@ -88,6 +95,17 @@ class Menu:
     def update(self, events):
         """處理一幀的事件和邏輯，並返回下一個場景或指令。"""
         mouse_pos = pygame.mouse.get_pos()
+        hovered_button = None
+        
+        if self.menu_state == "MAIN":
+            for button in self.buttons:
+                if button["rect"].collidepoint(mouse_pos):
+                    hovered_button = button
+                    break
+        if hovered_button is not None and hovered_button != self.last_hovered_button:
+            self.hover_sound.play()
+            
+        self.last_hovered_button = hovered_button
         
         for event in events:
             if event.type == pygame.KEYDOWN:
