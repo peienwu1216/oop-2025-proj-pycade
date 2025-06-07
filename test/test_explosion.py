@@ -64,18 +64,36 @@ class TestExplosion:
         assert explosion not in mock_group, "時間超過後，Explosion 應從群組中移除 (因呼叫了 kill)。"
         # 如果沒有 mock kill，則檢查是否從 group 中移除
 
-    def test_explosion_duration(self, mock_explosion_env):
+    def test_explosion_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 的持續時間是否正確。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
 
         # 檢查持續時間是否符合預期
         assert explosion.duration == settings.EXPLOSION_DURATION, \
             f"Explosion 的持續時間應為 {settings.EXPLOSION_DURATION}，但實際為 {explosion.duration}。"
     
-    def test_explosion_position(self, mock_explosion_env):
+    def test_explosion_position(self, mock_explosion_env, mocker):
         """測試 Explosion 的位置是否正確。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         x, y = 5, 10
         explosion = Explosion(x, y, game, self.images)
 
@@ -85,9 +103,18 @@ class TestExplosion:
         assert explosion.rect.y == y * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {y * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_image_loading(self, mock_explosion_env):
+    def test_explosion_image_loading(self, mock_explosion_env, mocker):
         """測試 Explosion 的圖片是否正確載入。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
 
         # 檢查圖片是否正確載入
