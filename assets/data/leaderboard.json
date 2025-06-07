@@ -1,5 +1,11 @@
 [
     {
+        "name": "Player",
+        "score": 750,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 02:39"
+    },
+    {
         "name": "Bryan",
         "score": 540,
         "ai_defeated": "item_focused",
@@ -12,10 +18,22 @@
         "date": "2025-05-28 22:00"
     },
     {
+        "name": "Jumbo",
+        "score": 480,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 02:45"
+    },
+    {
         "name": "j",
         "score": 410,
         "ai_defeated": "item_focused",
         "date": "2025-06-08 00:40"
+    },
+    {
+        "name": "Player",
+        "score": 340,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 01:37"
     },
     {
         "name": "Benson",
@@ -25,20 +43,20 @@
     },
     {
         "name": "Jumbo",
-        "score": 220,
-        "ai_defeated": "item_focused",
-        "date": "2025-06-08 00:47"
-    },
-    {
-        "name": "Player",
-        "score": 180,
-        "ai_defeated": "original",
-        "date": "2025-05-28 14:34"
+        "score": 310,
+        "ai_defeated": "aggressive",
+        "date": "2025-06-08 01:24"
     },
     {
         "name": "Jumbo",
-        "score": 140,
-        "ai_defeated": "aggressive",
-        "date": "2025-05-28 04:11"
+        "score": 260,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 01:26"
+    },
+    {
+        "name": "Jumbo",
+        "score": 220,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 00:47"
     }
 ]
