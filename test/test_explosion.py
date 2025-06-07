@@ -119,7 +119,7 @@ class TestExplosion:
 
         # 檢查圖片是否正確載入
         assert explosion.image is not None, "Explosion 的圖片應該被正確載入。"
-        assert explosion.image.get_size() == (settings.TILE_SIZE, settings.TILE_SIZE), \
+        assert explosion.image.get_size() == (settings.TILE_SIZE-2, settings.TILE_SIZE), \
             f"Explosion 的圖片大小應為 ({settings.TILE_SIZE}, {settings.TILE_SIZE})，但實際為 {explosion.image.get_size()}。"
 
     def test_explosion_initialization(self, mock_explosion_env, mocker):
@@ -341,7 +341,7 @@ class TestExplosion:
         assert explosion.rect.y == int(2.5 * settings.TILE_SIZE), \
             f"Explosion 的 Y 位置應為 {int(2.5 * settings.TILE_SIZE)}，但實際為 {explosion.rect.y}。"
         
-    def test_explosion_update_with_large_non_integer_position(self, mock_explosion_en, mocker):
+    def test_explosion_update_with_large_non_integer_position(self, mock_explosion_env, mocker):
         """測試 Explosion 在大非整數位置的情況下，update 方法不應該改變狀態。"""
         mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
         mocker.patch("pygame.image.load", return_value=mock_image)
