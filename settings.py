@@ -159,6 +159,7 @@ MENU_HOVER_SOUND_PATH = os.path.join(SOUNDS_DIR, "menu_hover.mp3") # 菜單懸�
 BOMB_TICK_PATH = os.path.join(SOUNDS_DIR, "bomb_tick.mp3") # 炸彈倒數音效
 ticking_playing = False
 EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
+BLING_PATH = os.path.join(SOUNDS_DIR, "bling.mp3") # 拾取道具音效
 
 # 特定圖片路徑
 # 地圖背景
