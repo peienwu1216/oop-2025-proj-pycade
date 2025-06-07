@@ -24,11 +24,9 @@ class Bomb(GameObject):
         """
         # 判斷是否是 player1 放的炸彈
         if placed_by_player.is_player1:
-            toggle_index = game_instance.player1_bomb_toggle
-            bomb_img = settings.PLAYER1_BOMB_IMAGES[toggle_index]
-            game_instance.player1_bomb_toggle = (toggle_index + 1) % len(settings.PLAYER1_BOMB_IMAGES)
+            bomb_img = settings.BOMB_PLAYER_1_IMG
         else:
-            bomb_img = settings.BOMB_IMG  # 預設圖
+            bomb_img = settings.BOMB_AI_PLAYER_1_IMG  # 預設圖
 
         super().__init__(
             x_tile * settings.TILE_SIZE+6, # 視覺位置基於格子座標
@@ -49,13 +47,22 @@ class Bomb(GameObject):
         self.owner_has_left_tile = False # 標記擁有者是否已離開此格
         
         # Bomb animation
-        self.animation_images = [
-            pygame.transform.smoothscale(
-                pygame.image.load(img).convert_alpha(),
-                (self.original_image.get_width() * (settings.TILE_SIZE / self.original_image.get_height()), settings.TILE_SIZE)
-            )
-            for img in settings.PLAYER1_BOMB_IMAGES
-        ]
+        if placed_by_player.is_player1:
+            self.animation_images = [
+                pygame.transform.smoothscale(
+                    pygame.image.load(img).convert_alpha(),
+                    (self.original_image.get_width() * (settings.TILE_SIZE / self.original_image.get_height()), settings.TILE_SIZE)
+                )
+                for img in settings.PLAYER1_BOMB_IMAGES
+            ]
+        else:
+            self.animation_images = [
+                pygame.transform.smoothscale(
+                    pygame.image.load(img).convert_alpha(),
+                    (self.original_image.get_width() * (settings.TILE_SIZE / self.original_image.get_height()), settings.TILE_SIZE)
+                )
+                for img in settings.AI_PLAYER_BOMB_IMAGES
+            ]
         self.animation_index = 0
         self.last_animation_time = pygame.time.get_ticks()
         self.animation_interval = 300  # 毫秒，調整為你想要的動畫速度
@@ -118,6 +125,7 @@ class Bomb(GameObject):
                 self.last_animation_time = current_time
 
             base_image = self.animation_images[self.animation_index]
+            
             w, h = base_image.get_width(), base_image.get_height()
             new_size = (int(w * scale_factor), int(h * scale_factor))
             self.original_image = pygame.transform.smoothscale(base_image, new_size)
@@ -135,15 +143,6 @@ class Bomb(GameObject):
             # === 6. 爆炸判斷 ===
             if time_left <= 0:
                 self.explode()
-
-        
-        # if not self.exploded:
-        #     time_left_sec = max(0, (self.timer - time_elapsed) / 1000)
-        #     self.image = self.original_image.copy() 
-        #     countdown_text = f"{time_left_sec:.1f}" 
-        #     text_surface = self.font.render(countdown_text, True, self.text_color)
-        #     text_rect = text_surface.get_rect(center=(self.image.get_width() / 2, self.image.get_height() / 2))
-        #     self.image.blit(text_surface, text_rect)
 
     def explode(self):
         # [SPS_BOMB_NO_CHANGE_NEEDED] 爆炸邏輯完全基於炸彈自身的 current_tile_x, current_tile_y 和放置者的 bomb_range。
