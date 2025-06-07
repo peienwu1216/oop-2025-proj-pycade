@@ -156,6 +156,9 @@ MENU_MUSIC_VOLUME = 0.8
 MENU_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Home.mp3") # 菜單音樂
 GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Asgore.mp3") # 遊戲音樂
 MENU_HOVER_SOUND_PATH = os.path.join(SOUNDS_DIR, "menu_hover.mp3") # 菜單懸停音效
+BOMB_TICK_PATH = os.path.join(SOUNDS_DIR, "bomb_tick.mp3") # 炸彈倒數音效
+ticking_playing = False
+EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
 
 # 特定圖片路徑
 # 地圖背景
