@@ -350,7 +350,11 @@ class Game:
             for player in list(self.players_group):
                 if player.is_alive:
                     items_collected = pygame.sprite.spritecollide(player, self.items_group, True, pygame.sprite.collide_rect)
-                    for item in items_collected: item.apply_effect(player)
+                    for item in items_collected: 
+                        item.apply_effect(player)
+                        bling = pygame.mixer.Sound(settings.BLING_PATH)
+                        bling.set_volume(0.3)
+                        bling.play()
 
             if self.game_timer_active:
                 human_player_alive = self.player1 and self.player1.is_alive
