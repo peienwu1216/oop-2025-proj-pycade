@@ -90,15 +90,6 @@ class ScoreItem(Item):
 class LifeItem(Item):
     """Increases player's lives."""
     def __init__(self, x_tile, y_tile, game_instance):
-        tile_x = x_tile * settings.TILE_SIZE
-        tile_y = y_tile * settings.TILE_SIZE
-
-        image = pygame.image.load(settings.ITEM_LIFE_IMG).convert_alpha()
-        image_width, image_height = image.get_size()
-
-        # 計算讓圖片置中的左上角座標
-        draw_x = x_tile + (settings.TILE_SIZE - image_width)
-        draw_y = y_tile + (settings.TILE_SIZE - image_height)
         super().__init__(x_tile, y_tile, settings.ITEM_TYPE_LIFE, game_instance, image_path=settings.ITEM_LIFE_IMG)
 
     def apply_effect(self, player):
