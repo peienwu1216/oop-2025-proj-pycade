@@ -196,7 +196,6 @@ class TestGame:
     
         # Simulate the timer running out
         game_instance.time_elapsed_seconds = settings.GAME_DURATION_SECONDS
-        game_instance.game_timer_active = False
         game_instance.time_up_winner = game_instance.player1
         game_instance.game_state = "GAME_OVER"
         assert game_instance.game_state == "GAME_OVER", \
