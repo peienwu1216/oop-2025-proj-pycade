@@ -30,6 +30,8 @@ class TestExplosion:
     """Explosion 類別的測試套件。"""
     def test_explosion_disappears_after_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在其持續時間過後是否會自我移除。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
         self.images = [
             pygame.transform.smoothscale(
