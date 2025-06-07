@@ -143,12 +143,19 @@ IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds") 
 FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")   
 DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 用於存放 leaderboard.json 等數據檔案
+SOUND_DIR = os.path.join(ASSETS_DIR, "sounds") # 確保聲音目錄正確
 
 # 特定字體路徑
 CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.ttf") # 確保字體檔案在此路徑
 TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
 SUB_TITLE_FONT_PATH = os.path.join(FONTS_DIR, "Lora-VariableItalic.ttf") # 副標題字體
 PIXEL_FONT_PATH = os.path.join(FONTS_DIR, "Minecraftia-Regular.ttf") # 像素風格字體
+
+# 音樂
+MENU_MUSIC_VOLUME = 0.8
+MENU_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Home.mp3") # 菜單音樂
+GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Asgore.mp3") # 遊戲音樂
+MENU_HOVER_SOUND_PATH = os.path.join(SOUNDS_DIR, "menu_hover.mp3") # 菜單懸停音效
 
 # 特定圖片路徑
 # 地圖背景
