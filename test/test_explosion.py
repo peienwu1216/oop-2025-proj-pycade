@@ -31,7 +31,14 @@ class TestExplosion:
     def test_explosion_disappears_after_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在其持續時間過後是否會自我移除。"""
         game = mock_explosion_env
-        explosion = Explosion(1, 1, game)
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img).convert_alpha(),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
+        explosion = Explosion(1, 1, game, self.images)
         
         # 將 Explosion 加入一個 group 以測試 kill() 是否將其移除
         mock_group = pygame.sprite.Group()
