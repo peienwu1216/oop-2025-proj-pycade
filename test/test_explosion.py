@@ -122,9 +122,18 @@ class TestExplosion:
         assert explosion.image.get_size() == (settings.TILE_SIZE, settings.TILE_SIZE), \
             f"Explosion 的圖片大小應為 ({settings.TILE_SIZE}, {settings.TILE_SIZE})，但實際為 {explosion.image.get_size()}。"
 
-    def test_explosion_initialization(self, mock_explosion_env):
+    def test_explosion_initialization(self, mock_explosion_env, mocker):
         """測試 Explosion 的初始化是否正確。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
 
         # 檢查初始化參數是否正確
@@ -134,9 +143,18 @@ class TestExplosion:
         assert explosion.duration == settings.EXPLOSION_DURATION, \
             f"Explosion 的持續時間應為 {settings.EXPLOSION_DURATION}，但實際為 {explosion.duration}。"
 
-    def test_explosion_added_to_groups_and_kill_removes_it(self, mock_explosion_env):
+    def test_explosion_added_to_groups_and_kill_removes_it(self, mock_explosion_env, mocker):
         """測試 Explosion 被手動加入群組後，其 kill 方法是否能將其從群組中移除。"""
-        game = mock_explosion_env # game 實例現在有 all_sprites 和 explosions_group
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
+        game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ] # game 實例現在有 all_sprites 和 explosions_group
         explosion = Explosion(2, 2, game, self.images)
 
         # 手動將 explosion 加入到 mock_game 的群組中
@@ -152,9 +170,18 @@ class TestExplosion:
         assert explosion not in game.all_sprites, "呼叫 kill 後，Explosion 應從 all_sprites 中移除。"
         assert explosion not in game.explosions_group, "呼叫 kill 後，Explosion 應從 explosions_group 中移除。"
     
-    def test_explosion_update_with_no_time_passed(self, mock_explosion_env):
+    def test_explosion_update_with_no_time_passed(self, mock_explosion_env, mocker):
         """測試 Explosion 在沒有時間流逝的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(3, 3, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -166,9 +193,18 @@ class TestExplosion:
         assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
         assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
     
-    def test_explosion_update_with_negative_time(self, mock_explosion_env):
+    def test_explosion_update_with_negative_time(self, mock_explosion_env, mocker):
         """測試 Explosion 在負時間流逝的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(4, 4, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -182,7 +218,16 @@ class TestExplosion:
     
     def test_explosion_update_with_large_time_passed(self, mock_explosion_env, mocker):
         """測試 Explosion 在大量時間流逝的情況下，update 方法應該觸發自我移除。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(5, 5, game, self.images)
 
         # 模擬一個非常大的時間流逝
@@ -197,9 +242,18 @@ class TestExplosion:
         assert explosion not in game.all_sprites, "Explosion 應從 all_sprites 中移除。"
         assert explosion not in game.explosions_group, "Explosion 應從 explosions_group 中移除。"
     
-    def test_explosion_update_with_zero_time_passed(self, mock_explosion_env):
+    def test_explosion_update_with_zero_time_passed(self, mock_explosion_env, mocker):
         """測試 Explosion 在時間流逝為零的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(6, 6, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -211,9 +265,18 @@ class TestExplosion:
         assert explosion.spawn_time == initial_spawn_time, "Explosion 的 spawn_time 應保持不變。"
         assert explosion.duration == initial_duration, "Explosion 的持續時間應保持不變。"
 
-    def test_explosion_update_with_small_time_passed(self, mock_explosion_env):
+    def test_explosion_update_with_small_time_passed(self, mock_explosion_env, mocker):
         """測試 Explosion 在小時間流逝的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(7, 7, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -227,7 +290,16 @@ class TestExplosion:
     
     def test_explosion_update_with_exact_duration_time_passed(self, mock_explosion_env, mocker):
         """測試 Explosion 在時間流逝剛好等於持續時間的情況下，update 方法應該觸發自我移除。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(8, 8, game, self.images)
 
         # 模擬時間流逝剛好等於持續時間
@@ -242,9 +314,18 @@ class TestExplosion:
         assert explosion not in game.all_sprites, "Explosion 應從 all_sprites 中移除。"
         assert explosion not in game.explosions_group, "Explosion 應從 explosions_group 中移除。"
     
-    def test_explosion_update_with_non_integer_position(self, mock_explosion_env):
+    def test_explosion_update_with_non_integer_position(self, mock_explosion_env, mocker):
         """測試 Explosion 在非整數位置的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1.5, 2.5, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -260,9 +341,18 @@ class TestExplosion:
         assert explosion.rect.y == int(2.5 * settings.TILE_SIZE), \
             f"Explosion 的 Y 位置應為 {int(2.5 * settings.TILE_SIZE)}，但實際為 {explosion.rect.y}。"
         
-    def test_explosion_update_with_large_non_integer_position(self, mock_explosion_env):
+    def test_explosion_update_with_large_non_integer_position(self, mock_explosion_en, mocker):
         """測試 Explosion 在大非整數位置的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1000.5, 2000.5, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -278,9 +368,18 @@ class TestExplosion:
         assert explosion.rect.y == int(2000.5 * settings.TILE_SIZE), \
             f"Explosion 的 Y 位置應為 {int(2000.5 * settings.TILE_SIZE)}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_update_with_zero_position(self, mock_explosion_env):
+    def test_explosion_update_with_zero_position(self, mock_explosion_env, mocker):
         """測試 Explosion 在零位置的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(0, 0, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -294,9 +393,18 @@ class TestExplosion:
         assert explosion.rect.x == 0, "Explosion 的 X 位置應為 0。"
         assert explosion.rect.y == 0, "Explosion 的 Y 位置應為 0。"
     
-    def test_explosion_update_with_negative_position(self, mock_explosion_env):
+    def test_explosion_update_with_negative_position(self, mock_explosion_env, mocker):
         """測試 Explosion 在負位置的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(-1, -1, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -310,9 +418,18 @@ class TestExplosion:
         assert explosion.rect.x == -settings.TILE_SIZE, "Explosion 的 X 位置應為 -TILE_SIZE。"
         assert explosion.rect.y == -settings.TILE_SIZE, "Explosion 的 Y 位置應為 -TILE_SIZE。"
     
-    def test_explosion_update_with_large_negative_position(self, mock_explosion_env):
+    def test_explosion_update_with_large_negative_position(self, mock_explosion_env, mocker):
         """測試 Explosion 在大負位置的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(-1000, -2000, game, self.images)
 
         initial_spawn_time = explosion.spawn_time
@@ -328,9 +445,18 @@ class TestExplosion:
         assert explosion.rect.y == -2000 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {-2000 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_update_with_non_integer_duration(self, mock_explosion_env):
+    def test_explosion_update_with_non_integer_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在非整數持續時間的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬非整數持續時間
@@ -349,9 +475,18 @@ class TestExplosion:
         assert explosion.rect.y == 1 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_update_with_large_non_integer_duration(self, mock_explosion_env):
+    def test_explosion_update_with_large_non_integer_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在大非整數持續時間的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬大非整數持續時間
@@ -370,9 +505,18 @@ class TestExplosion:
         assert explosion.rect.y == 1 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
         
-    def test_explosion_update_with_zero_duration(self, mock_explosion_env):
+    def test_explosion_update_with_zero_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在持續時間為零的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬持續時間為零
@@ -391,9 +535,18 @@ class TestExplosion:
         assert explosion.rect.y == 1 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
         
-    def test_explosion_update_with_negative_duration(self, mock_explosion_env):
+    def test_explosion_update_with_negative_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在持續時間為負的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬持續時間為負
@@ -412,9 +565,18 @@ class TestExplosion:
         assert explosion.rect.y == 1 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_update_with_large_negative_duration(self, mock_explosion_env):
+    def test_explosion_update_with_large_negative_duration(self, mock_explosion_env, mocker):
         """測試 Explosion 在大負持續時間的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬大負持續時間
@@ -433,9 +595,18 @@ class TestExplosion:
         assert explosion.rect.y == 1 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_update_with_non_integer_spawn_time(self, mock_explosion_env):
+    def test_explosion_update_with_non_integer_spawn_time(self, mock_explosion_env, mocker):
         """測試 Explosion 在非整數 spawn_time 的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬非整數 spawn_time
@@ -454,9 +625,18 @@ class TestExplosion:
         assert explosion.rect.y == 1 * settings.TILE_SIZE, \
             f"Explosion 的 Y 位置應為 {1 * settings.TILE_SIZE}，但實際為 {explosion.rect.y}。"
     
-    def test_explosion_update_with_large_non_integer_spawn_time(self, mock_explosion_env):
+    def test_explosion_update_with_large_non_integer_spawn_time(self, mock_explosion_env, mocker):
         """測試 Explosion 在大非整數 spawn_time 的情況下，update 方法不應該改變狀態。"""
+        mock_image = pygame.Surface((997, 936), pygame.SRCALPHA)
+        mocker.patch("pygame.image.load", return_value=mock_image)
         game = mock_explosion_env
+        self.images = [
+            pygame.transform.smoothscale(
+                pygame.image.load(img),
+                (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
+            )
+            for img in settings.EXPLOSION_IMGS
+        ]
         explosion = Explosion(1, 1, game, self.images)
         
         # 模擬大非整數 spawn_time
