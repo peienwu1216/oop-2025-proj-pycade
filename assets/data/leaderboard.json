@@ -12,10 +12,22 @@
         "date": "2025-05-28 22:00"
     },
     {
+        "name": "j",
+        "score": 410,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 00:40"
+    },
+    {
         "name": "Benson",
         "score": 320,
         "ai_defeated": "item_focused",
         "date": "2025-05-23 21:56"
+    },
+    {
+        "name": "Jumbo",
+        "score": 220,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 00:47"
     },
     {
         "name": "Player",
