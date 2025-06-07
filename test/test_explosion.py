@@ -35,7 +35,7 @@ class TestExplosion:
         game = mock_explosion_env
         self.images = [
             pygame.transform.smoothscale(
-                pygame.image.load(img).convert_alpha(),
+                pygame.image.load(img),
                 (936 * (settings.TILE_SIZE / 997), settings.TILE_SIZE)
             )
             for img in settings.EXPLOSION_IMGS
