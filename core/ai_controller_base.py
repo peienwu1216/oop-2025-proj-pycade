@@ -803,7 +803,7 @@ class AIControllerBase:
             if hasattr(self, 'chosen_bombing_spot_coords') and self.chosen_bombing_spot_coords:
                 bx, by = self.chosen_bombing_spot_coords
                 b_px, b_py = bx * tile_size + half_tile, by * tile_size + half_tile
-                pygame.draw.circle(surface, COLOR_BOMBING_SPOT, (b_px, b_py), half_tile//2); pygame.draw.circle(surface, settings.BLACK, (b_px,b_py), half_tile//2,1); pygame.draw.line(surface, settings.BLACK, (b_px, b_py-half_tile//2-2),(b_px,b_py-half_tile//2+3),2)
+                #pygame.draw.circle(surface, COLOR_BOMBING_SPOT, (b_px, b_py), half_tile//2); pygame.draw.circle(surface, settings.BLACK, (b_px,b_py), half_tile//2,1); pygame.draw.line(surface, settings.BLACK, (b_px, b_py-half_tile//2-2),(b_px,b_py-half_tile//2+3),2)
             
             if hasattr(self, 'chosen_retreat_spot_coords') and self.chosen_retreat_spot_coords and \
                (self.current_state == "TACTICAL_RETREAT_AND_WAIT" or self.current_state == "EVADING_DANGER" or self.ai_just_placed_bomb):
