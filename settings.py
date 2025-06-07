@@ -25,7 +25,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 60+1
+GAME_DURATION_SECONDS = 60*4+1
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -162,6 +162,7 @@ EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
 BLING_PATH = os.path.join(SOUNDS_DIR, "bling.mp3") # 拾取道具音效
 HURT_PATH = os.path.join(SOUNDS_DIR, "hurt.mp3") # 受傷音效
 GAME_VICTORY_PATH = os.path.join(SOUNDS_DIR, "Undertale_Hopes_and_Dreams.mp3") # 遊戲勝利音效
+GAME_OVER_PATH = os.path.join(SOUNDS_DIR, "Undertale_An_Ending.mp3") # 遊戲結束音效
 
 # 特定圖片路徑
 # 地圖背景
