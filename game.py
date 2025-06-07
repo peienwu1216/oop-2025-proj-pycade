@@ -71,7 +71,7 @@ class Game:
 
         # --- Timer related attributes ---
         self.time_elapsed_seconds = 0
-        self.game_timer_active = True
+        self.game_timer_active = False
         self.time_up_winner = None
 
         # --- Leaderboard Manager ---
@@ -144,6 +144,10 @@ class Game:
 
         self.setup_initial_state()
 
+    def start_timer(self):
+        self.time_elapsed_seconds = 0
+        self.game_timer_active = True
+    
     def setup_initial_state(self):
         # (此函式保持不變)
         self.all_sprites.empty()
@@ -154,7 +158,7 @@ class Game:
         self.solid_obstacles_group.empty()
 
         self.time_elapsed_seconds = 0.0
-        self.game_timer_active = True
+        self.game_timer_active = False
         self.time_up_winner = None
         self.game_state = "PLAYING"
 
@@ -244,7 +248,11 @@ class Game:
             return Menu(self.screen) if self.restart_game else "QUIT"
 
         # 計算 dt (delta time)
-        self.dt = self.clock.tick(settings.FPS) / 1000.0
+        if self.dt == 0:
+            self.clock.tick()
+            self.dt = 0.01
+        else:
+            self.dt = self.clock.tick(settings.FPS) / 1000.0
 
         # 處理事件
         self._process_events_internal(events_from_main_loop) # 使用內部方法處理事件
