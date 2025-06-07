@@ -130,12 +130,13 @@ class Game:
                     print(f"Game: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗 ({e})，將使用預設字體。")
 
             self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
+            self.victory_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, font_size)
             self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 18)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
             self.prompt_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, prompt_font_size)
-            self.message_font = pygame.font.Font(default_font_path, message_font_size)
+            self.message_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, message_font_size)
 
             self.game_over_font = pygame.font.Font(settings.TITLE_FONT_PATH, 50)
             self.restart_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 25)
@@ -633,12 +634,12 @@ class Game:
         self.screen.blit(overlay, (0, 0))
 
         prompt_text = "VICTORY! New High Score!"
-        prompt_surf = self.prompt_font.render(prompt_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", (208, 64, 0)))
+        prompt_surf = self.prompt_font.render(prompt_text, True, (194, 64, 0))
         prompt_rect = prompt_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 3))
         self.screen.blit(prompt_surf, prompt_rect)
         
         enter_name_text = "Enter Your Name:"
-        enter_name_surf = self.hud_font.render(enter_name_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", settings.BLACK))
+        enter_name_surf = self.victory_font.render(enter_name_text, True, (50, 50, 50))
         enter_name_rect = enter_name_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, prompt_rect.bottom + 40))
         self.screen.blit(enter_name_surf, enter_name_rect)
 
@@ -662,8 +663,8 @@ class Game:
                                 (cursor_x_pos, self.name_input_rect.bottom - 10), 2)
 
         submit_prompt_text = "Press ENTER to Submit, ESC to Skip"
-        if self.hud_font:
-            submit_surf = self.hud_font.render(submit_prompt_text, True, settings.GREY)
+        if self.victory_font:
+            submit_surf = self.victory_font.render(submit_prompt_text, True, (50, 50, 50))
             submit_rect = submit_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, self.name_input_rect.bottom + 40))
             self.screen.blit(submit_surf, submit_rect)
 
@@ -672,7 +673,10 @@ class Game:
         if not self.message_font or not self.hud_font :
             return
 
-        self.screen.fill((200, 255, 200))
+        self.screen.blit(self.victory_background_image, (0, 0))
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 150))  # R, G, B, A (180 ≈ 70% 不透明)
+        self.screen.blit(overlay, (0, 0))
 
         message_text = "Score Recorded on Leaderboard!"
         message_surf = self.message_font.render(message_text, True, settings.BLACK)
@@ -680,6 +684,6 @@ class Game:
         self.screen.blit(message_surf, message_rect)
 
         continue_prompt_text = "Press any key or click to continue..."
-        continue_surf = self.hud_font.render(continue_prompt_text, True, settings.GREY)
+        continue_surf = self.victory_font.render(continue_prompt_text, True, (50, 50, 50))
         continue_rect = continue_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, message_rect.bottom + 40))
         self.screen.blit(continue_surf, continue_rect)
