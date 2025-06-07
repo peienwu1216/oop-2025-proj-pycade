@@ -312,7 +312,7 @@ class Player(GameObject):
             if can_place:
                 from .bomb import Bomb 
                 new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game) 
-                self.game.all_sprites.add(new_bomb) 
+                # self.game.all_sprites.add(new_bomb) 
                 self.game.bombs_group.add(new_bomb) 
                 self.bombs_placed_count += 1 
                 
