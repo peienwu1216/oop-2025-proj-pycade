@@ -27,8 +27,8 @@ class TouchControls:
             return
 
         # --- 步驟 2: 調整圖片大小 ---
-        dpad_button_size = 80
-        bomb_button_size = 120
+        dpad_button_size = 70
+        bomb_button_size = 100
         for key, img in self.images.items():
             size = bomb_button_size if 'BOMB' in key else dpad_button_size
             self.images[key] = pygame.transform.scale(img, (size, size))
