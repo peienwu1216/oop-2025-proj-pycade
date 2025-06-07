@@ -127,7 +127,7 @@ class Bomb(GameObject):
             if (settings.ticking_playing == False):
                 self.ticking = pygame.mixer.Sound(settings.BOMB_TICK_PATH)
                 self.ticking.set_volume(0.3)  # 可調整音量大小 0.0 ~ 1.0
-                self.ticking.play(-1)  # 循環播放
+                self.ticking.play()  # 循環播放
                 settings.ticking_playing = True
             # === 1. 計算縮放因子 ===
             elapsed = (pygame.time.get_ticks() - self.spawn_time) / 1000  # 秒
