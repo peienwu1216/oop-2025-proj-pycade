@@ -163,9 +163,9 @@ STONE_3_IMG = os.path.join(IMAGES_DIR, "walls", "stone3.png") # 石頭牆壁圖�
 # 玩家
 PLAYER_IMG = os.path.join(IMAGES_DIR, "player", "player_placeholder.png") # 備用/單幀圖片
 PLAYER1_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player.png") 
-PLAYER2_AI_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player2.png") 
+PLAYER2_AI_SPRITESHEET_PATH = os.path.join(IMAGES_DIR, "player", "player2.png")
+AI_RETREAT_IMG = os.path.join(IMAGES_DIR, "player", "ai_retreat.png") # AI 退後時的圖片
 # 炸彈與爆炸
-
 BOMB_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_placeholder.png")
 BOMB_PLAYER_1_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_1.png")
 BOMB_PLAYER_2_IMG = os.path.join(IMAGES_DIR, "bomb", "bomb_player_2.png")
