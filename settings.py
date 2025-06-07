@@ -167,7 +167,7 @@ GAME_OVER_PATH = os.path.join(SOUNDS_DIR, "Undertale_An_Ending.mp3") # 遊戲結
 
 # 特定圖片路徑
 # 地圖背景
-STREAM_IMG = os.path.join(IMAGES_DIR, "background", "stream.png") # 流水背景圖片
+VICTORY_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "background", "victory_background.png") # 流水背景圖片
 # 牆壁
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
