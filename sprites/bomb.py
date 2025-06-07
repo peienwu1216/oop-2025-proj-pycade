@@ -71,6 +71,26 @@ class Bomb(GameObject):
         # [SPS_BOMB_NO_CHANGE_NEEDED] 這個 print 仍然有效。
         # print(f"Bomb placed at tile ({x_tile}, {y_tile}) by Player object ID: {id(self.placed_by_player)}")
 
+    def draw_timer_bar(self, surface):
+        """在給定 surface 上繪製炸彈倒數計時條，不受炸彈動畫縮放影響。"""
+        # 計算剩餘時間比例
+        time_left = max(0, self.timer - (pygame.time.get_ticks() - self.spawn_time))
+        time_ratio = time_left / self.timer
+        
+        screen_x = self.rect.centerx
+        screen_y = self.current_tile_y * settings.TILE_SIZE + settings.TILE_SIZE  # tile 的底部
+
+        bar_width = settings.TILE_SIZE * 0.9
+        bar_height = 4
+        bar_x = screen_x - bar_width // 2
+        bar_y = screen_y - 3 # 往下留一點距離
+
+        # 畫背景邊框 + 前景條
+        pygame.draw.rect(surface, (0, 0, 0), (bar_x, bar_y, bar_width, bar_height), 1)
+        if self.placed_by_player.is_player1:
+            pygame.draw.rect(surface, (50, 255, 50), (bar_x + 1, bar_y + 1, (bar_width - 2) * time_ratio, bar_height - 2))
+        else:
+            pygame.draw.rect(surface, (255, 50, 50), (bar_x + 1, bar_y + 1, (bar_width - 2) * time_ratio, bar_height - 2))
 
     def update(self, dt, *args): # dt is not used yet for timer logic, but good practice
         """
@@ -78,48 +98,12 @@ class Bomb(GameObject):
         """
         # [SPS_BOMB_NO_CHANGE_NEEDED] 倒數計時和爆炸邏輯與玩家移動方式無直接關聯。
         current_time = pygame.time.get_ticks()
-        time_elapsed = current_time - self.spawn_time
 
         if not self.owner_has_left_tile and self.placed_by_player:
             if self.placed_by_player.tile_x != self.current_tile_x or \
                self.placed_by_player.tile_y != self.current_tile_y:
                 self.owner_has_left_tile = True
                 self.is_solidified = True 
-        
-        # if not self.exploded:
-        #     # 計算動畫縮放因子（以原始尺寸為上限，只會縮小再還原）
-        #     elapsed = (pygame.time.get_ticks() - self.spawn_time) / 1000  # 秒
-        #     frequency = 1  # 每秒跳動次數，可調整
-        #     scale_variation = 0.1  # 最大縮小比例（0.15 = 最多縮小到 85%）
-        #     # 縮小到最小值後又還原 → 在 [1 - variation, 1.0] 之間擺動
-        #     scale_factor = 1 - scale_variation * (0.5 * (1 + math.sin(2 * math.pi * frequency * elapsed)))
-
-        #     # 動畫圖片切換
-        #     if current_time - self.last_animation_time >= self.animation_interval:
-        #         self.animation_index = (self.animation_index + 1) % len(self.animation_images)
-        #         self.last_animation_time = current_time
-
-        #     # 使用動畫圖像 + 縮放
-        #     base_image = self.animation_images[self.animation_index]
-        #     w, h = base_image.get_width(), base_image.get_height()
-        #     new_size = ((w * scale_factor), (h * scale_factor))
-        #     self.original_image = pygame.transform.smoothscale(base_image, new_size)
-
-        #     # 加倒數文字
-        #     self.image = self.original_image.copy()
-        #     time_left_sec = max(0, (self.timer - time_elapsed) / 1000)
-        #     countdown_text = f"{time_left_sec:.1f}"
-        #     text_surface = self.font.render(countdown_text, True, self.text_color)
-        #     text_rect = text_surface.get_rect(center=(self.image.get_width() / 2, self.image.get_height() / 2))
-        #     self.image.blit(text_surface, text_rect)
-
-        #     # 為了讓中心點不變，重設 rect
-        #     old_center = self.rect.center
-        #     self.rect = self.image.get_rect(center=old_center)
-
-        #     # 判斷是否爆炸
-        #     if time_elapsed >= self.timer:
-        #         self.explode()
         
         if not self.exploded:
             # === 1. 計算縮放因子 ===
@@ -143,17 +127,6 @@ class Bomb(GameObject):
 
             # === 4. 計算剩餘時間條 ===
             time_left = max(0, self.timer - (pygame.time.get_ticks() - self.spawn_time))
-            time_ratio = time_left / self.timer  # 從 1.0 -> 0.0
-
-            bar_width = settings.TILE_SIZE * 0.9
-            bar_height = 3
-            bar_x = (self.image.get_width() - bar_width) / 2
-            bar_y = self.image.get_height() - bar_height  # 往下移動會貼近底部
-
-            # 背景條（灰色）
-            pygame.draw.rect(self.image, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height))
-            # 前景條（紅色）
-            pygame.draw.rect(self.image, (255, 50, 50), (bar_x, bar_y, bar_width * time_ratio, bar_height))
 
             # === 5. 保持位置中心 ===
             old_center = self.rect.center
