@@ -128,6 +128,7 @@ class Player(GameObject):
             # （8）！！！ 修改：使用 settings.py 中的 HUMAN_GRID_MOVE_ACTION_DURATION ！！！（8）
             self.ACTION_ANIMATION_DURATION = settings.HUMAN_GRID_MOVE_ACTION_DURATION 
             # （8）！！！ 修改結束 ！！！（8）
+            
 
     def attempt_move_to_tile(self, dx, dy):
         print(f"[DEBUG_ATTEMPT_MOVE] AI at ({self.tile_x},{self.tile_y}), trying dx={dx}, dy={dy}. IsAlive: {self.is_alive}, ActionTimer: {self.action_timer}")
