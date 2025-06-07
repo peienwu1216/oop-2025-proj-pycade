@@ -109,7 +109,9 @@ class Menu:
                                 if action == "SELECT_AI":
                                     # 返回一個新的 Game 物件作為下一個場景
                                     from game import Game
-                                    return Game(self.screen, self.clock, ai_archetype=button["archetype"])
+                                    game = Game(self.screen, self.clock, ai_archetype=button["archetype"])
+                                    game.start_timer()
+                                    return game
                                 elif action == "SHOW_LEADERBOARD":
                                     self.menu_state = "LEADERBOARD"
                                 elif action == "QUIT_GAME":
