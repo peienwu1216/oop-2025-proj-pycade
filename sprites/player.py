@@ -329,6 +329,8 @@ class Player(GameObject):
         if self.is_alive and (current_time - self.last_hit_time > self.invincible_duration): 
             self.lives -= amount 
             self.last_hit_time = current_time 
+            hurt = pygame.mixer.Sound(settings.HURT_PATH)
+            hurt.play()
             print(f"Player (ID: {id(self)}, AI: {self.is_ai}) took damage! Lives left: {self.lives}") 
             if self.lives <= 0: 
                 self.lives = 0 
