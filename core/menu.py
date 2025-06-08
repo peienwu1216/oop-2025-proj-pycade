@@ -30,6 +30,14 @@ class Menu:
         self.ai_blue_button_hover_image = pygame.image.load(settings.MENU_AI_BLUE_BUTTON_HOVER_IMG).convert_alpha()
         self.ai_blue_button_hover_image = pygame.transform.smoothscale(self.ai_blue_button_hover_image, (int(self.ai_blue_button_image.get_size()[0] * (button_height / self.ai_blue_button_image.get_size()[1])), button_height))
 
+        # 載入返回按鈕圖片並縮放
+        self.return_button_image = pygame.image.load(settings.MENU_RETURN_BUTTON_IMG).convert_alpha()
+        self.return_button_hover_image = pygame.image.load(settings.MENU_RETURN_BUTTON_HOVER_IMG).convert_alpha()
+        
+        new_button_size = (280, 74) # 再次縮小按鈕
+        self.return_button_image = pygame.transform.smoothscale(self.return_button_image, new_button_size)
+        self.return_button_hover_image = pygame.transform.smoothscale(self.return_button_hover_image, new_button_size)
+
         self.menu_state = "MAIN"
         self.leaderboard_manager = LeaderboardManager()
 
@@ -90,17 +98,21 @@ class Menu:
     def update(self, events):
         """處理一幀的事件和邏輯，並返回下一個場景或指令。"""
         mouse_pos = pygame.mouse.get_pos()
-        hovered_button = None
         
+        # --- Hover sound logic ---
+        current_hover_target = None
         if self.menu_state == "MAIN":
             for button in self.buttons:
                 if button["rect"].collidepoint(mouse_pos):
-                    hovered_button = button
+                    current_hover_target = button
                     break
-        if hovered_button is not None and hovered_button != self.last_hovered_button:
+        elif self.menu_state == "LEADERBOARD":
+            if self.back_button_rect and self.back_button_rect.collidepoint(mouse_pos):
+                current_hover_target = self.back_button_rect
+
+        if current_hover_target and current_hover_target != self.last_hovered_button:
             self.audio_manager.play_sound('hover')
-            
-        self.last_hovered_button = hovered_button
+        self.last_hovered_button = current_hover_target
         
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -128,10 +140,21 @@ class Menu:
                                     return game
                                 elif action == "SHOW_LEADERBOARD":
                                     self.menu_state = "LEADERBOARD"
+                                    # 建立返回按鈕的 rect
+                                    button_w, button_h = self.return_button_image.get_size()
+                                    self.back_button_rect = pygame.Rect(
+                                        (settings.SCREEN_WIDTH - button_w) // 2, # 水平置中
+                                        settings.SCREEN_HEIGHT - button_h - 20, # 調整Y軸位置
+                                        button_w, button_h
+                                    )
                                 elif action == "QUIT_GAME":
                                     return "QUIT" # 返回退出指令
-                                break 
-        
+                                break
+                    elif self.menu_state == "LEADERBOARD":
+                        if self.back_button_rect and self.back_button_rect.collidepoint(click_position):
+                            self.menu_state = "MAIN"
+                            self.back_button_rect = None # 清除按鈕
+
         return self # 預設情況下，返回自己，表示繼續留在這個場景
 
     def draw(self):
@@ -248,6 +271,10 @@ class Menu:
                     self.screen.blit(data_surf, data_rect)
                 current_y += line_height
 
-        back_instructions_surf = self.description_font.render("Press ESC to return to Main Menu", True, settings.BLACK)
-        back_instructions_rect = back_instructions_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT - 50))
-        self.screen.blit(back_instructions_surf, back_instructions_rect)
+        # 繪製返回按鈕
+        if self.menu_state == "LEADERBOARD" and self.back_button_rect:
+            mouse_pos = pygame.mouse.get_pos()
+            is_hovering = self.back_button_rect.collidepoint(mouse_pos)
+
+            button_image = self.return_button_hover_image if is_hovering else self.return_button_image
+            self.screen.blit(button_image, self.back_button_rect)
