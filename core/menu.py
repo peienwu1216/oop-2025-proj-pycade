@@ -8,20 +8,14 @@ button_width = 200
 button_height = 50
 
 class Menu:
-    def __init__(self, screen):
+    def __init__(self, screen, audio_manager, clock):
         self.screen = screen
-        self.clock = pygame.time.Clock()
-        pygame.mixer.music.load(settings.MENU_MUSIC_PATH)
-        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
-        pygame.mixer.music.play(-1)  # 循環播放音樂
-        self.hover_sound = pygame.mixer.Sound(settings.MENU_HOVER_SOUND_PATH)
-        self.hover_sound.set_volume(0.5)  # 可調整音量
-        self.last_hovered_button = None  # 用來追蹤上次滑過的按鈕
-
+        self.audio_manager = audio_manager # 儲存管理器
+        self.clock = clock # 儲存從 main.py 傳來的時鐘
         
-        # 【修改】不再需要 is_running 和 selected_ai_archetype
-        # self.is_running = True
-        # self.selected_ai_archetype = None
+        # 使用 AudioManager 播放音樂
+        self.audio_manager.play_music(settings.MENU_MUSIC_PATH)
+        self.last_hovered_button = None  # 用來追蹤上次滑過的按鈕
         
         self.background_image = pygame.image.load(settings.MENU_BACKGROUND_IMG).convert()
         self.background_image = pygame.transform.scale(self.background_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
@@ -103,7 +97,7 @@ class Menu:
                     hovered_button = button
                     break
         if hovered_button is not None and hovered_button != self.last_hovered_button:
-            self.hover_sound.play()
+            self.audio_manager.play_sound('hover')
             
         self.last_hovered_button = hovered_button
         
@@ -127,7 +121,8 @@ class Menu:
                                 if action == "SELECT_AI":
                                     # 返回一個新的 Game 物件作為下一個場景
                                     from game import Game
-                                    game = Game(self.screen, self.clock, ai_archetype=button["archetype"])
+                                    # 建立 Game 物件時，傳入 audio_manager
+                                    game = Game(self.screen, self.clock, self.audio_manager, ai_archetype=button["archetype"])
                                     game.start_timer()
                                     return game
                                 elif action == "SHOW_LEADERBOARD":
