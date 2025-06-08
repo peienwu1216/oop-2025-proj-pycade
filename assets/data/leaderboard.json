@@ -1,21 +1,9 @@
 [
     {
-        "name": "Player",
-        "score": 750,
-        "ai_defeated": "item_focused",
-        "date": "2025-06-08 02:39"
-    },
-    {
         "name": "Bryan",
         "score": 540,
         "ai_defeated": "item_focused",
         "date": "2025-05-23 21:39"
-    },
-    {
-        "name": "python",
-        "score": 520,
-        "ai_defeated": "aggressive",
-        "date": "2025-05-28 22:00"
     },
     {
         "name": "Jumbo",
@@ -24,39 +12,15 @@
         "date": "2025-06-08 02:45"
     },
     {
-        "name": "j",
-        "score": 410,
-        "ai_defeated": "item_focused",
-        "date": "2025-06-08 00:40"
-    },
-    {
-        "name": "Player",
-        "score": 340,
-        "ai_defeated": "item_focused",
-        "date": "2025-06-08 01:37"
-    },
-    {
-        "name": "Benson",
+        "name": "Chxyuuu",
         "score": 320,
         "ai_defeated": "item_focused",
         "date": "2025-05-23 21:56"
     },
     {
-        "name": "Jumbo",
-        "score": 310,
+        "name": "Benson",
+        "score": 60,
         "ai_defeated": "aggressive",
-        "date": "2025-06-08 01:24"
-    },
-    {
-        "name": "Jumbo",
-        "score": 260,
-        "ai_defeated": "item_focused",
-        "date": "2025-06-08 01:26"
-    },
-    {
-        "name": "Aspire",
-        "score": 250,
-        "ai_defeated": "aggressive",
-        "date": "2025-06-08 13:06"
+        "date": "2025-06-08 15:09"
     }
 ]

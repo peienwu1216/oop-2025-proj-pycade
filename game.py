@@ -430,15 +430,27 @@ class Game:
             if self.game_timer_active:
                 human_player_alive = self.player1 and self.player1.is_alive
                 ai_player_alive = self.player2_ai and self.player2_ai.is_alive
-                if not human_player_alive:
-                    self.game_over()
-                elif not ai_player_alive:
-                    self.victory()
+
+                # 檢查是否至少有一方被擊敗
                 if not human_player_alive or not ai_player_alive:
                     self.game_state = "GAME_OVER"
-                    self.audio_manager.stop_all_sounds()
                     self.game_timer_active = False
-                    if human_player_alive: p1_won_by_ko = True
+                    self.audio_manager.stop_all_sounds()
+
+                    # 現在，根據最終的存活狀態來決定勝利、失敗或平局
+                    if not human_player_alive and not ai_player_alive:
+                        # 雙方同時陣亡 -> 平局
+                        self.game_over() # 可以播放一個通用或平局的音效
+                        # time_up_winner 設為 "DRAW" 以便 draw_game_over_screen 正確顯示
+                        self.time_up_winner = "DRAW" 
+                        p1_won_by_ko = False
+                    elif ai_player_alive:
+                        # 只有人類玩家陣亡 -> 失敗
+                        self.game_over()
+                        p1_won_by_ko = False
+                    else: # 只有 AI 陣亡 -> 勝利
+                        self.victory()
+                        p1_won_by_ko = True
 
             if self.game_state == "GAME_OVER":
                 is_p1_winner = (p1_won_by_ko or p1_won_by_time)

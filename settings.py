@@ -26,7 +26,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 181
+GAME_DURATION_SECONDS = 11
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -157,7 +157,6 @@ PIXEL_FONT_PATH = os.path.join(FONTS_DIR, "Minecraftia-Regular.ttf") # 像素風
 # 音樂
 MENU_MUSIC_VOLUME = 0.8
 MENU_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Home.mp3") # 菜單音樂
-# GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Asgore.mp3") # 遊戲音樂
 GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Battle_Against_a_True_Hero.mp3") # 遊戲音樂（死亡時）
 MENU_HOVER_SOUND_PATH = os.path.join(SOUNDS_DIR, "menu_hover.mp3") # 菜單懸停音效
 BOMB_TICK_PATH = os.path.join(SOUNDS_DIR, "bomb_tick.mp3") # 炸彈倒數音效
@@ -172,7 +171,7 @@ THANKS_YOU_PATH = os.path.join(SOUNDS_DIR, "Undertale_His_Themes.mp3") # 感謝�
 
 # 特定圖片路徑
 # 地圖背景
-VICTORY_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "background", "victory_background.png") # 流水背景圖片
+VICTORY_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "background", "victory_background.jpg") # 流水背景圖片
 # 牆壁
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
@@ -205,7 +204,7 @@ ITEM_BOMB_CAPACITY_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_capacity_p
 ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeholder.png")
 
 # Menu 圖片
-MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.png")
+MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.jpg")
 MENU_AI_LIGHT_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button.png")
 MENU_AI_LIGHT_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button_hover.png")
 MENU_AI_BLUE_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button.png")
