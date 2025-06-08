@@ -20,6 +20,8 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GREY = (128, 128, 128)
+LIGHT_GREY = (192, 192, 192)
+DARK_GREY = (40, 40, 40)
 LIGHT_BROWN = (222, 193, 179)
 
 # -----------------------------------------------------------------------------
@@ -209,6 +211,10 @@ MENU_AI_LIGHT_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button.png
 MENU_AI_LIGHT_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button_hover.png")
 MENU_AI_BLUE_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button.png")
 MENU_AI_BLUE_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button_hover.png")
+MENU_RETURN_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "return_button.png")
+MENU_RETURN_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "return_button_hover.png")
+MENU_CONTINUE_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "continue_button.png")
+MENU_CONTINUE_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "continue_button_hover.png")
 
 # 玩家 SpriteSheet 動畫影格對應 (範例)
 PLAYER_SPRITESHEET_ROW_MAP = {
@@ -225,3 +231,6 @@ PLAYER_SPRITESHEET_ROW_MAP = {
 # TODO: 考慮將更多硬編碼在遊戲邏輯中的數值移到 settings.py (例如地圖預設大小 grid_width, grid_height)
 # GRID_WIDTH = 15 # 預設地圖寬度（格子數）
 # GRID_HEIGHT = 11 # 預設地圖高度（格子數）
+
+# --- Game Over Screen ---
+GAME_OVER_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "game_over", "game_over_background.jpg")
