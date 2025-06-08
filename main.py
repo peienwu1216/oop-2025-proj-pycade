@@ -7,6 +7,7 @@ from game import Game
 from core.menu import Menu
 from core.thank_you_scene import ThankYouScene
 from core.audio_manager import AudioManager # 匯入 AudioManager
+from core.start_scene import StartScene # 【新增】匯入新的開始場景
 
 async def main():
     await asyncio.sleep(0.1)
@@ -23,8 +24,8 @@ async def main():
     # 在這裡建立唯一的 AudioManager 實例
     audio_manager = AudioManager()
 
-    # 將 audio_manager 和 clock 傳遞給第一個 Menu 場景
-    current_scene = Menu(screen, audio_manager, clock)
+    # 【修改】將第一個場景設定為 StartScene，而不是 Menu
+    current_scene = StartScene(screen, audio_manager, clock)
     running_main_loop = True
 
     while running_main_loop:
@@ -43,7 +44,7 @@ async def main():
         next_scene_candidate = None
 
         if isinstance(current_scene, Menu):
-            next_scene_candidate = current_scene.update(events)
+            next_scene_candidate = current_scene.update(events, dt)
             if next_scene_candidate is current_scene:
                 current_scene.draw()
             elif next_scene_candidate == "QUIT":
@@ -55,6 +56,14 @@ async def main():
                 current_scene = next_scene_candidate
             else: 
                  current_scene = next_scene_candidate
+        
+        # 【新增】處理 StartScene 的邏輯
+        elif isinstance(current_scene, StartScene):
+            next_scene_candidate = current_scene.update(events, dt)
+            if next_scene_candidate is current_scene:
+                current_scene.draw()
+            else: # StartScene 應該會返回一個 Menu 物件
+                current_scene = next_scene_candidate
 
         elif isinstance(current_scene, Game):
             # 將 events 和 dt 都傳遞給 Game 場景
@@ -70,18 +79,23 @@ async def main():
                 current_scene = next_scene_candidate
         
         elif isinstance(current_scene, ThankYouScene):
-            next_scene_candidate = current_scene.update(events)
+            next_scene_candidate = current_scene.update(events, dt)
             current_scene.draw()
+            # 檢查是否該結束主迴圈了
+            if getattr(next_scene_candidate, 'request_app_quit', False):
+                running_main_loop = False
 
         pygame.display.flip()
-        # clock.tick(settings.FPS) # 移到迴圈頂部計算 dt
         await asyncio.sleep(0)
 
+    # 在迴圈結束後，徹底關閉 pygame
     pygame.quit()
-    print("Pygame application ended.")
+    print("Pygame has been shut down. You can now close the browser tab.")
 
 if __name__ == '__main__':
     try:
         asyncio.run(main())
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred in the main loop: {e}")
+        # In a web context, you might want to display this on the page itself.
+        # For now, printing to the console is fine for debugging.
