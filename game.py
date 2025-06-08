@@ -103,6 +103,11 @@ class Game:
         self.score_submitted_message_timer = 0.0
         self.score_submitted_message_duration = 3.0
 
+        # --- HUD Icons ---
+        self.hud_icon_heart = None
+        self.hud_icon_bomb = None
+        self.hud_icon_score = None
+
         # --- 觸控控制建立邏輯 ---
         self.touch_controls = None
         if not headless:
@@ -139,6 +144,15 @@ class Game:
         self.message_font = None
 
         try:
+            # --- Load HUD Icons ---
+            icon_size = (32, 32) # Define a standard size for icons
+            self.hud_icon_heart = pygame.image.load('assets/images/items/item_life_placeholder.png').convert_alpha()
+            self.hud_icon_heart = pygame.transform.scale(self.hud_icon_heart, icon_size)
+            self.hud_icon_bomb = pygame.image.load('assets/images/items/item_bomb_capacity_placeholder.png').convert_alpha()
+            self.hud_icon_bomb = pygame.transform.scale(self.hud_icon_bomb, icon_size)
+            self.hud_icon_score = pygame.image.load('assets/images/items/item_score_placeholder.png').convert_alpha()
+            self.hud_icon_score = pygame.transform.scale(self.hud_icon_score, icon_size)
+
             font_size = 22
             # font_status_size = 18
             timer_font_size_normal = 28
@@ -567,74 +581,146 @@ class Game:
                     self.screen.blit(self.timer_brick, (dest_x, dest_y))
 
     def draw_hud(self):
-        # (此函式保持不變)
-        if not self.hud_font or not self.timer_font_normal or not self.timer_font_urgent:
+        if not self.hud_font:
             return
 
+        # --- Timer (Right Side) ---
         time_left = max(0, settings.GAME_DURATION_SECONDS - self.time_elapsed_seconds)
         minutes = int(time_left) // 60
         seconds = int(time_left) % 60
         timer_text_1 = f"{minutes:02d}"
         timer_text_2 = f"{seconds:02d}"
-        
-        start_x = settings.TILE_SIZE*16
-        start_y = settings.TILE_SIZE*2
+
+        start_x_timer = settings.TILE_SIZE * 16
+        start_y_timer = settings.TILE_SIZE * 2
         block_size = self.border_brick.get_width()
         spacing = settings.TILE_SIZE
 
         for i, char in enumerate(timer_text_1):
-            self.draw_pixel_digit(
-                char,
-                top_left_x=start_x + i * (3 * block_size + spacing),
-                top_left_y=start_y,
-            )
+            self.draw_pixel_digit(char, top_left_x=start_x_timer + i * (3 * block_size + spacing), top_left_y=start_y_timer)
         for i, char in enumerate(timer_text_2):
-            self.draw_pixel_digit(
-                char,
-                top_left_x=start_x + i * (3 * block_size + spacing),
-                top_left_y=start_y + 5 * block_size + spacing,
-            )
+            self.draw_pixel_digit(char, top_left_x=start_x_timer + i * (3 * block_size + spacing), top_left_y=start_y_timer + 5 * block_size + spacing)
 
-        line_height = self.hud_font.get_linesize()*1.3
-        start_x_p1 = 48
-        start_x_ai_offset = getattr(settings, "HUD_AI_OFFSET_X", 280)
-        num_max_hud_lines = 5
-        bottom_padding = 10
-        hud_start_y = settings.SCREEN_HEIGHT - (num_max_hud_lines * line_height) - bottom_padding # 重新命名避免與上面的 start_y 衝突
+        # --- Player and AI Stats (Left Side, Vertical) ---
+        # Position the HUD to the right of the touch controls
+        # Assuming touch controls take up about 200px on the left.
+        start_x = 220
+        start_y = settings.SCREEN_HEIGHT - 200 # 再次向上移動資訊
+        line_height = 35 # Vertical spacing between each stat line
+        icon_text_spacing = 8
+        
+        # --- Helper function to draw a single stat line (icon + text) vertically ---
+        def draw_stat_vertical(surface, icon, text, x, y, font):
+            icon_rect = icon.get_rect(topleft=(x, y))
+            surface.blit(icon, icon_rect)
+            
+            text_surf = font.render(text, True, settings.WHITE)
+            text_rect = text_surf.get_rect(midleft=(icon_rect.right + icon_text_spacing, icon_rect.centery))
+            draw_text_with_shadow(surface, text, font, text_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
 
-        p1_texts = []
-        if self.player1:
-            p1_texts.append(f"P1 Lives: {self.player1.lives}")
-            p1_texts.append(f"P1 Bombs: {self.player1.max_bombs - self.player1.bombs_placed_count}/{self.player1.max_bombs}")
-            p1_texts.append(f"P1 Range: {self.player1.bomb_range}")
-            p1_texts.append(f"P1 Score: {self.player1.score}")
-        for i, text in enumerate(p1_texts):
-            draw_text_with_outline(self.screen, text, self.hud_font, (start_x_p1, hud_start_y + i * line_height))
+        # --- Draw Player 1 Stats ---
+        if self.player1 and self.hud_icon_heart and self.hud_icon_bomb and self.hud_icon_score:
+            p1_label_surf = self.hud_font.render("P1", True, settings.WHITE)
+            draw_text_with_shadow(self.screen, "P1", self.hud_font, (start_x, start_y), text_color=settings.WHITE, shadow_color=settings.BLACK)
+            
+            # P1 Lives
+            lives_text = f"{self.player1.lives}"
+            draw_stat_vertical(self.screen, self.hud_icon_heart, lives_text, start_x, start_y + line_height * 1, self.hud_font)
+            
+            # P1 Bombs
+            bombs_text = f"{self.player1.max_bombs - self.player1.bombs_placed_count}/{self.player1.max_bombs}"
+            draw_stat_vertical(self.screen, self.hud_icon_bomb, bombs_text, start_x, start_y + line_height * 2, self.hud_font)
 
+            # P1 Score
+            score_text = f"{self.player1.score}"
+            draw_stat_vertical(self.screen, self.hud_icon_score, score_text, start_x, start_y + line_height * 3, self.hud_font)
 
-        ai_texts = []
-        if self.player2_ai:
-            if self.player2_ai.is_alive: ai_texts.append(f"AI Lives: {self.player2_ai.lives}")
-            else: ai_texts.append("AI Defeated")
-            ai_texts.append(f"AI Bombs: {self.player2_ai.max_bombs - self.player2_ai.bombs_placed_count}/{self.player2_ai.max_bombs}")
-            ai_texts.append(f"AI Range: {self.player2_ai.bomb_range}")
-            ai_texts.append(f"AI Score: {self.player2_ai.score}")
-            ai_state_text = []
-            if self.ai_controller_p2 and self.ai_status_font:
-                class_name = self.ai_controller_p2.__class__.__name__
-                ai_name = class_name.replace("AIController", "")
-                if not ai_name and class_name == "AIController": ai_name = "Standard"
-                state = getattr(self.ai_controller_p2, 'current_state', 'N/A')
-                ai_state_text.append(f"AI ({ai_name}):")
-                ai_state_text.append(f"{state}")
-        for i, text in enumerate(ai_texts):
-            font_to_use = self.hud_font
-            if text.startswith("AI (") and self.ai_status_font: font_to_use = self.ai_status_font
-            draw_text_with_outline(self.screen, text, font_to_use, (start_x_p1 + start_x_ai_offset, hud_start_y + i * line_height))
-        if ai_state_text:
-            draw_text_with_outline(self.screen, ai_state_text[0], self.ai_status_font, (490, 500), outline_color=(230,230,230), of=1)
-            draw_text_with_outline(self.screen, ai_state_text[1], self.ai_status_font, (490, 530), outline_color=(230,230,230), of=1)
+        # --- Draw AI Stats ---
+        # Position AI stats to the right of Player 1 stats
+        ai_start_x = start_x + 120 # 縮小與 P1 資訊的間距
+        if self.player2_ai and self.hud_icon_heart and self.hud_icon_bomb and self.hud_icon_score:
+            ai_label_surf = self.hud_font.render("AI", True, settings.WHITE)
+            draw_text_with_shadow(self.screen, "AI", self.hud_font, (ai_start_x, start_y), text_color=settings.WHITE, shadow_color=settings.BLACK)
 
+            # AI Lives
+            if self.player2_ai.is_alive:
+                lives_text = f"{self.player2_ai.lives}"
+                draw_stat_vertical(self.screen, self.hud_icon_heart, lives_text, ai_start_x, start_y + line_height * 1, self.hud_font)
+                
+                # AI Bombs
+                bombs_text = f"{self.player2_ai.max_bombs - self.player2_ai.bombs_placed_count}/{self.player2_ai.max_bombs}"
+                draw_stat_vertical(self.screen, self.hud_icon_bomb, bombs_text, ai_start_x, start_y + line_height * 2, self.hud_font)
+
+                # AI Score
+                score_text = f"{self.player2_ai.score}"
+                draw_stat_vertical(self.screen, self.hud_icon_score, score_text, ai_start_x, start_y + line_height * 3, self.hud_font)
+
+            else:
+                # If AI is defeated, show only that status
+                defeated_text = "Defeated"
+                text_surf = self.hud_font.render(defeated_text, True, settings.RED)
+                text_rect = text_surf.get_rect(topleft=(ai_start_x, start_y + line_height))
+                draw_text_with_shadow(self.screen, defeated_text, self.hud_font, text_rect.topleft, text_color=settings.RED, shadow_color=settings.BLACK)
+
+        # --- Draw AI State in Bottom Right Box ---
+        if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2 and self.ai_status_font:
+            # Define the bottom-right box area
+            box_x = settings.TILE_SIZE * 15
+            box_y = settings.TILE_SIZE * 15
+            box_width = settings.SCREEN_WIDTH - box_x - settings.TILE_SIZE
+            box_height = settings.SCREEN_HEIGHT - box_y - settings.TILE_SIZE
+            box_center_x = box_x + box_width / 2
+            box_center_y = box_y + box_height / 2
+
+            # --- AI State Translation Map ---
+            state_translation = {
+                "IDLE": "閒置",
+                "DEAD": "已陣亡",
+                # General states
+                "PLANNING_PATH": "規劃路徑",
+                "ROAMING": "巡邏中",
+                "EVADING_DANGER": "緊急迴避",
+                "TACTICAL_RETREAT_AND_WAIT": "戰術性撤退",
+                "MOVING_TO_BOMB_OBSTACLE": "清除障礙物",
+                
+                # Aggressive & Item-Focused states
+                "PLANNING_PATH_TO_PLAYER": "規劃追擊路線",
+                "EXECUTING_PATH_CLEARANCE": "清除路徑障礙",
+                "ENGAGING_PLAYER": "鎖定玩家",
+                "CLOSE_QUARTERS_COMBAT": "近身纏鬥",
+                
+                # Conservative states
+                "PLANNING_ROAM": "規劃巡邏路線",
+                "ASSESSING_OBSTACLE": "評估障礙物",
+
+                # Item-Focused states
+                "PLANNING_ITEM_TARGET": "搜尋道具",
+                "MOVING_TO_COLLECT_ITEM": "衝向道具",
+                "EXECUTING_ASTAR_PATH_TO_TARGET": "執行尋路",
+                "ASSESSING_OBSTACLE_FOR_ITEM": "為道具清障",
+                "ENDGAME_HUNT": "終局狩獵"
+            }
+
+            # Prepare the two lines of text
+            class_name = self.ai_controller_p2.__class__.__name__
+            ai_name = class_name.replace("AIController", "").replace("Conservative", "保守型").replace("Aggressive", "侵略型").replace("ItemFocused", "道具型")
+            if not ai_name or ai_name == "Standard": ai_name = "標準型"
+            
+            state_key = getattr(self.ai_controller_p2, 'current_state', 'N/A')
+            translated_state = state_translation.get(state_key, state_key) # Translate, or fallback to original
+            
+            line1_text = f"AI ({ai_name}):"
+            line2_text = f"{translated_state}"
+
+            # Draw the two lines centered in the box
+            line1_surf = self.ai_status_font.render(line1_text, True, settings.WHITE)
+            line2_surf = self.ai_status_font.render(line2_text, True, settings.WHITE)
+            
+            line1_rect = line1_surf.get_rect(center=(box_center_x, box_center_y - self.ai_status_font.get_height() / 2))
+            line2_rect = line2_surf.get_rect(center=(box_center_x, box_center_y + self.ai_status_font.get_height() / 2))
+            
+            draw_text_with_shadow(self.screen, line1_text, self.ai_status_font, line1_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
+            draw_text_with_shadow(self.screen, line2_text, self.ai_status_font, line2_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
 
     def draw_game_over_screen(self):
         # (此函式保持不變)

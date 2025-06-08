@@ -12,6 +12,12 @@
         "date": "2025-06-08 02:45"
     },
     {
+        "name": "Ben",
+        "score": 360,
+        "ai_defeated": "conservative",
+        "date": "2025-06-08 21:49"
+    },
+    {
         "name": "Chxyuuu",
         "score": 320,
         "ai_defeated": "item_focused",
