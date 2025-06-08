@@ -27,24 +27,24 @@ class TouchControls:
             return
 
         # --- 步驟 2: 調整圖片大小 ---
-        dpad_button_size = 70
+        dpad_button_size = 60
         bomb_button_size = 100
         for key, img in self.images.items():
             size = bomb_button_size if 'BOMB' in key else dpad_button_size
             self.images[key] = pygame.transform.scale(img, (size, size))
 
         # --- 步驟 3: 設定按鍵位置與狀態 ---
-        dpad_center_x = 120
-        dpad_center_y = self.screen_height - 140
+        dpad_center_x = 110
+        dpad_center_y = self.screen_height - 130
         # 注意：這裡的 gap 是指 D-pad 中心到各方向鍵中心的距離
-        gap = 55
+        gap = 45
 
         self.buttons = {
             'UP':    {'rect': self.images['UP'].get_rect(center=(dpad_center_x, dpad_center_y - gap)), 'pressed': False},
             'DOWN':  {'rect': self.images['DOWN'].get_rect(center=(dpad_center_x, dpad_center_y + gap)), 'pressed': False},
             'LEFT':  {'rect': self.images['LEFT'].get_rect(center=(dpad_center_x - gap, dpad_center_y)), 'pressed': False},
             'RIGHT': {'rect': self.images['RIGHT'].get_rect(center=(dpad_center_x + gap, dpad_center_y)), 'pressed': False},
-            'BOMB':  {'rect': self.images['BOMB'].get_rect(center=(self.screen_width - 120, self.screen_height - 140)), 'pressed': False}
+            'BOMB':  {'rect': self.images['BOMB'].get_rect(center=(self.screen_width - 100, self.screen_height - 75)), 'pressed': False}
         }
 
     def draw(self, surface):
