@@ -153,7 +153,7 @@ class Game:
             self.hud_icon_score = pygame.image.load('assets/images/items/item_score_placeholder.png').convert_alpha()
             self.hud_icon_score = pygame.transform.scale(self.hud_icon_score, icon_size)
 
-            font_size = 22
+            font_size = 30
             # font_status_size = 18
             timer_font_size_normal = 28
             timer_font_size_urgent = 36
@@ -172,7 +172,7 @@ class Game:
 
             self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
             self.victory_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, font_size)
-            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 18)
+            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 24)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
@@ -604,7 +604,7 @@ class Game:
         # --- Player and AI Stats (Left Side, Vertical) ---
         # Position the HUD to the right of the touch controls
         # Assuming touch controls take up about 200px on the left.
-        start_x = 220
+        start_x = 190
         start_y = settings.SCREEN_HEIGHT - 200 # 再次向上移動資訊
         line_height = 35 # Vertical spacing between each stat line
         icon_text_spacing = 8
@@ -716,8 +716,8 @@ class Game:
             line1_surf = self.ai_status_font.render(line1_text, True, settings.WHITE)
             line2_surf = self.ai_status_font.render(line2_text, True, settings.WHITE)
             
-            line1_rect = line1_surf.get_rect(center=(box_center_x, box_center_y - self.ai_status_font.get_height() / 2))
-            line2_rect = line2_surf.get_rect(center=(box_center_x, box_center_y + self.ai_status_font.get_height() / 2))
+            line1_rect = line1_surf.get_rect(center=(box_center_x - 50, box_center_y - self.ai_status_font.get_height() / 2))
+            line2_rect = line2_surf.get_rect(center=(box_center_x - 50, box_center_y + self.ai_status_font.get_height() / 2))
             
             draw_text_with_shadow(self.screen, line1_text, self.ai_status_font, line1_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
             draw_text_with_shadow(self.screen, line2_text, self.ai_status_font, line2_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
