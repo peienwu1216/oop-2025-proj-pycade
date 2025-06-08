@@ -25,14 +25,26 @@
     },
     {
         "name": "Benson",
-        "score": 60,
-        "ai_defeated": "aggressive",
-        "date": "2025-06-08 15:09"
+        "score": 170,
+        "ai_defeated": "conservative",
+        "date": "2025-06-08 23:58"
     },
     {
-        "name": "INSTA",
-        "score": 50,
+        "name": "Player",
+        "score": 140,
         "ai_defeated": "conservative",
-        "date": "2025-06-08 15:38"
+        "date": "2025-06-08 23:34"
+    },
+    {
+        "name": "bryan",
+        "score": 140,
+        "ai_defeated": "item_focused",
+        "date": "2025-06-08 23:51"
+    },
+    {
+        "name": "Victory",
+        "score": 120,
+        "ai_defeated": "conservative",
+        "date": "2025-06-08 23:47"
     }
 ]

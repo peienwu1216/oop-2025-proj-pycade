@@ -86,6 +86,7 @@ class Game:
         self.time_elapsed_seconds = 0
         self.game_timer_active = False
         self.time_up_winner = None
+        self.game_over_reason = ""
 
         # --- Leaderboard Manager ---
         self.leaderboard_manager = LeaderboardManager()
@@ -143,6 +144,11 @@ class Game:
         self.prompt_font = None
         self.message_font = None
 
+        # 遊戲結束畫面的按鈕
+        self.continue_button_img = None
+        self.continue_button_hover_img = None
+        self.game_over_button_rect = None
+
         try:
             # --- Load HUD Icons ---
             icon_size = (32, 32) # Define a standard size for icons
@@ -153,7 +159,7 @@ class Game:
             self.hud_icon_score = pygame.image.load('assets/images/items/item_score_placeholder.png').convert_alpha()
             self.hud_icon_score = pygame.transform.scale(self.hud_icon_score, icon_size)
 
-            font_size = 22
+            font_size = 30
             # font_status_size = 18
             timer_font_size_normal = 28
             timer_font_size_urgent = 36
@@ -172,7 +178,7 @@ class Game:
 
             self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
             self.victory_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, font_size)
-            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 18)
+            self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 24)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
@@ -181,6 +187,13 @@ class Game:
 
             self.game_over_font = pygame.font.Font(settings.TITLE_FONT_PATH, 50)
             self.restart_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 25)
+
+            # 載入遊戲結束按鈕圖片
+            self.continue_button_img = pygame.image.load(settings.MENU_CONTINUE_BUTTON_IMG).convert_alpha()
+            self.continue_button_hover_img = pygame.image.load(settings.MENU_CONTINUE_BUTTON_HOVER_IMG).convert_alpha()
+            btn_size = (280, 74) # 統一按鈕大小
+            self.continue_button_img = pygame.transform.smoothscale(self.continue_button_img, btn_size)
+            self.continue_button_hover_img = pygame.transform.smoothscale(self.continue_button_hover_img, btn_size)
 
         except Exception as e:
             print(f"Error initializing fonts in Game: {e}")
@@ -224,6 +237,7 @@ class Game:
         self.game_timer_active = False
         self.time_up_winner = None
         self.game_state = "PLAYING"
+        self.game_over_reason = ""
 
         self.player_name_input = ""
         self.input_box_active = False
@@ -347,8 +361,15 @@ class Game:
                     self.restart_game = True
                     self.running = False
                 continue
+            
+            # 當遊戲結束時，處理返回按鈕的點擊
+            if self.game_state == "GAME_OVER" and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.game_over_button_rect and self.game_over_button_rect.collidepoint(event.pos):
+                    self.restart_game = True
+                    self.running = False
+                    continue # 事件已處理
 
-            # --- 處理觸控事件 (事件型，如單次點擊) ---
+            # --- 處理觸控事件 (事件型, 如單次點擊) ---
             if self.game_state == "PLAYING" and self.touch_controls:
                 # handle_event 只在按下炸彈鈕時返回 'BOMB'
                 action = self.touch_controls.handle_event(event)
@@ -370,7 +391,6 @@ class Game:
                 
                 # 'GAME_OVER' 狀態下的鍵盤事件
                 elif self.game_state == "GAME_OVER":
-                    self.game_over()
                     if event.key == pygame.K_r:
                         self.restart_game = True
                         self.running = False
@@ -399,18 +419,25 @@ class Game:
                     if self.player1.is_alive and self.player2_ai.is_alive:
                         if self.player1.lives > self.player2_ai.lives:
                             self.time_up_winner = "P1"; p1_won_by_time = True
+                            self.game_over_reason = f"You had more lives ({self.player1.lives} vs {self.player2_ai.lives})"
                         elif self.player2_ai.lives > self.player1.lives:
                             self.time_up_winner = "AI"
+                            self.game_over_reason = f"AI had more lives ({self.player2_ai.lives} vs {self.player1.lives})"
                         else:
+                            # 生命值相同，比較分數
                             if self.player1.score > self.player2_ai.score:
                                 self.time_up_winner = "P1"; p1_won_by_time = True
+                                self.game_over_reason = f"You had a higher score ({self.player1.score} vs {self.player2_ai.score})"
                             elif self.player2_ai.score > self.player1.score:
                                 self.time_up_winner = "AI"
-                            else: self.time_up_winner = "DRAW"
+                                self.game_over_reason = f"AI had a higher score ({self.player2_ai.score} vs {self.player1.score})"
+                            else: self.time_up_winner = "DRAW"; self.game_over_reason = "Time ran out with a perfect draw."
                     elif self.player1.is_alive:
                         self.time_up_winner = "P1"; p1_won_by_time = True
-                    elif self.player2_ai.is_alive: self.time_up_winner = "AI"
-                    else: self.time_up_winner = "DRAW"
+                        self.game_over_reason = "You were the last one standing at time's up."
+                    elif self.player2_ai.is_alive: self.time_up_winner = "AI"; self.game_over_reason = "The AI was the last one standing at time's up."
+                    else: self.time_up_winner = "DRAW"; self.game_over_reason = "No one was left standing when time ran out."
+
                     self.game_state = "GAME_OVER"
                     self.audio_manager.stop_all_sounds()
                     self.game_over() # 播放遊戲結束音樂
@@ -449,6 +476,15 @@ class Game:
                 elif not ai_player_alive:
                     self.victory()
                 if not human_player_alive or not ai_player_alive:
+                    if self.game_state == "PLAYING": # 只在狀態轉換時設定一次原因
+                        if not human_player_alive and not ai_player_alive:
+                             self.game_over_reason = "Both combatants were eliminated simultaneously."
+                        elif not ai_player_alive:
+                            p1_won_by_ko = True # 確保設定勝利旗標
+                            self.game_over_reason = "You defeated the AI in combat!"
+                        else: # not human_player_alive
+                            self.game_over_reason = "You were eliminated in combat."
+                    
                     self.game_state = "GAME_OVER"
                     self.audio_manager.stop_all_sounds()
                     self.game_timer_active = False
@@ -462,8 +498,25 @@ class Game:
                     self.input_box_active = True
                     self.game_state = "ENTER_NAME"
                     self.victory()
+                else:
+                    # 如果玩家勝利但分數不高、或AI勝利、或平手，則建立按鈕
+                    if not self.game_over_button_rect:
+                        btn_w, btn_h = self.continue_button_img.get_size()
+                        self.game_over_button_rect = pygame.Rect(
+                            (settings.SCREEN_WIDTH - btn_w) / 2,
+                            settings.SCREEN_HEIGHT / 2 + 80, # 往下移動為副標題騰出空間
+                            btn_w, btn_h
+                        )
 
         elif self.game_state == "ENTER_NAME":
+            # 進入輸入姓名畫面時，建立繼續按鈕
+            if not self.game_over_button_rect:
+                btn_w, btn_h = self.continue_button_img.get_size()
+                self.game_over_button_rect = pygame.Rect(
+                    (settings.SCREEN_WIDTH - btn_w) / 2,
+                    settings.SCREEN_HEIGHT / 2 + 100,
+                    btn_w, btn_h
+                )
             pass
 
         elif self.game_state == "SCORE_SUBMITTED":
@@ -533,8 +586,22 @@ class Game:
     # draw_enter_name_screen, draw_score_submitted_screen 這些方法保持不變，
     # 因為它們是被 _process_events_internal 或 _draw_internal 內部呼叫的。
     def handle_enter_name_state_events(self, event):
-        # (此函式保持不變)
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        # 處理滑鼠點擊事件 (點擊輸入框或繼續按鈕)
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.game_over_button_rect and self.game_over_button_rect.collidepoint(event.pos):
+                # 點擊繼續按鈕，提交分數
+                player_name_to_save = self.player_name_input.strip() or "Player"
+                self.leaderboard_manager.add_score(
+                    player_name=player_name_to_save,
+                    score=self.score_to_submit,
+                    ai_defeated_type=self.ai_archetype
+                )
+                self.game_state = "SCORE_SUBMITTED"
+                self.score_submitted_message_timer = 0.0
+                self.input_box_active = False
+                self.game_over_button_rect = None # 清除按鈕
+                return # 事件已處理
+
             if self.name_input_rect.collidepoint(event.pos):
                 self.input_box_active = not self.input_box_active
             else:
@@ -604,7 +671,7 @@ class Game:
         # --- Player and AI Stats (Left Side, Vertical) ---
         # Position the HUD to the right of the touch controls
         # Assuming touch controls take up about 200px on the left.
-        start_x = 220
+        start_x = 190
         start_y = settings.SCREEN_HEIGHT - 200 # 再次向上移動資訊
         line_height = 35 # Vertical spacing between each stat line
         icon_text_spacing = 8
@@ -716,8 +783,8 @@ class Game:
             line1_surf = self.ai_status_font.render(line1_text, True, settings.WHITE)
             line2_surf = self.ai_status_font.render(line2_text, True, settings.WHITE)
             
-            line1_rect = line1_surf.get_rect(center=(box_center_x, box_center_y - self.ai_status_font.get_height() / 2))
-            line2_rect = line2_surf.get_rect(center=(box_center_x, box_center_y + self.ai_status_font.get_height() / 2))
+            line1_rect = line1_surf.get_rect(center=(box_center_x - 50, box_center_y - self.ai_status_font.get_height() / 2))
+            line2_rect = line2_surf.get_rect(center=(box_center_x - 50, box_center_y + self.ai_status_font.get_height() / 2))
             
             draw_text_with_shadow(self.screen, line1_text, self.ai_status_font, line1_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
             draw_text_with_shadow(self.screen, line2_text, self.ai_status_font, line2_rect.topleft, text_color=settings.WHITE, shadow_color=settings.BLACK)
@@ -744,12 +811,26 @@ class Game:
             elif not ai_alive: msg = "VICTORY - AI DEFEATED!"; color = (50, 134, 138)
         
         game_over_text = self.game_over_font.render(msg, True, color)
-        text_rect = game_over_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 50))
+        text_rect = game_over_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 80))
         self.screen.blit(game_over_text, text_rect)
+
+        # 繪製遊戲結束原因的副標題
+        if self.game_over_reason and self.restart_font:
+            reason_surf = self.restart_font.render(self.game_over_reason, True, settings.DARK_GREY)
+            reason_rect = reason_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, text_rect.bottom + 30)) # 稍微增加間距
+            self.screen.blit(reason_surf, reason_rect)
         
-        restart_text = self.restart_font.render("Press 'R' to return to Menu", True, settings.BLACK)
-        restart_rect = restart_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 + 20))
-        self.screen.blit(restart_text, restart_rect)
+        # 繪製返回主選單的按鈕
+        if self.game_over_button_rect:
+            mouse_pos = pygame.mouse.get_pos()
+            is_hovering = self.game_over_button_rect.collidepoint(mouse_pos)
+            button_img = self.continue_button_hover_img if is_hovering else self.continue_button_img
+            self.screen.blit(button_img, self.game_over_button_rect)
+
+            # 重新加入鍵盤提示文字，並修改顏色
+            restart_text = self.restart_font.render("or Press 'R' to return", True, settings.DARK_GREY)
+            restart_rect = restart_text.get_rect(center=(settings.SCREEN_WIDTH / 2, self.game_over_button_rect.bottom + 20))
+            self.screen.blit(restart_text, restart_rect)
 
     def draw_enter_name_screen(self):
         # (此函式保持不變)
@@ -757,43 +838,41 @@ class Game:
             return
         self.screen.blit(self.victory_background_image, (0, 0))
         overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((255, 255, 255, 150))  # R, G, B, A (180 ≈ 70% 不透明)
-        self.screen.blit(overlay, (0, 0))
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0,0))
+        color = pygame.Color('white') if self.input_box_active else pygame.Color('lightskyblue3')
 
-        prompt_text = "VICTORY! New High Score!"
-        prompt_surf = self.prompt_font.render(prompt_text, True, (194, 64, 0))
-        prompt_rect = prompt_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 3))
-        self.screen.blit(prompt_surf, prompt_rect)
+        prompt_text = self.prompt_font.render("You've got a high score!", True, settings.WHITE)
+        prompt_rect = prompt_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 140))
+        self.screen.blit(prompt_text, prompt_rect)
+
+        # 顯示勝利原因
+        if self.game_over_reason and self.restart_font:
+            reason_surf = self.restart_font.render(self.game_over_reason, True, settings.LIGHT_GREY) # 使用淺灰色
+            reason_rect = reason_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, prompt_rect.bottom + 30))
+            self.screen.blit(reason_surf, reason_rect)
+
+        pygame.draw.rect(self.screen, color, self.name_input_rect, 2)
+        text_surface = self.text_input_font.render(self.player_name_input, True, settings.WHITE)
         
-        enter_name_text = "Enter Your Name:"
-        enter_name_surf = self.victory_font.render(enter_name_text, True, (50, 50, 50))
-        enter_name_rect = enter_name_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, prompt_rect.bottom + 40))
-        self.screen.blit(enter_name_surf, enter_name_rect)
+        # 修正文字位置，使其垂直置中
+        text_rect = text_surface.get_rect(midleft=(self.name_input_rect.x + 10, self.name_input_rect.centery))
+        self.screen.blit(text_surface, text_rect)
+        self.name_input_rect.w = max(280, text_surface.get_width() + 20)
 
-        self.name_input_rect.width = 300
-        self.name_input_rect.height = 50
-        self.name_input_rect.center = (settings.SCREEN_WIDTH / 2, enter_name_rect.bottom + 40)
-        
-        box_color = getattr(settings, "TEXT_INPUT_BOX_COLOR_ACTIVE", (0,100,255)) if self.input_box_active else getattr(settings, "TEXT_INPUT_BOX_COLOR_INACTIVE", (100,100,100))
-        pygame.draw.rect(self.screen, box_color, self.name_input_rect, 0, border_radius=5)
-        pygame.draw.rect(self.screen, settings.BLACK, self.name_input_rect, 2, border_radius=5)
+        # 繪製繼續按鈕
+        if self.game_over_button_rect:
+            mouse_pos = pygame.mouse.get_pos()
+            is_hovering = self.game_over_button_rect.collidepoint(mouse_pos)
+            button_img = self.continue_button_hover_img if is_hovering else self.continue_button_img
+            self.screen.blit(button_img, self.game_over_button_rect)
 
-        if self.text_input_font:
-            text_surf = self.text_input_font.render(self.player_name_input, True, getattr(settings, "TEXT_INPUT_TEXT_COLOR", settings.BLACK))
-            text_rect = text_surf.get_rect(midleft=(self.name_input_rect.x + 15, self.name_input_rect.centery))
-            self.screen.blit(text_surf, text_rect)
-
-            if self.input_box_active and pygame.time.get_ticks() % 1000 < 500:
-                cursor_x_pos = text_rect.right + 3 if self.player_name_input else self.name_input_rect.x + 15
-                pygame.draw.line(self.screen, getattr(settings, "TEXT_INPUT_TEXT_COLOR", settings.BLACK),
-                                (cursor_x_pos, self.name_input_rect.y + 10),
-                                (cursor_x_pos, self.name_input_rect.bottom - 10), 2)
-
-        submit_prompt_text = "Press ENTER to Submit, ESC to Skip"
-        if self.victory_font:
-            submit_surf = self.victory_font.render(submit_prompt_text, True, (50, 50, 50))
-            submit_rect = submit_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, self.name_input_rect.bottom + 40))
-            self.screen.blit(submit_surf, submit_rect)
+            # 加入鍵盤提示
+            submit_prompt_text = "or Press ENTER to Submit"
+            if self.victory_font:
+                submit_surf = self.victory_font.render(submit_prompt_text, True, settings.DARK_GREY)
+                submit_rect = submit_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, self.game_over_button_rect.bottom + 20))
+                self.screen.blit(submit_surf, submit_rect)
 
     def draw_score_submitted_screen(self):
         # (此函式保持不變)
@@ -811,6 +890,13 @@ class Game:
         self.screen.blit(message_surf, message_rect)
 
         continue_prompt_text = "Press any key or click to continue..."
-        continue_surf = self.victory_font.render(continue_prompt_text, True, (50, 50, 50))
+        continue_surf = self.message_font.render(continue_prompt_text, True, settings.DARK_GREY)
         continue_rect = continue_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, message_rect.bottom + 40))
         self.screen.blit(continue_surf, continue_rect)
+
+        if self.restart_font:
+            # 加入自動跳轉的提示副標題
+            auto_return_text = "(Returning to menu automatically...)"
+            auto_return_surf = self.restart_font.render(auto_return_text, True, settings.DARK_GREY) # 使用灰色以區別
+            auto_return_rect = auto_return_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, continue_rect.bottom + 20))
+            self.screen.blit(auto_return_surf, auto_return_rect)
