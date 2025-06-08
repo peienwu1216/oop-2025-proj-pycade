@@ -398,6 +398,7 @@ class Game:
                     elif self.player2_ai.is_alive: self.time_up_winner = "AI"
                     else: self.time_up_winner = "DRAW"
                     self.game_state = "GAME_OVER"
+                    self.audio_manager.stop_all_sounds()
                     self.game_over() # 播放遊戲結束音樂
                     
                     
@@ -435,6 +436,7 @@ class Game:
                     self.victory()
                 if not human_player_alive or not ai_player_alive:
                     self.game_state = "GAME_OVER"
+                    self.audio_manager.stop_all_sounds()
                     self.game_timer_active = False
                     if human_player_alive: p1_won_by_ko = True
 
