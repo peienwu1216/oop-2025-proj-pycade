@@ -9,6 +9,8 @@
 
 本專案是物件導向程式設計 (OOP) 課程專案，旨在使用 Pygame 函式庫複刻經典遊戲《瘋狂炸彈人》。遊戲提供多種 AI 對手供玩家挑戰，並包含排行榜系統以記錄玩家的最佳戰績。
 
+本專案支援部署為網頁應用程式。
+
 ## Github Action 狀態
 [![🚀 Build and Deploy Pycade Bomber to Web](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/deploy-to-web.yml/badge.svg)](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/deploy-to-web.yml)
 [![🧪 Run Pygame Tests](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/run-tests.yml/badge.svg)](https://github.com/peienwu1216/oop-2025-proj-pycade/actions/workflows/run-tests.yml)
@@ -25,12 +27,14 @@
     - [安裝依賴](#安裝依賴)
     - [執行遊戲](#執行遊戲)
   - [遊戲控制](#遊戲控制)
+  - [網頁版部署 (Web Deployment)](#網頁版部署-web-deployment)
   - [專案架構](#專案架構)
   - [後續優化與開發方向](#後續優化與開發方向)
+  - [授權條款 (License)](#授權條款-license)
 
 ## 目前狀態與版本資訊
 
-* **專案版本 (建議)**：`v0.7.0-leaderboard-input` (表示已實現排行榜、玩家輸入姓名、多樣化AI及完整的遊戲流程控制)
+* **專案版本 (建議)**：`v0.8.0`
 * **Python 版本**：3.x (開發環境為 3.13.2)
 * **Pygame 版本**：2.6.1
 
@@ -80,7 +84,7 @@
 
 1.  克隆專案：
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/peienwu1216/oop-2025-proj-pycade.git
     cd oop-2025-proj-pycade
     ```
 2.  (建議) 建立並啟用虛擬環境：
@@ -89,7 +93,7 @@
     # Windows: venv\Scripts\activate
     # Linux/macOS: source venv/bin/activate
     ```
-3.  安裝 Pygame：
+3.  安裝 Pygame 與其他套件：
     ```bash
     pip install -r requirements.txt
     ```
@@ -121,22 +125,34 @@ python main.py
         * 用於激活姓名輸入框。
         * 在「分數已記錄」提示畫面，點擊任意處可繼續（返回主選單）。
 
+## 網頁版部署 (Web Deployment)
+本專案可透過 `pygbag` 工具打包成 WebAssembly (WASM)，直接在瀏覽器中執行。
+
+1.  **安裝 `pygbag`**:
+    ```bash
+    pip install pygbag
+    ```
+2.  **建立網頁版**:
+    在專案根目錄下，執行以下指令。此指令會使用 `web/index.html.template` 作為網頁模板，並將專案打包到 `build/web` 目錄。
+    ```bash
+    pygbag .
+    ```
+3.  **執行網頁伺服器**:
+    `pygbag` 會自動啟動一個本地伺服器。在瀏覽器中開啟 `http://localhost:8000` 即可看到遊戲。
+
 ## 專案架構
 
 * **`main.py`**: 遊戲入口，管理主應用程式迴圈、選單和遊戲實例的啟動。
 * **`settings.py`**: 全域設定，如螢幕尺寸、顏色、資源路徑、遊戲參數。
 * **`game.py`**: `Game` 類別，負責遊戲主邏輯、狀態管理、事件處理、更新與繪製。
-* **`core/` 目錄**:
-    * `menu.py`: `Menu` 類別，處理主選單、AI 選擇、排行榜顯示。
-    * `map_manager.py`: `MapManager` 類別，負責地圖生成與管理。
-    * `leaderboard_manager.py`: `LeaderboardManager` 類別，處理排行榜數據的載入、儲存和新增。
-    * `ai_controller_base.py`: `AIControllerBase` 類別，所有 AI 控制器的基類，提供通用方法如路徑規劃、危險評估等。
-    * `ai_controller.py`, `ai_conservative.py`, `ai_aggressive.py`, `ai_item_focused.py`: 各種 AI 行為模式的具體實現。
-* **`sprites/` 目錄**: 遊戲物件（精靈）的類別定義。
-    * `game_object.py`: 所有精靈的基類。
-    * `player.py`, `bomb.py`, `explosion.py`, `item.py`, `wall.py`: 各遊戲元素的具體實現。
-* **`assets/` 目錄**: 存放圖片、字體等資源檔案。
-    * `assets/data/leaderboard.json`: 排行榜數據儲存檔案。
+* **`core/`**: 核心模組。
+    * `menu.py`, `map_manager.py`, `leaderboard_manager.py`: 選單、地圖、排行榜管理。
+    * `ai_*.py`: 各種基於規則的 AI 行為模式實現。
+* **`sprites/`**: 遊戲物件（精靈）的類別定義。
+* **`rl_ai/`**: (實驗性) 強化學習相關模組。
+* **`assets/`**: 存放圖片、字體、音效等資源檔案。
+* **`web/`**: 網頁部署相關檔案。
+    * `index.html.template`: `pygbag` 部署時使用的網頁模板。
 * **`requirements.txt`**: Python 依賴套件列表。
 * **`README.md`**: 本檔案。
 
@@ -149,17 +165,16 @@ python main.py
     * 設計更多樣化、具有挑戰性的地圖。
     * 引入新的道具類型，增加遊戲策略性。
 * **AI 增強**：
-    * 進一步提升 AI 的情境感知和戰術決策能力。
-    * 研究更高級的 AI 演算法，例如更優的預判、合作或欺騙行為（若有多 AI）。
+    * **規則式 AI**: 進一步提升 AI 的情境感知和戰術決策能力。
+    * **強化學習 AI**: 探索強化學習 AI 的可能性。
 * **使用者體驗**：
-    * 完善暫停選單功能（目前 ESC 多為直接退出或返回主選單）。
-    * 優化排行榜的顯示介面和排序邏輯，使其更美觀易讀。
+    * 完善暫停選單功能。
+    * 優化排行榜的顯示介面和排序邏輯。
     * 提供更詳細的遊戲說明和控制提示。
 * **程式碼品質**：
     * 持續進行程式碼重構和優化。
     * 完善註解和文檔。
-    * 考慮引入更專業的日誌系統（如 Python `logging` 模組）。
-* **長期目標**：
-    * 探索強化學習 AI 的可能性。
-    * 為 Pygbag 網頁化部署做準備。
-* 2025/05/30: add feature/setup-ci-checks
+
+## 授權條款 (License)
+
+本專案採用 [MIT License](LICENSE) 授權。
