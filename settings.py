@@ -26,7 +26,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 151
+GAME_DURATION_SECONDS = 31
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -125,6 +125,8 @@ TEXT_INPUT_PROMPT_COLOR = BLACK
 TEXT_INPUT_TEXT_COLOR = BLACK
 TEXT_INPUT_MAX_LENGTH = 10
 HUD_AI_OFFSET_X = 205 # HUD 中 AI 資訊相對於 P1 的水平偏移 (game.py draw_hud 中使用)
+THANK_YOU_BG_COLOR = (253, 246, 227)
+THANK_YOU_FONT_COLOR = (44, 62, 80) 
 
 # -----------------------------------------------------------------------------
 # 排行榜設定 (Leaderboard Settings)
