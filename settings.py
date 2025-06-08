@@ -28,7 +28,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 181
+GAME_DURATION_SECONDS = 21
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -162,7 +162,6 @@ MENU_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Home.mp3") # 菜單音樂
 GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Battle_Against_a_True_Hero.mp3") # 遊戲音樂（死亡時）
 MENU_HOVER_SOUND_PATH = os.path.join(SOUNDS_DIR, "menu_hover.mp3") # 菜單懸停音效
 BOMB_TICK_PATH = os.path.join(SOUNDS_DIR, "bomb_tick.mp3") # 炸彈倒數音效
-ticking_playing = False
 EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
 BLING_PATH = os.path.join(SOUNDS_DIR, "bling.mp3") # 拾取道具音效
 HURT_PATH = os.path.join(SOUNDS_DIR, "hurt.mp3") # 受傷音效
