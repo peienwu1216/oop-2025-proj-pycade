@@ -35,6 +35,7 @@ class Game:
         
         self.victory_music_played = False
         self.game_over_played = False
+        self.ticking_sound_playing = False
 
         # --- Background ---
         self.victory_background_image = pygame.image.load(settings.VICTORY_BACKGROUND_IMG).convert()
@@ -238,6 +239,7 @@ class Game:
         self.time_up_winner = None
         self.game_state = "PLAYING"
         self.game_over_reason = ""
+        self.ticking_sound_playing = False
 
         self.player_name_input = ""
         self.input_box_active = False
@@ -450,6 +452,16 @@ class Game:
             self.bombs_group.update(self.dt, self.solid_obstacles_group)
             self.floating_texts_group.update()
 
+            # --- Centralized Bomb Tick Sound Management ---
+            # If there are bombs on screen and the sound is not playing, start it.
+            if len(self.bombs_group) > 0 and not self.ticking_sound_playing:
+                self.audio_manager.play_sound('tick', loops=-1, volume_multiplier=0.6)
+                self.ticking_sound_playing = True
+            # If there are no bombs but the sound is playing, stop it.
+            elif len(self.bombs_group) == 0 and self.ticking_sound_playing:
+                self.audio_manager.stop_sound('tick')
+                self.ticking_sound_playing = False
+
             for player in list(self.players_group):
                 if player.is_alive:
                     if pygame.sprite.spritecollide(player, self.explosions_group, False, pygame.sprite.collide_rect):
@@ -497,6 +509,7 @@ class Game:
                     self.player_name_input = ""
                     self.input_box_active = True
                     self.game_state = "ENTER_NAME"
+                    self.audio_manager.stop_all_sounds() # Stop any lingering sounds (like ticking)
                     self.victory()
                 else:
                     # 如果玩家勝利但分數不高、或AI勝利、或平手，則建立按鈕
