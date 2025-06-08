@@ -41,7 +41,7 @@ jobs:
         timeout-minutes: 30
         run: |
           echo "🔧 Building web version with pygbag..."
-          pygbag --build --archive .
+          python -m pygbag --build --archive .
           echo "✅ Pygbag build completed."
 
       - name: 🔎 Verify Build Output
