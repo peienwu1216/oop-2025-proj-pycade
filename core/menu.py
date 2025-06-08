@@ -13,6 +13,7 @@ class Menu:
         self.audio_manager = audio_manager # 儲存管理器
         self.clock = clock # 儲存從 main.py 傳來的時鐘
         
+        self.audio_manager.stop_all() # 停止所有來自上一場景的聲音
         # 使用 AudioManager 播放音樂
         self.audio_manager.play_music(settings.MENU_MUSIC_PATH)
         self.last_hovered_button = None  # 用來追蹤上次滑過的按鈕
@@ -95,7 +96,7 @@ class Menu:
         })
 
     # 【修改】run() 方法被移除，改為 update() 和 draw()
-    def update(self, events):
+    def update(self, events, dt):
         """處理一幀的事件和邏輯，並返回下一個場景或指令。"""
         mouse_pos = pygame.mouse.get_pos()
         
