@@ -94,3 +94,20 @@ def draw_text_with_outline(screen, text, font, pos, text_color=(0,0,0), outline_
         screen.blit(outline, (x + dx, y + dy))
     main_text = font.render(text, True, text_color)
     screen.blit(main_text, (x, y))
+    
+import pygame
+    
+class FloatingText(pygame.sprite.Sprite):
+    def __init__(self, x, y, text, color=(255, 0, 0), duration=1000, rise_speed=1):
+        super().__init__()
+        self.font = pygame.font.Font(None, 32)  # 你也可以用自己的字體
+        self.image = self.font.render(text, True, color)
+        self.rect = self.image.get_rect(center=(x, y))
+        self.start_time = pygame.time.get_ticks()
+        self.duration = duration
+        self.rise_speed = rise_speed
+
+    def update(self):
+        self.rect.y -= self.rise_speed  # 每幀往上飄
+        if pygame.time.get_ticks() - self.start_time > self.duration:
+            self.kill()  # 時間到自動移除

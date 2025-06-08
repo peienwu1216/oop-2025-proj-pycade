@@ -26,7 +26,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 60+1
+GAME_DURATION_SECONDS = 151
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -144,6 +144,7 @@ IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds") 
 FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")   
 DATA_DIR = os.path.join(ASSETS_DIR, "data")     # 用於存放 leaderboard.json 等數據檔案
+SOUND_DIR = os.path.join(ASSETS_DIR, "sounds") # 確保聲音目錄正確
 
 # 特定字體路徑
 CHINESE_FONT_PATH = os.path.join(FONTS_DIR, "NotoSansTC-Regular.ttf") # 確保字體檔案在此路徑
@@ -151,9 +152,24 @@ TITLE_FONT_PATH = os.path.join(FONTS_DIR, "oldenglishtextmt.ttf") # 標題字體
 SUB_TITLE_FONT_PATH = os.path.join(FONTS_DIR, "Lora-VariableItalic.ttf") # 副標題字體
 PIXEL_FONT_PATH = os.path.join(FONTS_DIR, "Minecraftia-Regular.ttf") # 像素風格字體
 
+# 音樂
+MENU_MUSIC_VOLUME = 0.8
+MENU_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Home.mp3") # 菜單音樂
+# GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Asgore.mp3") # 遊戲音樂
+GAME_MUSIC_PATH = os.path.join(SOUNDS_DIR, "Undertale_Battle_Against_a_True_Hero.mp3") # 遊戲音樂（死亡時）
+MENU_HOVER_SOUND_PATH = os.path.join(SOUNDS_DIR, "menu_hover.mp3") # 菜單懸停音效
+BOMB_TICK_PATH = os.path.join(SOUNDS_DIR, "bomb_tick.mp3") # 炸彈倒數音效
+ticking_playing = False
+EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
+BLING_PATH = os.path.join(SOUNDS_DIR, "bling.mp3") # 拾取道具音效
+HURT_PATH = os.path.join(SOUNDS_DIR, "hurt.mp3") # 受傷音效
+GAME_VICTORY_PATH = os.path.join(SOUNDS_DIR, "Undertale_Hopes_and_Dreams.mp3") # 遊戲勝利音效
+GAME_OVER_PATH = os.path.join(SOUNDS_DIR, "Undertale_An_Ending.mp3") # 遊戲結束音效
+THANKS_YOU_PATH = os.path.join(SOUNDS_DIR, "Undertale_His_Themes.mp3") # 感謝畫面音樂
+
 # 特定圖片路徑
 # 地圖背景
-STREAM_IMG = os.path.join(IMAGES_DIR, "background", "stream.png") # 流水背景圖片
+VICTORY_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "background", "victory_background.png") # 流水背景圖片
 # 牆壁
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")

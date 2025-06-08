@@ -26,8 +26,10 @@ jobs:
       - name: 📚 Install Dependencies
         run: |
           echo "🛠️ Installing dependencies..."
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
-          pip install -r requirements.txt  # 🎮 pygame
+          pip install -r requirements.txt
           pip install pygbag
           echo "✅ Dependencies installed!"
 
@@ -40,7 +42,6 @@ jobs:
         timeout-minutes: 30
         run: |
           echo "🔧 Building web version with pygbag..."
-          export PYGBAG_DISABLE_AUDIO=1
           pygbag --build --archive .
           echo "✅ Pygbag build completed."
 

@@ -3,6 +3,7 @@
 import pygame
 from .game_object import GameObject
 import settings
+from sprites.draw_text import FloatingText
 # from .bomb import Bomb # Bomb 在 Player 中放置炸彈時才需要
 
 class Player(GameObject):
@@ -329,7 +330,14 @@ class Player(GameObject):
         if self.is_alive and (current_time - self.last_hit_time > self.invincible_duration): 
             self.lives -= amount 
             self.last_hit_time = current_time 
+            hurt = pygame.mixer.Sound(settings.HURT_PATH)
+            hurt.play()
             print(f"Player (ID: {id(self)}, AI: {self.is_ai}) took damage! Lives left: {self.lives}") 
+            if hasattr(self.game, "floating_texts_group"):
+                fx = self.rect.centerx
+                fy = self.rect.top
+                text = FloatingText(fx, fy, "-1 LIFE", color=(255, 50, 50))
+                self.game.floating_texts_group.add(text)
             if self.lives <= 0: 
                 self.lives = 0 
                 self.die() 

@@ -9,7 +9,9 @@ class ThankYouScene:
         self.screen = screen
         self.font_color = settings.WHITE
         self.background_color = settings.BLACK # 您可以選擇一個不同的背景色
-
+        pygame.mixer.music.load(settings.THANKS_YOU_PATH)
+        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+        pygame.mixer.music.play(-1) 
         try:
             # 嘗試使用您在 settings.py 中定義的字體路徑
             # 您可以選擇一個適合的字體，例如主選單的 option_font 或 description_font

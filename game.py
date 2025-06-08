@@ -16,18 +16,27 @@ from sprites.draw_text import DIGIT_MAP
 from sprites.draw_text import draw_text_with_shadow, draw_text_with_outline
 
 
+
 class Game:
     def __init__(self, screen, clock, ai_archetype="original", headless=False):
         self.headless = headless 
         self.screen = screen
         self.clock = clock
+        pygame.mixer.music.load(settings.GAME_MUSIC_PATH)
+        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+        pygame.mixer.music.play(-1) 
         self.running = True # 這個 self.running 仍然有用，用來標記 Game 場景是否應該繼續
         self.dt = 0 # dt 會在 run_one_frame 中更新
         self.restart_game = False # 這個旗標用來告訴 main.py 是否要回到選單
         self.game_state = "PLAYING"
         self.ai_archetype = ai_archetype
+        
+        self.victory_music_played = False
+        self.game_over_played = False
 
         # --- Background ---
+        self.victory_background_image = pygame.image.load(settings.VICTORY_BACKGROUND_IMG).convert()
+        self.victory_background_image = pygame.transform.scale(self.victory_background_image, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
         self.brick_tile_image = pygame.image.load(settings.STONE_0_IMG).convert()
         self.brick_tile_image = pygame.transform.smoothscale(
             self.brick_tile_image,
@@ -61,6 +70,7 @@ class Game:
         self.explosions_group = pygame.sprite.Group()
         self.items_group = pygame.sprite.Group()
         self.solid_obstacles_group = pygame.sprite.Group()
+        self.floating_texts_group = pygame.sprite.Group()
 
         # --- Managers and Player/AI instances ---
         self.map_manager = MapManager(self)
@@ -145,12 +155,13 @@ class Game:
                     print(f"Game: 中文字體 '{settings.CHINESE_FONT_PATH}' 載入失敗 ({e})，將使用預設字體。")
 
             self.hud_font = pygame.font.Font(settings.PIXEL_FONT_PATH, font_size)
+            self.victory_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, font_size)
             self.ai_status_font = pygame.font.Font(settings.CHINESE_FONT_PATH, 18)
             self.timer_font_normal = pygame.font.Font(default_font_path, timer_font_size_normal)
             self.timer_font_urgent = pygame.font.Font(default_font_path, timer_font_size_urgent)
             self.text_input_font = pygame.font.Font(default_font_path, text_input_font_size)
-            self.prompt_font = pygame.font.Font(default_font_path, prompt_font_size)
-            self.message_font = pygame.font.Font(default_font_path, message_font_size)
+            self.prompt_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, prompt_font_size)
+            self.message_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, message_font_size)
 
             self.game_over_font = pygame.font.Font(settings.TITLE_FONT_PATH, 50)
             self.restart_font = pygame.font.Font(settings.SUB_TITLE_FONT_PATH, 25)
@@ -172,6 +183,22 @@ class Game:
     def start_timer(self):
         self.time_elapsed_seconds = 0
         self.game_timer_active = True
+    
+    def game_over(self):
+        if self.game_over_played == False:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load(settings.GAME_OVER_PATH)
+            pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
+            pygame.mixer.music.play(-1)  # 播放一次遊戲結束音樂
+            self.game_over_played = True
+    
+    def victory(self):
+        if self.victory_music_played == False:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load(settings.GAME_VICTORY_PATH)
+            pygame.mixer.music.set_volume(0.6)
+            pygame.mixer.music.play(-1)
+            self.victory_music_played = True
     
     def setup_initial_state(self):
         # (此函式保持不變)
@@ -332,6 +359,7 @@ class Game:
                 
                 # 'GAME_OVER' 狀態下的鍵盤事件
                 elif self.game_state == "GAME_OVER":
+                    self.game_over()
                     if event.key == pygame.K_r:
                         self.restart_game = True
                         self.running = False
@@ -373,11 +401,15 @@ class Game:
                     elif self.player2_ai.is_alive: self.time_up_winner = "AI"
                     else: self.time_up_winner = "DRAW"
                     self.game_state = "GAME_OVER"
+                    self.game_over() # 播放遊戲結束音樂
+                    
+                    
 
             if self.player2_ai and self.player2_ai.is_alive and self.ai_controller_p2:
                 self.ai_controller_p2.update()
             self.all_sprites.update(self.dt, self.solid_obstacles_group)
             self.bombs_group.update(self.dt, self.solid_obstacles_group)
+            self.floating_texts_group.update()
 
             for player in list(self.players_group):
                 if player.is_alive:
@@ -393,11 +425,19 @@ class Game:
             for player in list(self.players_group):
                 if player.is_alive:
                     items_collected = pygame.sprite.spritecollide(player, self.items_group, True, pygame.sprite.collide_rect)
-                    for item in items_collected: item.apply_effect(player)
+                    for item in items_collected: 
+                        item.apply_effect(player)
+                        bling = pygame.mixer.Sound(settings.BLING_PATH)
+                        bling.set_volume(0.3)
+                        bling.play()
 
             if self.game_timer_active:
                 human_player_alive = self.player1 and self.player1.is_alive
                 ai_player_alive = self.player2_ai and self.player2_ai.is_alive
+                if not human_player_alive:
+                    self.game_over()
+                elif not ai_player_alive:
+                    self.victory()
                 if not human_player_alive or not ai_player_alive:
                     self.game_state = "GAME_OVER"
                     self.game_timer_active = False
@@ -410,6 +450,7 @@ class Game:
                     self.player_name_input = ""
                     self.input_box_active = True
                     self.game_state = "ENTER_NAME"
+                    self.victory()
 
         elif self.game_state == "ENTER_NAME":
             pass
@@ -462,6 +503,7 @@ class Game:
         else: 
             self.all_sprites.draw(self.screen) 
             self.bombs_group.draw(self.screen)
+            self.floating_texts_group.draw(self.screen)
             for bomb in self.bombs_group:
                 bomb.draw_timer_bar(self.screen)
             if self.game_state == "PLAYING":
@@ -610,13 +652,13 @@ class Game:
         ai_alive = self.player2_ai and self.player2_ai.is_alive
 
         if self.time_up_winner:
-            if self.time_up_winner == "P1": msg = "TIME'S UP! P1 WINS!"; color = settings.GREEN
-            elif self.time_up_winner == "AI": msg = "TIME'S UP! AI WINS!"; color = settings.RED
+            if self.time_up_winner == "P1": msg = "TIME'S UP! P1 WINS!"; color = (50, 134, 138)
+            elif self.time_up_winner == "AI": msg = "TIME'S UP! AI WINS!"; color = (141, 24, 23)
             else: msg = "TIME'S UP! DRAW!"; color = settings.GREY
         else:
             if not p1_alive and not ai_alive: msg = "DRAW!"; color = settings.GREY
-            elif not p1_alive: msg = "GAME OVER - YOU LOST!"; color = settings.RED
-            elif not ai_alive: msg = "VICTORY - AI DEFEATED!"; color = settings.GREEN
+            elif not p1_alive: msg = "GAME OVER - YOU LOST!"; color = (141, 24, 23)
+            elif not ai_alive: msg = "VICTORY - AI DEFEATED!"; color = (50, 134, 138)
         
         game_over_text = self.game_over_font.render(msg, True, color)
         text_rect = game_over_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 50))
@@ -630,16 +672,18 @@ class Game:
         # (此函式保持不變)
         if not self.text_input_font or not self.prompt_font or not self.hud_font:
             return
-
-        self.screen.fill((180, 200, 255))
+        self.screen.blit(self.victory_background_image, (0, 0))
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 150))  # R, G, B, A (180 ≈ 70% 不透明)
+        self.screen.blit(overlay, (0, 0))
 
         prompt_text = "VICTORY! New High Score!"
-        prompt_surf = self.prompt_font.render(prompt_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", settings.BLACK))
+        prompt_surf = self.prompt_font.render(prompt_text, True, (194, 64, 0))
         prompt_rect = prompt_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 3))
         self.screen.blit(prompt_surf, prompt_rect)
         
         enter_name_text = "Enter Your Name:"
-        enter_name_surf = self.hud_font.render(enter_name_text, True, getattr(settings, "TEXT_INPUT_PROMPT_COLOR", settings.BLACK))
+        enter_name_surf = self.victory_font.render(enter_name_text, True, (50, 50, 50))
         enter_name_rect = enter_name_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, prompt_rect.bottom + 40))
         self.screen.blit(enter_name_surf, enter_name_rect)
 
@@ -663,8 +707,8 @@ class Game:
                                 (cursor_x_pos, self.name_input_rect.bottom - 10), 2)
 
         submit_prompt_text = "Press ENTER to Submit, ESC to Skip"
-        if self.hud_font:
-            submit_surf = self.hud_font.render(submit_prompt_text, True, settings.GREY)
+        if self.victory_font:
+            submit_surf = self.victory_font.render(submit_prompt_text, True, (50, 50, 50))
             submit_rect = submit_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, self.name_input_rect.bottom + 40))
             self.screen.blit(submit_surf, submit_rect)
 
@@ -673,7 +717,10 @@ class Game:
         if not self.message_font or not self.hud_font :
             return
 
-        self.screen.fill((200, 255, 200))
+        self.screen.blit(self.victory_background_image, (0, 0))
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 150))  # R, G, B, A (180 ≈ 70% 不透明)
+        self.screen.blit(overlay, (0, 0))
 
         message_text = "Score Recorded on Leaderboard!"
         message_surf = self.message_font.render(message_text, True, settings.BLACK)
@@ -681,6 +728,6 @@ class Game:
         self.screen.blit(message_surf, message_rect)
 
         continue_prompt_text = "Press any key or click to continue..."
-        continue_surf = self.hud_font.render(continue_prompt_text, True, settings.GREY)
+        continue_surf = self.victory_font.render(continue_prompt_text, True, (50, 50, 50))
         continue_rect = continue_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, message_rect.bottom + 40))
         self.screen.blit(continue_surf, continue_rect)

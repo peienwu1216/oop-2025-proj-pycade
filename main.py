@@ -11,6 +11,7 @@ async def main():
     await asyncio.sleep(0.1)
     pygame.display.init()
     pygame.font.init()
+    pygame.mixer.init()
     
     screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
     
