@@ -6,6 +6,7 @@ from core.map_manager import MapManager
 from core.touch_controls import TouchControls
 from sprites.player import Player
 from core.leaderboard_manager import LeaderboardManager
+from core.audio_manager import AudioManager
 
 # AI 控制器匯入
 from core.ai_controller import AIController as OriginalAIController
@@ -18,13 +19,14 @@ from sprites.draw_text import draw_text_with_shadow, draw_text_with_outline
 
 
 class Game:
-    def __init__(self, screen, clock, ai_archetype="original", headless=False):
+    def __init__(self, screen, clock, audio_manager,ai_archetype="original", headless=False):
         self.headless = headless 
         self.screen = screen
         self.clock = clock
-        pygame.mixer.music.load(settings.GAME_MUSIC_PATH)
-        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
-        pygame.mixer.music.play(-1) 
+
+        self.audio_manager = audio_manager # 儲存傳入的實例
+        self.audio_manager.play_music(settings.GAME_MUSIC_PATH)
+        
         self.running = True # 這個 self.running 仍然有用，用來標記 Game 場景是否應該繼續
         self.dt = 0 # dt 會在 run_one_frame 中更新
         self.restart_game = False # 這個旗標用來告訴 main.py 是否要回到選單
@@ -186,18 +188,13 @@ class Game:
     
     def game_over(self):
         if self.game_over_played == False:
-            pygame.mixer.music.stop()
-            pygame.mixer.music.load(settings.GAME_OVER_PATH)
-            pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
-            pygame.mixer.music.play(-1)  # 播放一次遊戲結束音樂
+            self.audio_manager.play_music(settings.GAME_OVER_PATH)
             self.game_over_played = True
     
     def victory(self):
         if self.victory_music_played == False:
-            pygame.mixer.music.stop()
-            pygame.mixer.music.load(settings.GAME_VICTORY_PATH)
-            pygame.mixer.music.set_volume(0.6)
-            pygame.mixer.music.play(-1)
+            self.audio_manager.play_music(settings.GAME_VICTORY_PATH)
+            self.audio_manager.set_music_volume(0.6)
             self.victory_music_played = True
     
     def setup_initial_state(self):
@@ -278,33 +275,25 @@ class Game:
         self.running = True
         self.restart_game = False
 
-
-    # 【修改】移除舊的 run 方法
-    # def run(self):
-    #     self.clock.tick(settings.FPS)
-    #     self.time_elapsed_seconds = 0.0
-    #     self.game_timer_active = True
-    #     while self.running:
-    #         self.dt = self.clock.tick(settings.FPS) / 1000.0
-    #         self.events()
-    #         self.update()
-    #         self.draw()
-    #     return self.restart_game
-
-    # 【新增】run_one_frame 方法，由 main.py 的主迴圈呼叫
-    def run_one_frame(self, events_from_main_loop):
+    def run_one_frame(self, events_from_main_loop, dt):
         # 如果 Game 場景已經設定為不再運行 (例如，玩家按 ESC 或遊戲結束)
         if not self.running:
-            # 根據 restart_game 旗標決定返回 Menu 還是 "QUIT" 指令
             from core.menu import Menu
-            return Menu(self.screen) if self.restart_game else "QUIT"
+            # ！！！～～～
+            # 根據 restart_game 旗標決定返回 Menu 還是 "QUIT" 指令
+            if self.restart_game:
+                self.audio_manager.stop_music()
+                self.audio_manager.stop_all_sounds()
+                # 建立 Menu 物件時，傳遞所有必要的參數
+                return Menu(self.screen, self.audio_manager, self.clock)
+            else:
+                self.audio_manager.stop_music()
+                self.audio_manager.stop_all_sounds()
+                return "QUIT"
+            # ！！！～～～
 
-        # 計算 dt (delta time)
-        if self.dt == 0:
-            self.clock.tick()
-            self.dt = 0.01
-        else:
-            self.dt = self.clock.tick(settings.FPS) / 1000.0
+        # 使用傳入的 dt
+        self.dt = dt
 
         # 處理事件
         self._process_events_internal(events_from_main_loop) # 使用內部方法處理事件
@@ -318,7 +307,15 @@ class Game:
         # 檢查場景是否應該結束
         if not self.running:
             from core.menu import Menu
-            return Menu(self.screen) if self.restart_game else "QUIT"
+            if self.restart_game:
+                self.audio_manager.stop_music()
+                self.audio_manager.stop_all_sounds()
+                # 再次檢查，確保所有退出路徑都有處理
+                return Menu(self.screen, self.audio_manager, self.clock)
+            else:
+                 self.audio_manager.stop_music()
+                 self.audio_manager.stop_all_sounds()
+                 return "QUIT"
         
         return self # 返回 self 表示繼續運行 Game 場景
 
@@ -427,9 +424,7 @@ class Game:
                     items_collected = pygame.sprite.spritecollide(player, self.items_group, True, pygame.sprite.collide_rect)
                     for item in items_collected: 
                         item.apply_effect(player)
-                        bling = pygame.mixer.Sound(settings.BLING_PATH)
-                        bling.set_volume(0.3)
-                        bling.play()
+                        self.audio_manager.play_sound('bling')
 
             if self.game_timer_active:
                 human_player_alive = self.player1 and self.player1.is_alive
