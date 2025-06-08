@@ -23,7 +23,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          # Install pybag separately to avoid its broken dependencies
+          pip install --no-dependencies pybag
+          # Install other development tools
+          pip install pytest pytest-mock flake8
 
       - name: 🧹 Lint code with Flake8
         run: |
