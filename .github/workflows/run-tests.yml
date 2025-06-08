@@ -14,18 +14,16 @@ jobs:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v2
         with:
-          python-version: '3.11'
+          python-version: 3.11
 
-      - name: 📚 Install dependencies
+      - name: Install Dependencies
         run: |
-          echo "🛠️ Installing required packages..."
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-mock
-          echo "✅ Dependencies installed."
+          pip install -r requirements-dev.txt
 
       - name: 🧹 Lint code with Flake8
         run: |
