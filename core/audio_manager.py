@@ -7,26 +7,12 @@ class AudioManager:
     def __init__(self):
         """
         Initializes the audio manager.
-        It pre-loads all sound effects and sets up the music channel.
+        It maps sound names to their paths for on-demand loading.
         """
-        # Ensure the mixer is initialized before use.
         if not pygame.mixer.get_init():
             pygame.mixer.init()
 
-        self.sounds = {}
-        self.music_volume = settings.MENU_MUSIC_VOLUME
-        self.sfx_volume = 0.5  # Default volume for all sound effects.
-
-        self._load_sounds()
-        pygame.mixer.music.set_volume(self.music_volume)
-
-    def _load_sounds(self):
-        """
-        Pre-loads all sound effects defined in settings into memory.
-        This avoids loading from disk during gameplay.
-        """
-        # A dictionary mapping sound names to their file paths from settings.
-        sound_paths = {
+        self.sound_paths = {
             'hover': settings.MENU_HOVER_SOUND_PATH,
             'tick': settings.BOMB_TICK_PATH,
             'explosion': settings.EXPLOSION_PATH,
@@ -34,45 +20,63 @@ class AudioManager:
             'hurt': settings.HURT_PATH,
             'place_bomb': settings.PLACE_BOMB_SOUND_PATH,
         }
-        for name, path in sound_paths.items():
-            try:
-                self.sounds[name] = pygame.mixer.Sound(path)
-            except pygame.error as e:
-                print(f"Error loading sound '{name}' from '{path}': {e}")
+        # Sounds are now loaded on demand, so we store running sounds to manage them.
+        self.playing_sounds = {}
+        self.music_volume = settings.MENU_MUSIC_VOLUME
+        self.sfx_volume = 0.5
+
+        pygame.mixer.music.set_volume(self.music_volume)
+
+    def stop_all(self):
+        """Stops all music and sound effects."""
+        pygame.mixer.music.stop()
+        pygame.mixer.stop()
+        self.playing_sounds.clear()
 
     def stop_all_sounds(self):
         """Stops all currently playing sound effects."""
-        for sound in self.sounds.values():
-            sound.stop()
+        pygame.mixer.stop() # More direct way to stop all sounds
+        self.playing_sounds.clear()
 
     def play_sound(self, name, loops=0, volume_multiplier=1.0):
         """
-        Plays a pre-loaded sound effect by its name.
+        Loads and plays a sound effect on demand.
 
         Args:
             name (str): The key name of the sound to play.
             loops (int): The number of times to repeat the sound. 0 means play once, -1 means loop forever.
             volume_multiplier (float): A multiplier for the sound's volume (0.0 to 1.0).
         """
-        if name in self.sounds:
-            sound = self.sounds[name]
-            sound.set_volume(self.sfx_volume * volume_multiplier)
-            sound.play(loops=loops)
+        if name in self.sound_paths:
+            path = self.sound_paths[name]
+            try:
+                # Stop the specific sound if it's looping, before playing a new one.
+                if name in self.playing_sounds:
+                    self.playing_sounds[name].stop()
+                    
+                sound = pygame.mixer.Sound(path)
+                sound.set_volume(self.sfx_volume * volume_multiplier)
+                sound.play(loops=loops)
+                # If it's a looping sound, keep track of it
+                if loops == -1:
+                    self.playing_sounds[name] = sound
+            except pygame.error as e:
+                print(f"Error loading and playing sound '{name}' from '{path}': {e}")
         else:
             print(f"Warning: Sound '{name}' not found in AudioManager.")
 
     def stop_sound(self, name):
         """
         Stops a specific sound effect from playing.
-        Useful for looping sounds like the bomb tick.
+        This is particularly important for looping sounds.
 
         Args:
             name (str): The key name of the sound to stop.
         """
-        if name in self.sounds:
-            self.sounds[name].stop()
-        else:
-            print(f"Warning: Cannot stop sound '{name}', not found in AudioManager.")
+        if name in self.playing_sounds:
+            self.playing_sounds[name].stop()
+            del self.playing_sounds[name]
+        # Fallback for non-looping sounds is harder, this prioritizes stoppable sounds.
 
     def play_music(self, music_path, loops=-1):
         """
