@@ -36,25 +36,24 @@ class ThankYouScene:
         self.subtitle_rect = self.subtitle_surf.get_rect(center=(settings.SCREEN_WIDTH // 2, settings.SCREEN_HEIGHT // 2 + 20))
 
         # 【新增】一個旗標，用來告訴 main.py 是否要真正結束應用程式
-        self.request_app_quit = False 
+        self.request_app_quit = False
 
-    def update(self, events):
-        """處理此場景的事件。"""
+    def update(self, events, dt):
+        """
+        處理感謝場景的事件。
+        目前只監聽是否有任何按鍵或點擊，以觸發退出。
+        """
         for event in events:
-            # 在這個感謝畫面，我們可以讓任何按鍵或滑鼠點擊都觸發真正的退出
-            # 或者，您可以選擇不處理任何事件，讓畫面一直顯示
-            if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                # 為了確保在網頁上點擊不會立即關閉 (因為關閉由使用者手動進行)
-                # 我們可以選擇在這裡不做任何事，或者您可以設定一個計時器自動退出
-                # 此處我們簡單地讓它保持顯示，使用者手動關閉分頁
-                pass 
+            # 偵測到任何按鍵或滑鼠點擊，就設定退出旗標
+            if event.type == pygame.QUIT or \
+               event.type == pygame.KEYDOWN or \
+               event.type == pygame.MOUSEBUTTONDOWN:
+                self.request_app_quit = True
+                break # 找到一個就夠了
 
-        # 這個場景會一直返回自己，直到使用者關閉瀏覽器分頁
-        # 如果想讓它在一段時間後或按鍵後也結束 main.py 的迴圈，可以在這裡返回 "REAL_QUIT"
-        # 例如：
-        # if some_condition:
-        #    return "REAL_QUIT" 
-        return self 
+        # 返回 self 表示繼續停留在這個場景
+        # main.py 的主迴圈會檢查 request_app_quit 旗標
+        return self
 
     def draw(self):
         """繪製此場景。"""

@@ -82,7 +82,7 @@ class TestMenu:
             {'button': 1, 'pos': leaderboard_button["rect"].center}
         )
         
-        next_scene_or_action = menu.update([mouse_click_event])
+        next_scene_or_action = menu.update([mouse_click_event], 0.016)
         
         assert menu.menu_state == "LEADERBOARD"
         assert next_scene_or_action is menu
@@ -100,7 +100,7 @@ class TestMenu:
             {'button': 1, 'pos': quit_button["rect"].center}
         )
         
-        action = menu.update([mouse_click_event])
+        action = menu.update([mouse_click_event], 0.016)
         assert action == "QUIT"
     
     def test_menu_select_ai_starts_game(self, mock_menu_env):
@@ -119,7 +119,7 @@ class TestMenu:
             {'button': 1, 'pos': ai_button["rect"].center}
         )
         
-        next_scene = menu.update([mouse_click_event])
+        next_scene = menu.update([mouse_click_event], 0.016)
         
         assert isinstance(next_scene, Game)
         assert hasattr(next_scene, 'audio_manager')
@@ -134,7 +134,7 @@ class TestMenu:
 
         escape_key_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
         
-        next_scene_or_action = menu.update([escape_key_event])
+        next_scene_or_action = menu.update([escape_key_event], 0.016)
         
         assert menu.menu_state == "MAIN"
         assert next_scene_or_action is menu
@@ -148,7 +148,7 @@ class TestMenu:
 
         escape_key_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
         
-        action = menu.update([escape_key_event])
+        action = menu.update([escape_key_event], 0.016)
         assert action == "QUIT"
     
     def test_menu_leaderboard_display(self, mock_menu_env):
@@ -161,7 +161,7 @@ class TestMenu:
             pygame.MOUSEBUTTONDOWN,
             {'button': 1, 'pos': leaderboard_button["rect"].center}
         )
-        menu.update([mouse_click_event])
+        menu.update([mouse_click_event], 0.016)
         assert menu.menu_state == "LEADERBOARD"
         assert menu.leaderboard_manager is not None
         assert menu.leaderboard_manager.scores == []
