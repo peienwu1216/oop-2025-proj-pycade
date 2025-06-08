@@ -165,6 +165,7 @@ ticking_playing = False
 EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
 BLING_PATH = os.path.join(SOUNDS_DIR, "bling.mp3") # 拾取道具音效
 HURT_PATH = os.path.join(SOUNDS_DIR, "hurt.mp3") # 受傷音效
+PLACE_BOMB_SOUND_PATH = os.path.join(SOUNDS_DIR, "place_bomb.mp3") # 放置炸彈音效
 GAME_VICTORY_PATH = os.path.join(SOUNDS_DIR, "Undertale_Hopes_and_Dreams.mp3") # 遊戲勝利音效
 GAME_OVER_PATH = os.path.join(SOUNDS_DIR, "Undertale_An_Ending.mp3") # 遊戲結束音效
 THANKS_YOU_PATH = os.path.join(SOUNDS_DIR, "Undertale_His_Themes.mp3") # 感謝畫面音樂
