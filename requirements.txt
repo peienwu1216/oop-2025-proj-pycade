@@ -1,9 +1,2 @@
 # 遊戲執行必要的套件
 pygame
-
-#AI 強化學習（有需要用到讚再加）
-# gymnasium
-# stable-baselines3[extra]>=2.0.0
-# torch>=1.13
-# numpy
-# tensorboard
