@@ -123,12 +123,6 @@ class Bomb(GameObject):
                 self.is_solidified = True 
         
         if not self.exploded:
-            if (settings.ticking_playing == False):
-                # 使用 AudioManager 播放循環音效
-                if hasattr(self.game, 'audio_manager'):
-                    self.game.audio_manager.play_sound('tick', loops=-1, volume_multiplier=0.6) # loops=-1 表示無限循環
-                settings.ticking_playing = True
-
             # === 1. 計算縮放因子 ===
             elapsed = (pygame.time.get_ticks() - self.spawn_time) / 1000  # 秒
             frequency = 1  # 每秒跳動次數
@@ -158,10 +152,6 @@ class Bomb(GameObject):
 
             # === 6. 爆炸判斷 ===
             if time_left <= 0:
-                if hasattr(self.game, 'audio_manager'):
-                    self.game.audio_manager.stop_sound('tick')
-                
-                settings.ticking_playing = False
                 self.explode()
 
     def explode(self):
@@ -170,6 +160,10 @@ class Bomb(GameObject):
         if not self.exploded:
             # print(f"Bomb at ({self.current_tile_x}, {self.current_tile_y}) EXPLOADED by player with range {self.placed_by_player.bomb_range}!") # DEBUG
             self.exploded = True
+            
+            if hasattr(self.game, 'audio_manager'):
+                self.game.audio_manager.play_sound('explosion')
+
             if self.placed_by_player:
                  self.placed_by_player.bomb_exploded_feedback()
 
@@ -202,9 +196,6 @@ class Bomb(GameObject):
 
                     if is_destructible_here:
                         break 
-            
-            if hasattr(self.game, 'audio_manager'):
-                self.game.audio_manager.play_sound('explosion')
             
             for ex_tile_x, ex_tile_y in explosion_tiles:
                 expl_sprite = Explosion(ex_tile_x, ex_tile_y, self.game, self.images)
