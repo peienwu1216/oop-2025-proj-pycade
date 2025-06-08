@@ -25,6 +25,7 @@ class Game:
         self.clock = clock
 
         self.audio_manager = audio_manager # 儲存傳入的實例
+        self.audio_manager.stop_all()
         self.audio_manager.play_music(settings.GAME_MUSIC_PATH)
         
         self.running = True # 這個 self.running 仍然有用，用來標記 Game 場景是否應該繼續
