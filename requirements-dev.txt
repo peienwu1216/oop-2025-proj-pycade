@@ -1,4 +1,5 @@
 # Development, build-time, and testing dependencies
 pybag==0.1.9
 pytest
-pytest-mock 
+pytest-mock
+flake8 

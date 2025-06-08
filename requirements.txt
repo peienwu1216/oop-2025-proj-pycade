@@ -1,12 +1,6 @@
 # 遊戲執行必要的套件
 pygame==2.6.1
 
-# 測試必要的套件
-# 如果有其他測試專用的套件，可以放在這裡，或者也移到 requirements-dev.txt
-
-# 程式碼品質檢查工具
-flake8
-
 #AI 強化學習（有需要用到讚再加）
 # gymnasium
 # stable-baselines3[extra]>=2.0.0
