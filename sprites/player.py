@@ -312,6 +312,8 @@ class Player(GameObject):
             # （10）！！！ 修改結束 ！！！（10）
             
             if can_place:
+                if (not self.is_ai) and hasattr(self.game, 'audio_manager'):
+                    self.game.audio_manager.play_sound('place_bomb')
                 from .bomb import Bomb 
                 new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game) 
                 # self.game.all_sprites.add(new_bomb) 

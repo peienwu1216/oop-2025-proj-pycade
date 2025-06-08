@@ -32,6 +32,7 @@ class AudioManager:
             'explosion': settings.EXPLOSION_PATH,
             'bling': settings.BLING_PATH,
             'hurt': settings.HURT_PATH,
+            'place_bomb': settings.PLACE_BOMB_SOUND_PATH,
         }
         for name, path in sound_paths.items():
             try:
@@ -43,7 +44,7 @@ class AudioManager:
         """Stops all currently playing sound effects."""
         for sound in self.sounds.values():
             sound.stop()
-            
+
     def play_sound(self, name, loops=0, volume_multiplier=1.0):
         """
         Plays a pre-loaded sound effect by its name.
