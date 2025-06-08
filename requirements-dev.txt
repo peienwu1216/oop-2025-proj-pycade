@@ -1,4 +1,0 @@
-# Development, build-time, and testing dependencies
-pytest
-pytest-mock
-flake8 

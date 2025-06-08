@@ -18,17 +18,18 @@ jobs:
       - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v2
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📚 Install Dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install --no-dependencies pybag
-          pip install flake8
+          pip install pygbag pytest pytest-mock flake8
 
       - name: 🧪 Verify Template File Presence
         run: |
@@ -39,7 +40,7 @@ jobs:
         timeout-minutes: 30
         run: |
           echo "🔧 Building web version with pygbag..."
-          python -m pygbag --build --archive --disable-sound-format-error .
+          pygbag --build --archive .
           echo "✅ Pygbag build completed."
 
       - name: 🔎 Verify Build Output
