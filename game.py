@@ -419,17 +419,18 @@ class Game:
                     if self.player1.is_alive and self.player2_ai.is_alive:
                         if self.player1.lives > self.player2_ai.lives:
                             self.time_up_winner = "P1"; p1_won_by_time = True
-                            self.game_over_reason = "You had more lives when time ran out."
+                            self.game_over_reason = f"You had more lives ({self.player1.lives} vs {self.player2_ai.lives})"
                         elif self.player2_ai.lives > self.player1.lives:
                             self.time_up_winner = "AI"
-                            self.game_over_reason = "The AI had more lives when time ran out."
+                            self.game_over_reason = f"AI had more lives ({self.player2_ai.lives} vs {self.player1.lives})"
                         else:
+                            # 生命值相同，比較分數
                             if self.player1.score > self.player2_ai.score:
                                 self.time_up_winner = "P1"; p1_won_by_time = True
-                                self.game_over_reason = "You had a higher score when time ran out."
+                                self.game_over_reason = f"You had a higher score ({self.player1.score} vs {self.player2_ai.score})"
                             elif self.player2_ai.score > self.player1.score:
                                 self.time_up_winner = "AI"
-                                self.game_over_reason = "The AI had a higher score when time ran out."
+                                self.game_over_reason = f"AI had a higher score ({self.player2_ai.score} vs {self.player1.score})"
                             else: self.time_up_winner = "DRAW"; self.game_over_reason = "Time ran out with a perfect draw."
                     elif self.player1.is_alive:
                         self.time_up_winner = "P1"; p1_won_by_time = True
@@ -479,6 +480,7 @@ class Game:
                         if not human_player_alive and not ai_player_alive:
                              self.game_over_reason = "Both combatants were eliminated simultaneously."
                         elif not ai_player_alive:
+                            p1_won_by_ko = True # 確保設定勝利旗標
                             self.game_over_reason = "You defeated the AI in combat!"
                         else: # not human_player_alive
                             self.game_over_reason = "You were eliminated in combat."
@@ -814,8 +816,8 @@ class Game:
 
         # 繪製遊戲結束原因的副標題
         if self.game_over_reason and self.restart_font:
-            reason_surf = self.restart_font.render(self.game_over_reason, True, settings.WHITE)
-            reason_rect = reason_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, text_rect.bottom + 25))
+            reason_surf = self.restart_font.render(self.game_over_reason, True, settings.DARK_GREY)
+            reason_rect = reason_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, text_rect.bottom + 30)) # 稍微增加間距
             self.screen.blit(reason_surf, reason_rect)
         
         # 繪製返回主選單的按鈕
@@ -825,8 +827,8 @@ class Game:
             button_img = self.continue_button_hover_img if is_hovering else self.continue_button_img
             self.screen.blit(button_img, self.game_over_button_rect)
 
-            # 重新加入鍵盤提示文字
-            restart_text = self.restart_font.render("or Press 'R' to return", True, settings.WHITE)
+            # 重新加入鍵盤提示文字，並修改顏色
+            restart_text = self.restart_font.render("or Press 'R' to return", True, settings.DARK_GREY)
             restart_rect = restart_text.get_rect(center=(settings.SCREEN_WIDTH / 2, self.game_over_button_rect.bottom + 20))
             self.screen.blit(restart_text, restart_rect)
 
@@ -836,37 +838,27 @@ class Game:
             return
         self.screen.blit(self.victory_background_image, (0, 0))
         overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((255, 255, 255, 150))  # R, G, B, A (180 ≈ 70% 不透明)
-        self.screen.blit(overlay, (0, 0))
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0,0))
+        color = pygame.Color('white') if self.input_box_active else pygame.Color('lightskyblue3')
 
-        prompt_text = "VICTORY! New High Score!"
-        prompt_surf = self.prompt_font.render(prompt_text, True, (194, 64, 0))
-        prompt_rect = prompt_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 3))
-        self.screen.blit(prompt_surf, prompt_rect)
+        prompt_text = self.prompt_font.render("You've got a high score!", True, settings.WHITE)
+        prompt_rect = prompt_text.get_rect(center=(settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2 - 140))
+        self.screen.blit(prompt_text, prompt_rect)
+
+        # 顯示勝利原因
+        if self.game_over_reason and self.restart_font:
+            reason_surf = self.restart_font.render(self.game_over_reason, True, settings.LIGHT_GREY) # 使用淺灰色
+            reason_rect = reason_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, prompt_rect.bottom + 30))
+            self.screen.blit(reason_surf, reason_rect)
+
+        pygame.draw.rect(self.screen, color, self.name_input_rect, 2)
+        text_surface = self.text_input_font.render(self.player_name_input, True, settings.WHITE)
         
-        enter_name_text = "Enter Your Name:"
-        enter_name_surf = self.victory_font.render(enter_name_text, True, (50, 50, 50))
-        enter_name_rect = enter_name_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, prompt_rect.bottom + 40))
-        self.screen.blit(enter_name_surf, enter_name_rect)
-
-        self.name_input_rect.width = 300
-        self.name_input_rect.height = 50
-        self.name_input_rect.center = (settings.SCREEN_WIDTH / 2, enter_name_rect.bottom + 40)
-        
-        box_color = getattr(settings, "TEXT_INPUT_BOX_COLOR_ACTIVE", (0,100,255)) if self.input_box_active else getattr(settings, "TEXT_INPUT_BOX_COLOR_INACTIVE", (100,100,100))
-        pygame.draw.rect(self.screen, box_color, self.name_input_rect, 0, border_radius=5)
-        pygame.draw.rect(self.screen, settings.BLACK, self.name_input_rect, 2, border_radius=5)
-
-        if self.text_input_font:
-            text_surf = self.text_input_font.render(self.player_name_input, True, getattr(settings, "TEXT_INPUT_TEXT_COLOR", settings.BLACK))
-            text_rect = text_surf.get_rect(midleft=(self.name_input_rect.x + 15, self.name_input_rect.centery))
-            self.screen.blit(text_surf, text_rect)
-
-            if self.input_box_active and pygame.time.get_ticks() % 1000 < 500:
-                cursor_x_pos = text_rect.right + 3 if self.player_name_input else self.name_input_rect.x + 15
-                pygame.draw.line(self.screen, getattr(settings, "TEXT_INPUT_TEXT_COLOR", settings.BLACK),
-                                (cursor_x_pos, self.name_input_rect.y + 10),
-                                (cursor_x_pos, self.name_input_rect.bottom - 10), 2)
+        # 修正文字位置，使其垂直置中
+        text_rect = text_surface.get_rect(midleft=(self.name_input_rect.x + 10, self.name_input_rect.centery))
+        self.screen.blit(text_surface, text_rect)
+        self.name_input_rect.w = max(280, text_surface.get_width() + 20)
 
         # 繪製繼續按鈕
         if self.game_over_button_rect:
@@ -878,7 +870,7 @@ class Game:
             # 加入鍵盤提示
             submit_prompt_text = "or Press ENTER to Submit"
             if self.victory_font:
-                submit_surf = self.victory_font.render(submit_prompt_text, True, settings.WHITE)
+                submit_surf = self.victory_font.render(submit_prompt_text, True, settings.DARK_GREY)
                 submit_rect = submit_surf.get_rect(center=(settings.SCREEN_WIDTH / 2, self.game_over_button_rect.bottom + 20))
                 self.screen.blit(submit_surf, submit_rect)
 
