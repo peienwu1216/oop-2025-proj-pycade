@@ -26,7 +26,7 @@ LIGHT_BROWN = (222, 193, 179)
 # 遊戲機制設定 (Gameplay Mechanics)
 # -----------------------------------------------------------------------------
 # 遊戲時間與計時器
-GAME_DURATION_SECONDS = 151
+GAME_DURATION_SECONDS = 181
 GAME_TIME_UP_MESSAGE_COLOR = (200, 0, 0)
 TIMER_COLOR = (220, 0, 0)
 TIMER_URGENT_COLOR = (255, 0, 0)
@@ -125,6 +125,8 @@ TEXT_INPUT_PROMPT_COLOR = BLACK
 TEXT_INPUT_TEXT_COLOR = BLACK
 TEXT_INPUT_MAX_LENGTH = 10
 HUD_AI_OFFSET_X = 205 # HUD 中 AI 資訊相對於 P1 的水平偏移 (game.py draw_hud 中使用)
+THANK_YOU_BG_COLOR = (253, 246, 227)
+THANK_YOU_FONT_COLOR = (44, 62, 80) 
 
 # -----------------------------------------------------------------------------
 # 排行榜設定 (Leaderboard Settings)
@@ -163,6 +165,7 @@ ticking_playing = False
 EXPLOSION_PATH = os.path.join(SOUNDS_DIR, "explosion.mp3") # 爆炸音效
 BLING_PATH = os.path.join(SOUNDS_DIR, "bling.mp3") # 拾取道具音效
 HURT_PATH = os.path.join(SOUNDS_DIR, "hurt.mp3") # 受傷音效
+PLACE_BOMB_SOUND_PATH = os.path.join(SOUNDS_DIR, "place_bomb.mp3") # 放置炸彈音效
 GAME_VICTORY_PATH = os.path.join(SOUNDS_DIR, "Undertale_Hopes_and_Dreams.mp3") # 遊戲勝利音效
 GAME_OVER_PATH = os.path.join(SOUNDS_DIR, "Undertale_An_Ending.mp3") # 遊戲結束音效
 THANKS_YOU_PATH = os.path.join(SOUNDS_DIR, "Undertale_His_Themes.mp3") # 感謝畫面音樂

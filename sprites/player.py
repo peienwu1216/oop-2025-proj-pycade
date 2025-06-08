@@ -312,6 +312,8 @@ class Player(GameObject):
             # （10）！！！ 修改結束 ！！！（10）
             
             if can_place:
+                if (not self.is_ai) and hasattr(self.game, 'audio_manager'):
+                    self.game.audio_manager.play_sound('place_bomb')
                 from .bomb import Bomb 
                 new_bomb = Bomb(bomb_tile_x, bomb_tile_y, self, self.game) 
                 # self.game.all_sprites.add(new_bomb) 
@@ -330,8 +332,11 @@ class Player(GameObject):
         if self.is_alive and (current_time - self.last_hit_time > self.invincible_duration): 
             self.lives -= amount 
             self.last_hit_time = current_time 
-            hurt = pygame.mixer.Sound(settings.HURT_PATH)
-            hurt.play()
+            
+            # 使用 AudioManager 播放音效
+            if hasattr(self.game, 'audio_manager'):
+                self.game.audio_manager.play_sound('hurt')
+
             print(f"Player (ID: {id(self)}, AI: {self.is_ai}) took damage! Lives left: {self.lives}") 
             if hasattr(self.game, "floating_texts_group"):
                 fx = self.rect.centerx
@@ -340,7 +345,7 @@ class Player(GameObject):
                 self.game.floating_texts_group.add(text)
             if self.lives <= 0: 
                 self.lives = 0 
-                self.die() 
+                self.die()
 
     def die(self): 
         if self.is_alive: 
