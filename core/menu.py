@@ -52,6 +52,7 @@ class Menu:
         self.ai_options = settings.AVAILABLE_AI_ARCHETYPES
         self.buttons = []
         self._create_buttons()
+        self.back_button_rect = None # 初始化返回按鈕
 
     def _create_buttons(self):
         # (此函式保持不變)
