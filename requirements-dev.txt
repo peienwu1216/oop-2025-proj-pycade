@@ -1,5 +1,4 @@
 # Development, build-time, and testing dependencies
-pybag
 pytest
 pytest-mock
 flake8 
