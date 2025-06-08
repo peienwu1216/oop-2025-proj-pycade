@@ -172,7 +172,7 @@ THANKS_YOU_PATH = os.path.join(SOUNDS_DIR, "Undertale_His_Themes.mp3") # 感謝�
 
 # 特定圖片路徑
 # 地圖背景
-VICTORY_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "background", "victory_background.png") # 流水背景圖片
+VICTORY_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "background", "victory_background.jpg") # 流水背景圖片
 # 牆壁
 WALL_SOLID_IMG = os.path.join(IMAGES_DIR, "walls", "wall_solid_placeholder.png")
 WALL_DESTRUCTIBLE_IMG = os.path.join(IMAGES_DIR, "walls", "wall_destructible_placeholder.png")
@@ -205,7 +205,7 @@ ITEM_BOMB_CAPACITY_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_capacity_p
 ITEM_BOMB_RANGE_IMG = os.path.join(IMAGES_DIR, "items", "item_bomb_range_placeholder.png")
 
 # Menu 圖片
-MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.png")
+MENU_BACKGROUND_IMG = os.path.join(IMAGES_DIR, "menu", "background.jpg")
 MENU_AI_LIGHT_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button.png")
 MENU_AI_LIGHT_BUTTON_HOVER_IMG = os.path.join(IMAGES_DIR, "menu", "ai_light_button_hover.png")
 MENU_AI_BLUE_BUTTON_IMG = os.path.join(IMAGES_DIR, "menu", "ai_blue_button.png")
