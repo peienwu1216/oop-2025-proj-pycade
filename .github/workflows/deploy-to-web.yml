@@ -25,13 +25,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
-          # Install dependencies from files
           pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          # Install pybag directly from github to get the version with corrected dependencies
-          pip install git+https://github.com/pygame-web/pygbag.git
+          pip install --no-dependencies pybag
+          pip install flake8
 
       - name: 🧪 Verify Template File Presence
         run: |
@@ -42,7 +39,7 @@ jobs:
         timeout-minutes: 30
         run: |
           echo "🔧 Building web version with pygbag..."
-          python -m pygbag --build --archive .
+          python -m pygbag --build --archive --disable-sound-format-error .
           echo "✅ Pygbag build completed."
 
       - name: 🔎 Verify Build Output

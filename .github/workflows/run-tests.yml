@@ -21,11 +21,10 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          pip install git+https://github.com/pygame-web/pygbag.git
+          pip install --no-dependencies pybag
+          pip install pytest pytest-mock flake8
 
       - name: 🧹 Lint code with Flake8
         run: |
