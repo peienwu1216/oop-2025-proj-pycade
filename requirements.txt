@@ -1,5 +1,5 @@
 # 遊戲執行必要的套件
-pygame==2.6.1
+pygame
 
 #AI 強化學習（有需要用到讚再加）
 # gymnasium
