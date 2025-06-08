@@ -22,5 +22,11 @@
         "score": 60,
         "ai_defeated": "aggressive",
         "date": "2025-06-08 15:09"
+    },
+    {
+        "name": "INSTA",
+        "score": 50,
+        "ai_defeated": "conservative",
+        "date": "2025-06-08 15:38"
     }
 ]
