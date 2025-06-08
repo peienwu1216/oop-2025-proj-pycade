@@ -5,17 +5,17 @@ import settings # 用於取得顏色和螢幕尺寸等設定
 # from core.menu import Menu # 如果要加「返回選單」按鈕才需要
 
 class ThankYouScene:
-    def __init__(self, screen):
+    def __init__(self, screen, audio_manager):
         self.screen = screen
-        self.font_color = settings.WHITE
-        self.background_color = settings.BLACK # 您可以選擇一個不同的背景色
-        pygame.mixer.music.load(settings.THANKS_YOU_PATH)
-        pygame.mixer.music.set_volume(settings.MENU_MUSIC_VOLUME)
-        pygame.mixer.music.play(-1) 
+        self.audio_manager = audio_manager
+        self.font_color = settings.THANK_YOU_FONT_COLOR
+        self.background_color = settings.THANK_YOU_BG_COLOR # 您可以選擇一個不同的背景色
+
+        self.audio_manager.play_music(settings.THANKS_YOU_PATH)
         try:
             # 嘗試使用您在 settings.py 中定義的字體路徑
             # 您可以選擇一個適合的字體，例如主選單的 option_font 或 description_font
-            font_path = settings.CHINESE_FONT_PATH
+            font_path = settings.SUB_TITLE_FONT_PATH # 或者使用其他字體路徑
             self.title_font_size = 48
             self.subtitle_font_size = 28
             self.title_font = pygame.font.Font(font_path, self.title_font_size)
@@ -25,8 +25,8 @@ class ThankYouScene:
             self.title_font = pygame.font.Font(None, 60) # 備用字體
             self.subtitle_font = pygame.font.Font(None, 30)
 
-        self.message_text = "感謝您的遊玩！"
-        self.instruction_text = "請手動關閉此瀏覽器分頁以結束。"
+        self.message_text = "Thank you for playing!"
+        self.instruction_text = "Please close this browser tab to exit."
 
         # 計算文字位置 (只計算一次，以提升效能)
         self.title_surf = self.title_font.render(self.message_text, True, self.font_color)
