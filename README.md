@@ -34,6 +34,57 @@
 * **Python 版本**：3.x (開發環境為 3.13.2)
 * **Pygame 版本**：2.6.1
 
+## 專案架構
+```
+.
+├── .github/
+│   └── workflows/
+│       ├── deploy-to-web.yml    # CI/CD: 自動部署遊戲到 GitHub Pages
+│       └── run-tests.yml        # CI/CD: 自動執行測試與程式碼風格檢查
+├── assets/
+│   └── data/
+│       └── leaderboard.json     # 數據：儲存排行榜資料
+├── core/                        # 核心邏輯與系統
+│   ├── ai_aggressive.py         # AI策略：攻擊型
+│   ├── ai_conservative.py       # AI策略：保守型
+│   ├── ai_controller.py         # AI控制器：管理AI行為
+│   ├── ai_controller_base.py    # AI策略：基礎介面 (Strategy Pattern)
+│   ├── ai_item_focused.py       # AI策略：道具優先型
+│   ├── audio_manager.py         # 管理器：音效播放
+│   ├── leaderboard_manager.py   # 管理器：排行榜讀寫
+│   ├── map_manager.py           # 管理器：地圖載入與生成
+│   ├── menu.py                  # 場景：主選單
+│   ├── start_scene.py           # 場景：開始畫面
+│   ├── thank_you_scene.py       # 場景：結束畫面
+│   └── touch_controls.py        # 觸控支援 (未使用)
+├── rl_ai/                       # 強化學習AI (未使用/實驗性)
+│   ├── bomberman_env.py
+│   ├── evaluate_ppo_agent.py
+│   └── train_ppo_agent.py
+├── sprites/                     # 遊戲中的所有物件 (Sprite)
+│   ├── bomb.py                  # 物件：炸彈
+│   ├── draw_text.py             # 物件：文字顯示
+│   ├── explosion.py             # 物件：爆炸效果
+│   ├── game_object.py           # 基礎物件：所有遊戲物件的父類別
+│   ├── item.py                  # 物件：道具
+│   ├── player.py                # 物件：玩家
+│   └── wall.py                  # 物件：牆壁
+├── test/                        # 自動化單元測試
+│   ├── conftest.py              # Pytest 設定檔，提供測試用的通用物件
+│   ├── test_ai_aggressive.py
+│   ├── test_bomb.py
+│   ├── test_game.py
+│   ├── test_player.py
+│   └── ... (其他各模組的測試檔案)
+├── .gitignore                   # Git 忽略清單
+├── README.md                    # 專案說明文件
+├── game.py                      # 遊戲主迴圈與場景管理器
+├── main.py                      # 程式主進入點
+├── pytest.ini                   # Pytest 設定檔
+└── requirements.txt             # Python 相依套件清單
+```
+
+
 ## 核心功能
 
 * **主選單系統 (`core/menu.py`)**：
