@@ -3,8 +3,18 @@ name: 🚀 Build and Deploy Pycade Bomber to Web
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '**/*.md'
+      - 'docs/**'
 
 permissions:
   contents: read

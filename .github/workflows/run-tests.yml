@@ -3,8 +3,11 @@ name: 🧪 Run Pygame Tests
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '**/*.md'
+      - 'docs/**'
 
 jobs:
   Run-Pygame-Tests:
