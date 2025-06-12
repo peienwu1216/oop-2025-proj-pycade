@@ -745,7 +745,7 @@ class AIControllerBase:
         if hasattr(self.game, 'bombs_group'):
             for bomb in self.game.bombs_group:
                 if bomb.exploded: continue
-                time_to_explosion_ms = (bomb.spawn_time + bomb.timer) - pygame.time.get_ticks()
+                time_to_explosion_ms = bomb.time_left
                 if 0 < time_to_explosion_ms < future_seconds * 1000:
                     range_to_check = bomb.placed_by_player.bomb_range if hasattr(bomb.placed_by_player, 'bomb_range') else 1
                     if self._is_tile_in_hypothetical_blast(tile_x, tile_y, bomb.current_tile_x, bomb.current_tile_y, range_to_check): return True
