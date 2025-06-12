@@ -25,6 +25,9 @@ class AudioManager:
         self.music_volume = settings.MENU_MUSIC_VOLUME
         self.sfx_volume = 0.5
         self.paused_sfx = {} # For web browser compatibility
+        # Fallback helpers (needed on web where mixer.pause may not be permitted)
+        self._music_muted_for_pause = False
+        self._stored_music_volume = self.music_volume
 
         pygame.mixer.music.set_volume(self.music_volume)
 
@@ -118,13 +121,33 @@ class AudioManager:
         pygame.mixer.music.set_volume(self.music_volume)
 
     def pause_music(self):
-        """Pauses the currently playing music."""
-        if self.is_playing():
+        """Pauses the currently playing music with browser-friendly fallback."""
+        if not self.is_playing():
+            return
+
+        try:
             pygame.mixer.music.pause()
+            self._music_muted_for_pause = False
+        except Exception as e:
+            # Browsers (e.g., pygbag) may reject the pause call with NotAllowedError
+            print(f"AudioManager.pause_music: fallback to volume mute ({e}).")
+            if not self._music_muted_for_pause:
+                self._stored_music_volume = pygame.mixer.music.get_volume()
+                pygame.mixer.music.set_volume(0)
+                self._music_muted_for_pause = True
 
     def unpause_music(self):
-        """Resumes the paused music."""
-        pygame.mixer.music.unpause()
+        """Resumes the paused music or restores volume if we used the mute fallback."""
+        try:
+            pygame.mixer.music.unpause()
+            if self._music_muted_for_pause:
+                pygame.mixer.music.set_volume(self._stored_music_volume)
+                self._music_muted_for_pause = False
+        except Exception as e:
+            print(f"AudioManager.unpause_music: restore from mute ({e}).")
+            if self._music_muted_for_pause:
+                pygame.mixer.music.set_volume(self._stored_music_volume)
+                self._music_muted_for_pause = False
 
     def pause_all_sfx(self):
         """
