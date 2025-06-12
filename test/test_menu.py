@@ -103,28 +103,48 @@ class TestMenu:
         action = menu.update([mouse_click_event], 0.016)
         assert action == "QUIT"
     
-    def test_menu_select_ai_starts_game(self, mock_menu_env):
-        """Test if selecting an AI opponent returns a Game instance."""
+    def test_menu_select_ai_and_map_starts_game(self, mock_menu_env):
+        """Test if selecting an AI opponent and then a map returns a Game instance."""
         screen, clock, audio_manager = mock_menu_env
         menu = Menu(screen, audio_manager, clock)
 
+        # --- Step 1: Select AI ---
         first_ai_display_name = list(settings.AVAILABLE_AI_ARCHETYPES.keys())[0]
         first_ai_archetype_key = settings.AVAILABLE_AI_ARCHETYPES[first_ai_display_name]
 
         ai_button = self.find_button_by_action(menu.buttons, "SELECT_AI", first_ai_archetype_key)
-        assert ai_button is not None
+        assert ai_button is not None, "AI selection button not found."
 
-        mouse_click_event = pygame.event.Event(
+        mouse_click_event_ai = pygame.event.Event(
             pygame.MOUSEBUTTONDOWN,
             {'button': 1, 'pos': ai_button["rect"].center}
         )
         
-        next_scene = menu.update([mouse_click_event], 0.016)
+        next_scene = menu.update([mouse_click_event_ai], 0.016)
         
-        assert isinstance(next_scene, Game)
-        assert hasattr(next_scene, 'audio_manager')
-        assert next_scene.ai_archetype == first_ai_archetype_key
-        assert next_scene.screen is screen
+        # After selecting AI, we should be in the same Menu scene, but in "SELECT_MAP" state
+        assert next_scene is menu, "After AI selection, scene should still be Menu."
+        assert menu.menu_state == "SELECT_MAP", "Menu state should change to SELECT_MAP."
+        assert menu.selected_ai_archetype == first_ai_archetype_key, "Selected AI archetype was not stored."
+
+        # --- Step 2: Select Map ---
+        map_button = self.find_button_by_action(menu.buttons, "SELECT_MAP") # Find any map button
+        assert map_button is not None, "Map selection button not found."
+        selected_map_type = map_button["map_type"]
+
+        mouse_click_event_map = pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN,
+            {'button': 1, 'pos': map_button["rect"].center}
+        )
+
+        final_scene = menu.update([mouse_click_event_map], 0.016)
+
+        # Now we should get a Game instance
+        assert isinstance(final_scene, Game)
+        assert hasattr(final_scene, 'audio_manager')
+        assert final_scene.ai_archetype == first_ai_archetype_key
+        assert final_scene.map_type == selected_map_type
+        assert final_scene.screen is screen
     
     def test_menu_escape_from_leaderboard_returns_to_main(self, mock_menu_env):
         """Test if pressing ESC in leaderboard view returns to the main menu state."""
