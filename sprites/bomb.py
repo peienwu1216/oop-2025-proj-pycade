@@ -37,11 +37,11 @@ class Bomb(GameObject):
         )
         self.placed_by_player = placed_by_player
         self.game = game_instance # 儲存 Game 實例，以便訪問 Sprite Group 等
-        self.spawn_time = pygame.time.get_ticks() # 記錄放置時間
         self.timer = settings.BOMB_TIMER # 毫秒
+        self.time_left = float(self.timer) # 【修改】使用剩餘時間，而不是生成時間
         self.exploded = False
-        self.current_tile_x = x_tile # [SPS_BOMB_NO_CHANGE_NEEDED] 記錄炸彈所在的格子座標，這很好。
-        self.current_tile_y = y_tile # [SPS_BOMB_NO_CHANGE_NEEDED] 記錄炸彈所在的格子座標，這很好。
+        self.current_tile_x = x_tile
+        self.current_tile_y = y_tile
 
         self.is_solidified = False # 炸彈初始不是固態的，允許放置者離開
         self.owner_has_left_tile = False # 標記擁有者是否已離開此格
@@ -64,7 +64,7 @@ class Bomb(GameObject):
                 for img in settings.AI_PLAYER_BOMB_IMAGES
             ]
         self.animation_index = 0
-        self.last_animation_time = pygame.time.get_ticks()
+        self.last_animation_time = 0 # 【修改】改為計時器
         self.animation_interval = 300  # 毫秒，調整為你想要的動畫速度
         
         # -- Explosion images --
@@ -75,6 +75,9 @@ class Bomb(GameObject):
             )
             for img in settings.EXPLOSION_IMGS
         ]
+
+        # -- Pulsating effect --
+        self.elapsed_time = 0.0 # 【新增】用於計算脈動效果的累計時間
 
 
         # For visual countdown (optional)
@@ -89,9 +92,8 @@ class Bomb(GameObject):
 
     def draw_timer_bar(self, surface):
         """在給定 surface 上繪製炸彈倒數計時條，不受炸彈動畫縮放影響。"""
-        # 計算剩餘時間比例
-        time_left = max(0, self.timer - (pygame.time.get_ticks() - self.spawn_time))
-        time_ratio = time_left / self.timer
+        # 【修改】計算剩餘時間比例
+        time_ratio = max(0, self.time_left) / self.timer
         
         screen_x = self.rect.centerx
         screen_y = self.current_tile_y * settings.TILE_SIZE + settings.TILE_SIZE  # tile 的底部
@@ -108,13 +110,17 @@ class Bomb(GameObject):
         else:
             pygame.draw.rect(surface, (255, 50, 50), (bar_x + 1, bar_y + 1, (bar_width - 2) * time_ratio, bar_height - 2))
 
-    def update(self, dt, *args): # dt is not used yet for timer logic, but good practice
+    def update(self, dt, *args): # dt is now critical for timer logic
         """
         Updates the bomb's state (timer, visual countdown).
+        Now uses dt to respect the game's pause state.
         """
+        # 【新增】如果遊戲暫停，則不執行任何更新
+        if self.game.paused:
+            return
 
         # [SPS_BOMB_NO_CHANGE_NEEDED] 倒數計時和爆炸邏輯與玩家移動方式無直接關聯。
-        current_time = pygame.time.get_ticks()
+        # current_time = pygame.time.get_ticks() # 【移除】不再使用絕對時間
 
         if not self.owner_has_left_tile and self.placed_by_player:
             if self.placed_by_player.tile_x != self.current_tile_x or \
@@ -123,16 +129,23 @@ class Bomb(GameObject):
                 self.is_solidified = True 
         
         if not self.exploded:
-            # === 1. 計算縮放因子 ===
-            elapsed = (pygame.time.get_ticks() - self.spawn_time) / 1000  # 秒
+            # --- dt is in seconds, convert to milliseconds for our logic ---
+            dt_ms = dt * 1000
+
+            # === 1. 更新計時器 ===
+            self.time_left -= dt_ms
+            self.elapsed_time += dt # For pulsating effect, keep in seconds
+            self.last_animation_time += dt_ms # For animation frames
+
+            # === 2. 計算縮放因子 (使用累計時間) ===
             frequency = 1  # 每秒跳動次數
             scale_variation = 0.1  # 最大縮小比例
-            scale_factor = 1 - scale_variation * (0.5 * (1 + math.sin(2 * math.pi * frequency * elapsed)))
+            scale_factor = 1 - scale_variation * (0.5 * (1 + math.sin(2 * math.pi * frequency * self.elapsed_time)))
 
-            # === 2. 圖片切換邏輯 ===
-            if current_time - self.last_animation_time >= self.animation_interval:
+            # === 3. 圖片切換邏輯 (使用累計時間) ===
+            if self.last_animation_time >= self.animation_interval:
                 self.animation_index = (self.animation_index + 1) % len(self.animation_images)
-                self.last_animation_time = current_time
+                self.last_animation_time = 0 # 重置
 
             base_image = self.animation_images[self.animation_index]
             
@@ -140,18 +153,15 @@ class Bomb(GameObject):
             new_size = (int(w * scale_factor), int(h * scale_factor))
             self.original_image = pygame.transform.smoothscale(base_image, new_size)
 
-            # === 3. 複製圖像做為繪製對象 ===
+            # === 4. 複製圖像做為繪製對象 ===
             self.image = self.original_image.copy()
-
-            # === 4. 計算剩餘時間條 ===
-            time_left = max(0, self.timer - (pygame.time.get_ticks() - self.spawn_time))
 
             # === 5. 保持位置中心 ===
             old_center = self.rect.center
             self.rect = self.image.get_rect(center=old_center)
 
             # === 6. 爆炸判斷 ===
-            if time_left <= 0:
+            if self.time_left <= 0:
                 self.explode()
 
     def explode(self):
