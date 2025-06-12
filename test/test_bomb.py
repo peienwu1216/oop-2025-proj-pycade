@@ -36,6 +36,8 @@ def mock_bomb_env(mocker):
     mock_game.map_manager.destructible_walls_group = pygame.sprite.Group() 
     # 模擬 update_tile_char_on_map (如果 DestructibleWall.take_damage 被呼叫且修改地圖)
     mock_game.map_manager.update_tile_char_on_map = mocker.MagicMock()
+    # 【新增】為我對 bomb.update 的修改提供一個 game.paused 屬性
+    mock_game.paused = False
 
 
     # 模擬放置炸彈的 Player
@@ -85,20 +87,18 @@ class TestBomb:
         game, player = mock_bomb_env
         bomb = Bomb(1, 1, player, game)
         
-        # 模擬時間流逝，但未達到爆炸時間
-        mocker.patch('pygame.time.get_ticks', return_value=bomb.spawn_time + settings.BOMB_TIMER - 100)
-        bomb.update(0.1) # dt 值在這裡不直接影響計時器邏輯，但 update 方法需要它
+        # 模擬時間流逝，但未達到爆炸時間 (BOMB_TIMER 是 3000ms)
+        # dt 是秒，所以傳入 2.999 秒
+        bomb.update(dt=(settings.BOMB_TIMER / 1000.0) - 0.001)
         assert bomb.exploded is False, "炸彈在計時器結束前不應爆炸。"
 
         # 模擬時間流逝，剛好達到爆炸時間
-        mocker.patch('pygame.time.get_ticks', return_value=bomb.spawn_time + settings.BOMB_TIMER)
-        # 模擬 Bomb.explode 方法，以避免實際產生 Explosion 精靈的複雜性，只檢查它是否被呼叫
-        bomb.explode = mocker.Mock() 
-        bomb.update(0.1)
+        bomb.explode = mocker.Mock() # 模擬 explode() 以避免其副作用
+        
+        # 再經過 0.001 秒，總時間達到 BOMB_TIMER
+        bomb.update(dt=0.001)
         
         bomb.explode.assert_called_once(), "時間到時，Bomb.explode() 應被呼叫一次。"
-        # 注意：由於我們 mock 了 explode，bomb.exploded 狀態可能不會被更新，除非 explode mock 也處理它
-        # 或者，我們不 mock explode，而是檢查 bomb.exploded 狀態
 
     def test_bomb_explode_triggers_feedback_and_kills_self(self, mock_bomb_env, mocker):
         """測試炸彈爆炸時是否觸發玩家回饋並自我銷毀。"""

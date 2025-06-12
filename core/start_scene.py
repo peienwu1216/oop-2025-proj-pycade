@@ -70,6 +70,16 @@ class StartScene:
         # Check for user interaction to transition to the main menu
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
+                # --- AUDIO FIX FOR BROWSERS ---
+                # Play and immediately pause the music on the first user interaction.
+                # This "unlocks" the audio context for the music channel.
+                try:
+                    self.audio_manager.play_music(settings.MENU_MUSIC_PATH, loops=-1)
+                    self.audio_manager.pause_music()
+                except Exception as e:
+                    print(f"Error pre-loading music for browser: {e}")
+                # --- END AUDIO FIX ---
+
                 # Transition to the Menu scene
                 return Menu(self.screen, self.audio_manager, self.clock)
         

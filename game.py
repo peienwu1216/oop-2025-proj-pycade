@@ -7,6 +7,7 @@ from core.touch_controls import TouchControls
 from sprites.player import Player
 from core.leaderboard_manager import LeaderboardManager
 from core.audio_manager import AudioManager
+from core.pause_scene import PauseScene
 
 # AI 控制器匯入
 from core.ai_controller import AIController as OriginalAIController
@@ -19,7 +20,7 @@ from sprites.draw_text import draw_text_with_shadow, draw_text_with_outline
 
 
 class Game:
-    def __init__(self, screen, clock, audio_manager,ai_archetype="original", headless=False):
+    def __init__(self, screen, clock, audio_manager,ai_archetype="original", map_type="classic", headless=False):
         self.headless = headless 
         self.screen = screen
         self.clock = clock
@@ -32,7 +33,10 @@ class Game:
         self.dt = 0 # dt 會在 run_one_frame 中更新
         self.restart_game = False # 這個旗標用來告訴 main.py 是否要回到選單
         self.game_state = "PLAYING"
+        self.paused = False # 【新增】暫停狀態旗標
+        self.pause_scene = None # 【新增】用於存放暫停場景實例
         self.ai_archetype = ai_archetype
+        self.map_type = map_type # 【新增】儲存地圖類型
         
         self.victory_music_played = False
         self.game_over_played = False
@@ -110,6 +114,8 @@ class Game:
         self.hud_icon_heart = None
         self.hud_icon_bomb = None
         self.hud_icon_score = None
+        self.hud_icon_pause = None # 【新增】暫停按鈕圖示
+        self.pause_button_rect = None # 【新增】暫停按鈕的 Rect
 
         # --- 觸控控制建立邏輯 ---
         self.touch_controls = None
@@ -160,6 +166,10 @@ class Game:
             self.hud_icon_bomb = pygame.transform.scale(self.hud_icon_bomb, icon_size)
             self.hud_icon_score = pygame.image.load('assets/images/items/item_score_placeholder.png').convert_alpha()
             self.hud_icon_score = pygame.transform.scale(self.hud_icon_score, icon_size)
+            # 【修改】載入並設定暫停按鈕圖示
+            self.hud_icon_pause = pygame.image.load('assets/images/ui/pause.png').convert_alpha()
+            self.hud_icon_pause = pygame.transform.scale(self.hud_icon_pause, (36, 36))
+            self.pause_button_rect = self.hud_icon_pause.get_rect(topright=(settings.SCREEN_WIDTH - 10, 10))
 
             font_size = 30
             # font_status_size = 18
@@ -256,12 +266,19 @@ class Game:
         p2_start_tile = (p2_start_tile_x, p2_start_tile_y)
         safe_radius = 2
 
-        random_map_layout = self.map_manager.get_randomized_map_layout(
-            grid_width, grid_height,
-            p1_start_tile, p2_start_tile,
-            safe_radius
-        )
-        self.map_manager.load_map_from_data(random_map_layout)
+        # 【修改】根據 map_type 選擇地圖生成函式
+        if self.map_type == "random":
+            print("[Game] Generating a TRULY RANDOM map.")
+            map_layout = self.map_manager.get_truly_random_map_layout(
+                grid_width, grid_height, p1_start_tile, p2_start_tile, safe_radius
+            )
+        else: # 預設或 "classic"
+            print("[Game] Generating a CLASSIC map.")
+            map_layout = self.map_manager.get_classic_map_layout(
+                grid_width, grid_height, p1_start_tile, p2_start_tile, safe_radius
+            )
+
+        self.map_manager.load_map_from_data(map_layout)
 
         player1_sprite_config = {
             "ROW_MAP": settings.PLAYER_SPRITESHEET_ROW_MAP,
@@ -326,14 +343,26 @@ class Game:
         # 使用傳入的 dt
         self.dt = dt
 
-        # 處理事件
-        self._process_events_internal(events_from_main_loop) # 使用內部方法處理事件
-
-        # 更新遊戲邏輯
-        self._update_internal() # 使用內部方法更新邏輯
+        # 【修改】根據暫停狀態決定更新哪個部分
+        if self.paused:
+            action = self.pause_scene.update(events_from_main_loop)
+            if action == "CONTINUE":
+                self.paused = False
+                self.audio_manager.unpause_music()
+                self.audio_manager.unpause_all_sfx()
+            elif action == "BACK_TO_MENU":
+                self.running = False
+                self.restart_game = True
+        else:
+            self._process_events_internal(events_from_main_loop)
+            self._update_internal()
 
         # 繪製畫面
-        self._draw_internal() # 使用內部方法繪製
+        self._draw_internal()
+        
+        # 【新增】如果遊戲暫停，覆蓋繪製暫停場景
+        if self.paused:
+            self.pause_scene.draw()
 
         # 檢查場景是否應該結束
         if not self.running:
@@ -374,17 +403,35 @@ class Game:
 
             # --- 處理觸控事件 (事件型, 如單次點擊) ---
             if self.game_state == "PLAYING" and self.touch_controls:
-                # handle_event 只在按下炸彈鈕時返回 'BOMB'
                 action = self.touch_controls.handle_event(event)
                 if action == 'BOMB' and self.player1 and self.player1.is_alive:
                     self.player1.place_bomb()
 
+            # 【新增】處理暫停按鈕點擊
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.pause_button_rect and self.pause_button_rect.collidepoint(event.pos):
+                    if self.game_state == "PLAYING" and not self.paused:
+                        self.paused = True
+                        self.audio_manager.pause_music()
+                        self.audio_manager.pause_all_sfx()
+                        self.pause_scene = PauseScene(self.screen, self.audio_manager)
+                        continue # 事件已處理
+
             # --- 處理鍵盤事件 ---
             if event.type == pygame.KEYDOWN:
-                # 通用 ESC 鍵
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
-                    self.restart_game = False
+                    if self.game_state == "PLAYING":
+                        self.paused = not self.paused
+                        if self.paused:
+                            self.audio_manager.pause_music()
+                            self.audio_manager.pause_all_sfx()
+                            self.pause_scene = PauseScene(self.screen, self.audio_manager)
+                        else:
+                            self.audio_manager.unpause_music()
+                            self.audio_manager.unpause_all_sfx()
+                    else:
+                        self.running = False
+                        self.restart_game = False
                 
                 # 'PLAYING' 狀態下的鍵盤事件
                 if self.game_state == "PLAYING":
@@ -399,6 +446,10 @@ class Game:
                         self.running = False
 
     def _update_internal(self):
+        # 【新增】如果遊戲暫停，則不更新
+        if self.paused:
+            return
+
         if self.game_state == "PLAYING":
             # --- 新增：處理持續性的觸控移動 ---
             if self.touch_controls and self.player1 and self.player1.is_alive:
@@ -589,6 +640,9 @@ class Game:
                     if hasattr(self.ai_controller_p2, 'debug_draw_path'):
                         self.ai_controller_p2.debug_draw_path(self.screen)
                 self.draw_hud()
+                # 【新增】繪製暫停按鈕
+                if self.hud_icon_pause:
+                    self.screen.blit(self.hud_icon_pause, self.pause_button_rect)
                 if self.touch_controls:
                     self.touch_controls.draw(self.screen)
             elif self.game_state == "GAME_OVER":

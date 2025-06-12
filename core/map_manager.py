@@ -2,7 +2,8 @@
 import pygame
 import settings
 from sprites.wall import Wall, DestructibleWall, Floor
-import random # ！！！需要 random 模組！！！
+import random
+from collections import deque
 
 
 class MapManager:
@@ -16,10 +17,9 @@ class MapManager:
         self.floor_group = pygame.sprite.Group() # 用於地板或空格子
         # self.load_map_from_data(self.get_simple_test_map()) # 不在這裡調用，由 Game.setup_initial_state 調用
 
-    def get_randomized_map_layout(self, width, height, p1_start_tile, p2_start_tile, safe_radius=1):
+    def get_classic_map_layout(self, width, height, p1_start_tile, p2_start_tile, safe_radius=1):
         """
-        生成一個隨機包含可破壞障礙物的地圖佈局，並保護玩家出生點。
-        'W' = 不可破壞, 'D' = 可破壞, '.' = 空
+        生成一個經典的、有固定棋盤格障礙物的地圖。
         """
         layout = [['.' for _ in range(width)] for _ in range(height)]
 
@@ -27,44 +27,99 @@ class MapManager:
         for r in range(height):
             for c in range(width):
                 if r == 0 or r == height - 1 or c == 0 or c == width - 1:
-                    layout[r][c] = 'W' # 邊界是不可破壞的牆
+                    layout[r][c] = 'W'
 
-        # 2. 創建固定的不可破壞障礙物 (類似炸彈人經典地圖的棋盤格)
-        for r in range(2, height - 2, 2): # 從第2行/列開始，每隔一行/列
+        # 2. 創建固定的不可破壞障礙物 (棋盤格)
+        for r in range(2, height - 2, 2):
             for c in range(2, width - 2, 2):
                 layout[r][c] = 'W'
         
-        # 3. 定義安全區域 (玩家出生點周圍不生成可破壞障礙物)
-        player_starts = [p1_start_tile, p2_start_tile]
-        safe_zones = []
-        for start_x, start_y in player_starts:
-            if start_x is None or start_y is None: continue # 如果某個玩家不存在
-            for r_offset in range(-safe_radius, safe_radius + 1):
-                for c_offset in range(-safe_radius, safe_radius + 1):
-                    safe_zones.append((start_x + c_offset, start_y + r_offset))
+        # 3. 定義安全區域
+        safe_zones = self._get_safe_zones([p1_start_tile, p2_start_tile], safe_radius)
         
-        # 4. 隨機放置可破壞的障礙物 ('D')
-        #    參考你的 C++ 報告，可破壞障礙物內部有80%機率生成道具
-        #    這裡我們先決定哪些位置是可破壞障礙物
-        #    你的 C++ 報告中提到隨機生成障礙物是在困難地圖，我們這裡可以先用一個固定機率
-        destructible_wall_chance = settings.DESTRUCTIBLE_WALL_CHANCE
-
-        for r in range(1, height - 1): # 不在最外層邊界生成
+        # 4. 隨機放置可破壞的障礙物
+        destructible_wall_chance = settings.CLASSIC_DESTRUCTIBLE_WALL_CHANCE
+        for r in range(1, height - 1):
             for c in range(1, width - 1):
-                if layout[r][c] == '.': # 只在空格子生成
-                    if (c, r) not in safe_zones: # 確保不在安全區域內
+                if layout[r][c] == '.':
+                    if (c, r) not in safe_zones:
                         if random.random() < destructible_wall_chance:
                             layout[r][c] = 'D'
         
-        # 將二維列表轉換為字符串列表
-        string_layout = ["".join(row) for row in layout]
-        # print("[DEBUG MAP GEN] Generated map layout:")
-        # for row_str in string_layout:
-        #     print(row_str)
-        print("[MapManager DEBUG] Final generated map_data in get_randomized_map_layout:") # 新增
-        for r_idx, row_str in enumerate(string_layout): # 新增
-            print(f"Row {r_idx:02d}: {row_str}") # 新增
-        return string_layout
+        return ["".join(row) for row in layout]
+
+    def _is_path_between_points(self, layout, start_pos, end_pos):
+        """使用廣度優先搜尋 (BFS) 檢查兩點之間是否有路徑。"""
+        width = len(layout[0])
+        height = len(layout)
+        queue = deque([start_pos])
+        visited = {start_pos}
+        
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == end_pos:
+                return True
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited and layout[ny][nx] == '.':
+                    visited.add((nx, ny))
+                    queue.append((nx, ny))
+        return False
+
+    def _get_safe_zones(self, player_starts, safe_radius):
+        """計算並返回玩家出生點周圍的安全區域集合。"""
+        safe_zones = set()
+        for start_x, start_y in player_starts:
+            if start_x is None or start_y is None: continue
+            for r_offset in range(-safe_radius, safe_radius + 1):
+                for c_offset in range(-safe_radius, safe_radius + 1):
+                    safe_zones.add((start_x + c_offset, start_y + r_offset))
+        return safe_zones
+
+    def get_truly_random_map_layout(self, width, height, p1_start_tile, p2_start_tile, safe_radius=1):
+        """
+        生成一個隨機包含不可破壞和可破壞障礙物的地圖，並確保連通性。
+        """
+        layout = []
+        is_playable = False
+        max_retries = 50
+        retry_count = 0
+
+        safe_zones = self._get_safe_zones([p1_start_tile, p2_start_tile], safe_radius)
+
+        while not is_playable and retry_count < max_retries:
+            layout = [['.' for _ in range(width)] for _ in range(height)]
+            for r in range(height):
+                for c in range(width):
+                    if r == 0 or r == height - 1 or c == 0 or c == width - 1:
+                        layout[r][c] = 'W'
+
+            solid_wall_chance = 0.22
+            for r in range(2, height - 2):
+                for c in range(2, width - 2):
+                    if (c, r) not in safe_zones:
+                        if random.random() < solid_wall_chance:
+                            layout[r][c] = 'W'
+            
+            if self._is_path_between_points(layout, p1_start_tile, p2_start_tile):
+                is_playable = True
+            else:
+                retry_count += 1
+        
+        if not is_playable:
+            print("[MapManager] Could not generate a playable random map. Falling back to classic map.")
+            return self.get_classic_map_layout(width, height, p1_start_tile, p2_start_tile, safe_radius)
+
+        destructible_wall_chance = settings.DESTRUCTIBLE_WALL_CHANCE
+        # 可破壞的牆壁仍然可以在整個內部區域生成
+        for r in range(1, height - 1):
+            for c in range(1, width - 1):
+                if layout[r][c] == '.' and (c, r) not in safe_zones:
+                    if random.random() < destructible_wall_chance:
+                        layout[r][c] = 'D'
+        
+        print("[MapManager] Successfully generated a truly random map with a walkable perimeter.")
+        return ["".join(row) for row in layout]
 
     def load_map_from_data(self, map_layout_data):
         self.walls_group.empty()

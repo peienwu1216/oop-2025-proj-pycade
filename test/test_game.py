@@ -51,7 +51,8 @@ def mock_game_dependencies(mocker, mock_audio_manager):
         mocked_map_data.append("".join(row_list))
     mocked_map_data.append("W" * map_width)
 
-    mocker.patch('core.map_manager.MapManager.get_randomized_map_layout', return_value=mocked_map_data)
+    mocker.patch('core.map_manager.MapManager.get_truly_random_map_layout', return_value=mocked_map_data)
+    mocker.patch('core.map_manager.MapManager.get_classic_map_layout', return_value=mocked_map_data)
 
     ai_controllers_to_mock = [
         OriginalAIController, 

@@ -36,7 +36,8 @@ TIMER_URGENT_THRESHOLD_SECONDS = 10
 
 # 地圖設定
 TILE_SIZE = 32
-DESTRUCTIBLE_WALL_CHANCE = 0.5 # 可破壞牆壁在地圖上生成的機率 (用於隨機地圖)
+DESTRUCTIBLE_WALL_CHANCE = 0.55 # 可破壞牆壁在地圖上生成的機率
+CLASSIC_DESTRUCTIBLE_WALL_CHANCE = 0.55 # 經典地圖的結構更固定，可以有更高的密度
 
 # -----------------------------------------------------------------------------
 # 玩家角色設定 (Player Settings)
