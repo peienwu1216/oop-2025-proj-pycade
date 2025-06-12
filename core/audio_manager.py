@@ -24,6 +24,7 @@ class AudioManager:
         self.playing_sounds = {}
         self.music_volume = settings.MENU_MUSIC_VOLUME
         self.sfx_volume = 0.5
+        self.paused_sfx = {} # For web browser compatibility
 
         pygame.mixer.music.set_volume(self.music_volume)
 
@@ -126,18 +127,25 @@ class AudioManager:
         pygame.mixer.music.unpause()
 
     def pause_all_sfx(self):
-        """Pauses all active sound effect channels."""
-        for i in range(pygame.mixer.get_num_channels()):
-            channel = pygame.mixer.Channel(i)
-            if channel.get_busy():
-                channel.pause()
+        """
+        For web compatibility, we don't 'pause' channels. 
+        Instead, we record looping sounds and stop everything.
+        """
+        self.paused_sfx.clear()
+        for name, sound_obj in self.playing_sounds.items():
+            self.paused_sfx[name] = sound_obj # Store the sound object itself
+        
+        self.stop_all_sounds() # Stop all sounds
 
     def unpause_all_sfx(self):
-        """Resumes all paused sound effect channels."""
-        for i in range(pygame.mixer.get_num_channels()):
-            channel = pygame.mixer.Channel(i)
-            # It's safe to call unpause even if it wasn't paused.
-            channel.unpause()
+        """
+        'Resumes' SFX by re-playing the looping sounds that were active
+        before the pause.
+        """
+        for name, sound_obj in self.paused_sfx.items():
+            # play_sound handles re-adding to self.playing_sounds
+            self.play_sound(name, loops=-1) 
+        self.paused_sfx.clear()
 
     def is_playing(self):
         """Checks if the music is currently playing."""
