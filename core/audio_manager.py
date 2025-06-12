@@ -93,8 +93,9 @@ class AudioManager:
             print(f"Error playing music from '{music_path}': {e}")
 
     def stop_music(self):
-        """Stops the background music."""
+        """Stops the music and resets the current path."""
         pygame.mixer.music.stop()
+        self.current_music_path = None
 
     def set_sfx_volume(self, volume):
         """
@@ -114,3 +115,30 @@ class AudioManager:
         """
         self.music_volume = max(0.0, min(1.0, volume))
         pygame.mixer.music.set_volume(self.music_volume)
+
+    def pause_music(self):
+        """Pauses the currently playing music."""
+        if self.is_playing():
+            pygame.mixer.music.pause()
+
+    def unpause_music(self):
+        """Resumes the paused music."""
+        pygame.mixer.music.unpause()
+
+    def pause_all_sfx(self):
+        """Pauses all active sound effect channels."""
+        for i in range(pygame.mixer.get_num_channels()):
+            channel = pygame.mixer.Channel(i)
+            if channel.get_busy():
+                channel.pause()
+
+    def unpause_all_sfx(self):
+        """Resumes all paused sound effect channels."""
+        for i in range(pygame.mixer.get_num_channels()):
+            channel = pygame.mixer.Channel(i)
+            # It's safe to call unpause even if it wasn't paused.
+            channel.unpause()
+
+    def is_playing(self):
+        """Checks if the music is currently playing."""
+        return pygame.mixer.music.get_busy()

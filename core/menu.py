@@ -40,6 +40,7 @@ class Menu:
         self.return_button_hover_image = pygame.transform.smoothscale(self.return_button_hover_image, new_button_size)
 
         self.menu_state = "MAIN"
+        self.selected_ai_archetype = None # 【新增】用於儲存選擇的 AI
         self.leaderboard_manager = LeaderboardManager()
 
         # (字體設定部分保持不變...)
@@ -60,11 +61,11 @@ class Menu:
             
         self.ai_options = settings.AVAILABLE_AI_ARCHETYPES
         self.buttons = []
-        self._create_buttons()
+        self._create_buttons_for_main() # 【修改】改為呼叫特定狀態的按鈕建立函式
         self.back_button_rect = None # 初始化返回按鈕
 
-    def _create_buttons(self):
-        # (此函式保持不變)
+    def _create_buttons_for_main(self):
+        self.menu_state = "MAIN"
         self.buttons = []
         start_y = 180
         button_spacing = 60
@@ -95,6 +96,24 @@ class Menu:
             "rect": quit_rect, "text": "退出遊戲 (Quit)", "action_type": "QUIT_GAME",
         })
 
+    def _create_buttons_for_map_select(self):
+        """為地圖選擇畫面建立按鈕。"""
+        self.menu_state = "SELECT_MAP"
+        self.buttons = []
+        start_y = 220
+        button_spacing = 80
+        map_options = {"經典地圖": "classic", "隨機地圖": "random"}
+
+        for i, (display_name, map_type) in enumerate(map_options.items()):
+            y_pos = start_y + i * button_spacing
+            button_rect = pygame.Rect(
+                (settings.SCREEN_WIDTH - self.ai_light_button_image.get_size()[0]) // 2, y_pos, self.ai_light_button_image.get_size()[0], self.ai_light_button_image.get_size()[1]
+            )
+            self.buttons.append({
+                "rect": button_rect, "text": display_name, "action_type": "SELECT_MAP",
+                "map_type": map_type
+            })
+
     # 【修改】run() 方法被移除，改為 update() 和 draw()
     def update(self, events, dt):
         """處理一幀的事件和邏輯，並返回下一個場景或指令。"""
@@ -110,6 +129,11 @@ class Menu:
         elif self.menu_state == "LEADERBOARD":
             if self.back_button_rect and self.back_button_rect.collidepoint(mouse_pos):
                 current_hover_target = self.back_button_rect
+        elif self.menu_state == "SELECT_MAP":
+            for button in self.buttons:
+                if button["rect"].collidepoint(mouse_pos):
+                    current_hover_target = button
+                    break
 
         if current_hover_target and current_hover_target != self.last_hovered_button:
             self.audio_manager.play_sound('hover')
@@ -118,9 +142,9 @@ class Menu:
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    if self.menu_state == "LEADERBOARD":
+                    if self.menu_state == "LEADERBOARD" or self.menu_state == "SELECT_MAP":
                         self.menu_state = "MAIN"
-                        self._create_buttons()
+                        self._create_buttons_for_main()
                     elif self.menu_state == "MAIN":
                         return "QUIT" # 返回一個指令來退出
             
@@ -133,12 +157,9 @@ class Menu:
                             if button["rect"].collidepoint(click_position): # 使用 click_position 進行碰撞檢測
                                 action = button.get("action_type")
                                 if action == "SELECT_AI":
-                                    # 返回一個新的 Game 物件作為下一個場景
-                                    from game import Game
-                                    # 建立 Game 物件時，傳入 audio_manager
-                                    game = Game(self.screen, self.clock, self.audio_manager, ai_archetype=button["archetype"])
-                                    game.start_timer()
-                                    return game
+                                    self.selected_ai_archetype = button["archetype"]
+                                    self._create_buttons_for_map_select() # 【修改】進入地圖選擇畫面
+                                    break # 找到按鈕後就跳出迴圈
                                 elif action == "SHOW_LEADERBOARD":
                                     self.menu_state = "LEADERBOARD"
                                     # 建立返回按鈕的 rect
@@ -150,6 +171,18 @@ class Menu:
                                     )
                                 elif action == "QUIT_GAME":
                                     return "QUIT" # 返回退出指令
+                                break
+                    elif self.menu_state == "SELECT_MAP":
+                        for button in self.buttons:
+                            if button["rect"].collidepoint(click_position):
+                                action = button.get("action_type")
+                                if action == "SELECT_MAP":
+                                    from game import Game
+                                    game = Game(self.screen, self.clock, self.audio_manager, 
+                                                ai_archetype=self.selected_ai_archetype,
+                                                map_type=button["map_type"])
+                                    game.start_timer()
+                                    return game
                                 break
                     elif self.menu_state == "LEADERBOARD":
                         if self.back_button_rect and self.back_button_rect.collidepoint(click_position):
@@ -166,6 +199,8 @@ class Menu:
             self.draw_main_menu_content()
         elif self.menu_state == "LEADERBOARD":
             self.draw_leaderboard_content()
+        elif self.menu_state == "SELECT_MAP":
+            self.draw_map_select_content()
             
         # 注意：pygame.display.flip() 由主迴圈 (main.py) 呼叫
 
@@ -197,6 +232,21 @@ class Menu:
             text_rect = text_surface.get_rect(center=(button["rect"].centerx, button["rect"].centery-3))
             self.screen.blit(text_surface, text_rect)
 
+    def draw_map_select_content(self):
+        """繪製地圖選擇畫面的內容。"""
+        title_text = self.title_font.render("Select Map Type", True, settings.WHITE)
+        title_rect = title_text.get_rect(center=(settings.SCREEN_WIDTH / 2, 120))
+        self.screen.blit(title_text, title_rect)
+
+        mouse_pos = pygame.mouse.get_pos()
+        for button in self.buttons:
+            is_hovering = button["rect"].collidepoint(mouse_pos)
+            button_image = self.ai_light_button_hover_image if is_hovering else self.ai_light_button_image
+            self.screen.blit(button_image, button["rect"])
+            
+            text_surface = self.option_font.render(button["text"], True, settings.BLACK)
+            text_rect = text_surface.get_rect(center=(button["rect"].centerx, button["rect"].centery-3))
+            self.screen.blit(text_surface, text_rect)
 
     def draw_leaderboard_content(self):
         # (此函式保持不變...)
