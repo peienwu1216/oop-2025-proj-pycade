@@ -33,7 +33,7 @@
 * `assets/`：存放所有靜態資源，包含圖片、音效、字體和地圖資料。
 * `test/`：存放所有使用 Pytest 編寫的單元測試，確保每個模組的正確性。
 
-![image](https://hackmd.io/_uploads/H1D3vtt7el.png)
+![簡易版類別圖](images/class-diagram-overview.png)
 
 
 點此查看更完整詳盡的 [Class Diagram](https://github.com/peienwu1216/oop-2025-proj-pycade/blob/main/ARCHITECTURE.md)
@@ -80,7 +80,7 @@ class AudioManager:
 
 我們首先定義了一個 `AIControllerBase` 作為所有 AI 都必須遵守的通用介面（策略的抽象）。接著，`AggressiveAIController`、`ConservativeAIController` 等子類別各自繼承此介面，並發展出獨特的頂層目標（具體的策略實現）。
 
-![image](https://hackmd.io/_uploads/HJmjFuKmle.png)
+![AI 策略模式圖](images/ai-strategy-pattern.png)
 
 這種設計的最大好處是「高內聚、低耦合」。遊戲主體不需要關心 AI 的內部決策邏輯，只需要在遊戲開始前，像插拔卡帶一樣，將指定的 AI 控制器「安裝」到角色上即可。這使得新增或修改 AI 行為變得非常容易，而不會影響到遊戲的其他部分。
 
@@ -117,10 +117,10 @@ class AudioManager:
 
 我們根據任務的不同，來決定使用哪種演算法——需要快速找到鄰近安全點時用 BFS，需要規劃長遠的攻擊或奪寶路徑時用 A\*。這種針對性的選擇，是我們在專案中對演算法效率與場景應用的 **權衡（Trade-off）** 與實踐。
 
-為了讓玩家能更直觀地感受到 AI 的「思考」，我們在遊戲畫面的右下角即時顯示出 AI 當前的狀態。如圖所示，當 AI 玩家鎖定場上的道具後，會使用 A\* 演算法尋找一條成本最低的路徑，並且在放置炸彈清除障礙物後，使用 BFS 尋找鄰近的安全撤退位置，並切換到「**戰術性撤退**」狀態躲避並等待炸彈爆炸。
+為了讓玩家能更直觀地感受到 AI 的「思考」，我們在遊戲畫面的右下角即時顯示出 AI 當前的狀態。如圖所示，當 AI 玩家鎖定場上的道具後，會使用 A* 演算法尋找一條成本最低的路徑，並且在放置炸彈清除障礙物後，使用 BFS 尋找鄰近的安全撤退位置，並切換到「**戰術性撤退**」狀態躲避並等待炸彈爆炸。
 
 
-![image (5)](https://hackmd.io/_uploads/Sy-93dF7xx.jpg)
+![AI 尋路示意圖](images/ai-pathfinding-in-action.jpg)
 
 
 ### 3.3 AI 的多種「個性」
@@ -146,7 +146,7 @@ class AudioManager:
 * **功能分支 (Feature Branch)**：每當要開發一個新功能 (如 `feature/new-item`) 或修復一個錯誤 (如 `fix/bomb-bug`)，都必須從最新的 `main` 分支建立一個新的獨立分支。所有開發工作都在這個獨立的分支上進行，與主線完全隔離，確保不會影響到正式版的穩定性。
 
 
-![image (6)](https://hackmd.io/_uploads/HyAGeFK7lx.jpg)
+![Git 分支策略圖](images/git-branching-strategy.jpg)
 
 ### 4.2 合併請求與程式碼審查 (Pull Request & Code Review)
 
@@ -158,7 +158,7 @@ class AudioManager:
 
 透過這個流程，我們確保每一行合併進主分支的程式碼，都經過了至少一位「人類智慧」和一位「人工智慧」的雙重檢驗。
 
-![image](https://hackmd.io/_uploads/r1-hxtY7gx.png)
+![Code Review 範例](images/code-review-example.png)
 
 ### 4.3 溝通與任務管理：交付可追溯的開發歷程
 除了制定規則與導入工具，我們相信清晰、可追溯的溝通是專案成功的基石。
@@ -166,7 +166,7 @@ class AudioManager:
 * **以 Pull Request 作為討論的載體**：我們不僅利用 PR 進行程式碼審查，更將其作為一個公開的技術討論區。所有針對程式碼的建議、權衡與決策過程，都被完整地記錄下來，成為專案歷史的一部分。
 * **以 Issues 進行系統化任務管理**：我們使用 GitHub Issues 來管理專案的待辦事項，包括功能開發、Bug 修復與未來規劃。這讓團隊成員對專案的進程有共同的認知，也讓整個開發歷愈變得透明且有條理。
 
-![image (7)](https://hackmd.io/_uploads/BJbV-FtXel.jpg)
+![GitHub Issues 管理圖](images/github-issues-management.jpg)
 
 
 
@@ -179,7 +179,7 @@ class AudioManager:
 
 只有當人工審查和自動化測試都通過後，程式碼才被允許合併。
 
-![image (1)](https://hackmd.io/_uploads/S1_WGFYQxx.png)
+![CI 檢查通過圖](images/ci-checks-passed.png)
 
 我們為專案的關鍵核心邏輯編寫了單元測試，主要涵蓋：
 
@@ -206,19 +206,19 @@ graph TD;
 
 當程式碼成功合併到 `main` 分支後，持續部署流程會自動觸發。GitHub Actions 會自動將專案打包成網頁版本，並發佈到 GitHub Pages。這意味著每一次成功的合併，玩家就能在幾分鐘內玩到最新的遊戲版本，而我們完全不需要手動介入。
 
-![image (2)](https://hackmd.io/_uploads/SkovmFF7le.png)
+![CD 部署流程圖](images/cd-deployment-pipeline.png)
 
 當程式碼成功合併到 `main` 分支後，部署流程會自動觸發。其流程如下圖所示：
 
 ```mermaid
 graph TD;
-    subgraph "自動化部署流程 (deploy-to-web.yml)";
-        A["程式碼成功合併<br/>到 main 分支"] --> B{CD 流程觸發};
-        B --> C["使用 Pygbag<br/>將專案打包成網頁版"];
-        C --> D["將打包好的檔案<br/>上傳為 Pages Artifact"];
-        D --> E["執行部署<br/>到 GitHub Pages"];
-        E --> F["新版本上線 🎉"];
-    end;
+    subgraph "自動化部署流程 (deploy-to-web.yml)";
+        A["程式碼成功合併<br/>到 main 分支"] --> B{CD 流程觸發};
+        B --> C["使用 Pygbag<br/>將專案打包成網頁版"];
+        C --> D["將打包好的檔案<br/>上傳為 Pages Artifact"];
+        D --> E["執行部署<br/>到 GitHub Pages"];
+        E --> F["新版本上線 🎉"];
+    end;
 ```
 GitHub Actions 會自動將專案打包成網頁版本，並將遊戲發佈到網頁。
 
