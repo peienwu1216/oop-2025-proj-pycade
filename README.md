@@ -53,7 +53,6 @@
 
 * **[📐 系統架構與 Class Diagram](ARCHITECTURE.md)**
 * **[📝 文章歸檔 (於本倉庫)](docs/project-article.md)**
-* 
 ---
 
 ## 📂 專案架構 (Project Structure)
