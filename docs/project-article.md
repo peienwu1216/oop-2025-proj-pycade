@@ -33,7 +33,9 @@
 * `assets/`：存放所有靜態資源，包含圖片、音效、字體和地圖資料。
 * `test/`：存放所有使用 Pytest 編寫的單元測試，確保每個模組的正確性。
 
-![簡易版類別圖](images/class-diagram-overview.png)
+<p align="center">
+  <img src="/docs/images/class-diagram-overview.png" alt="簡易版類別圖" width="800"/>
+</p>
 
 
 點此查看更完整詳盡的 [Class Diagram](https://github.com/peienwu1216/oop-2025-proj-pycade/blob/main/ARCHITECTURE.md)
@@ -74,13 +76,13 @@ class AudioManager:
 
 我們透過「繼承」來建立通用的物件樣板，減少重複的程式碼。例如，`Player`、`Wall`、`Item` 等所有遊戲物件都繼承自一個通用的 `GameObject` 類別，共享 `image` 和 `rect` 等基本屬性。
 
-
-
 但更進一步，我們運用了「策略模式」來設計 AI 的多種「個性」。
 
 我們首先定義了一個 `AIControllerBase` 作為所有 AI 都必須遵守的通用介面（策略的抽象）。接著，`AggressiveAIController`、`ConservativeAIController` 等子類別各自繼承此介面，並發展出獨特的頂層目標（具體的策略實現）。
 
-![AI 策略模式圖](images/ai-strategy-pattern.png)
+<p align="center">
+  <img src="/docs/images/ai-strategy-pattern.png" alt="AI 策略模式圖" width="800"/>
+</p>
 
 這種設計的最大好處是「高內聚、低耦合」。遊戲主體不需要關心 AI 的內部決策邏輯，只需要在遊戲開始前，像插拔卡帶一樣，將指定的 AI 控制器「安裝」到角色上即可。這使得新增或修改 AI 行為變得非常容易，而不會影響到遊戲的其他部分。
 
@@ -119,9 +121,9 @@ class AudioManager:
 
 為了讓玩家能更直觀地感受到 AI 的「思考」，我們在遊戲畫面的右下角即時顯示出 AI 當前的狀態。如圖所示，當 AI 玩家鎖定場上的道具後，會使用 A* 演算法尋找一條成本最低的路徑，並且在放置炸彈清除障礙物後，使用 BFS 尋找鄰近的安全撤退位置，並切換到「**戰術性撤退**」狀態躲避並等待炸彈爆炸。
 
-
-![AI 尋路示意圖](images/ai-pathfinding-in-action.jpg)
-
+<p align="center">
+  <img src="/docs/images/ai-pathfinding-in-action.jpg" alt="AI 尋路示意圖" width="800"/>
+</p>
 
 ### 3.3 AI 的多種「個性」
 
@@ -145,8 +147,9 @@ class AudioManager:
 * **禁止直接提交 (No Direct Push)**：協作者不能直接將程式碼推送到 `main` 分支。
 * **功能分支 (Feature Branch)**：每當要開發一個新功能 (如 `feature/new-item`) 或修復一個錯誤 (如 `fix/bomb-bug`)，都必須從最新的 `main` 分支建立一個新的獨立分支。所有開發工作都在這個獨立的分支上進行，與主線完全隔離，確保不會影響到正式版的穩定性。
 
-
-![Git 分支策略圖](images/git-branching-strategy.jpg)
+<p align="center">
+  <img src="/docs/images/git-branching-strategy.jpg" alt="Git 分支策略圖" width="800"/>
+</p>
 
 ### 4.2 合併請求與程式碼審查 (Pull Request & Code Review)
 
@@ -158,7 +161,9 @@ class AudioManager:
 
 透過這個流程，我們確保每一行合併進主分支的程式碼，都經過了至少一位「人類智慧」和一位「人工智慧」的雙重檢驗。
 
-![Code Review 範例](images/code-review-example.png)
+<p align="center">
+  <img src="/docs/images/code-review-example.png" alt="Code Review 範例" width="800"/>
+</p>
 
 ### 4.3 溝通與任務管理：交付可追溯的開發歷程
 除了制定規則與導入工具，我們相信清晰、可追溯的溝通是專案成功的基石。
@@ -166,9 +171,9 @@ class AudioManager:
 * **以 Pull Request 作為討論的載體**：我們不僅利用 PR 進行程式碼審查，更將其作為一個公開的技術討論區。所有針對程式碼的建議、權衡與決策過程，都被完整地記錄下來，成為專案歷史的一部分。
 * **以 Issues 進行系統化任務管理**：我們使用 GitHub Issues 來管理專案的待辦事項，包括功能開發、Bug 修復與未來規劃。這讓團隊成員對專案的進程有共同的認知，也讓整個開發歷愈變得透明且有條理。
 
-![GitHub Issues 管理圖](images/github-issues-management.jpg)
-
-
+<p align="center">
+  <img src="/docs/images/github-issues-management.jpg" alt="GitHub Issues 管理圖" width="800"/>
+</p>
 
 ### 4.4 持續整合 (CI) - 自動化的品質守門員
 
@@ -179,7 +184,9 @@ class AudioManager:
 
 只有當人工審查和自動化測試都通過後，程式碼才被允許合併。
 
-![CI 檢查通過圖](images/ci-checks-passed.png)
+<p align="center">
+  <img src="/docs/images/ci-checks-passed.png" alt="CI 檢查通過圖" width="800"/>
+</p>
 
 我們為專案的關鍵核心邏輯編寫了單元測試，主要涵蓋：
 
@@ -189,7 +196,9 @@ class AudioManager:
 
 這些測試如同我們的「**安全網**」。在我們不斷新增功能或重構程式碼時，它能立刻捕捉到因修改而產生的意外錯誤 (Regression)，讓我們可以更有信心地進行開發迭代，確保了專案的長期穩定性。
 
-![CI Flow](images/ci-workflow-diagram.png)
+<p align="center">
+  <img src="/docs/images/ci-workflow-diagram.png" alt="CI Flow" width="800"/>
+</p>
 
 ### 4.5 持續部署 (CD) - 一鍵發佈到全世界
 
@@ -198,7 +207,13 @@ class AudioManager:
 
 當程式碼成功合併到 `main` 分支後，部署流程會自動觸發。其流程如下圖所示：
 
-![CD Flow](images/cd-deployment-diagram.png)
+<p align="center">
+  <img src="/docs/images/cd-deployment-pipeline.png" alt="CD Deployment Pipeline" width="800"/>
+</p>
+
+<p align="center">
+  <img src="/docs/images/cd-deployment-diagram.png" alt="CD Flow" width="800"/>
+</p>
 
 GitHub Actions 會自動將專案打包成網頁版本，並將遊戲發佈到網頁。
 
