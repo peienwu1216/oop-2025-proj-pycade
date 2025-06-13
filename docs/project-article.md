@@ -189,7 +189,7 @@ class AudioManager:
 
 這些測試如同我們的「**安全網**」。在我們不斷新增功能或重構程式碼時，它能立刻捕捉到因修改而產生的意外錯誤 (Regression)，讓我們可以更有信心地進行開發迭代，確保了專案的長期穩定性。
 
-![CI Flow](/images/ci-workflow-diagram.png)
+![CI Flow](images/ci-workflow-diagram.png)
 
 ### 4.5 持續部署 (CD) - 一鍵發佈到全世界
 
@@ -198,7 +198,7 @@ class AudioManager:
 
 當程式碼成功合併到 `main` 分支後，部署流程會自動觸發。其流程如下圖所示：
 
-![CD Flow](/images/cd-deployment-diagram.png)
+![CD Flow](images/cd-deployment-diagram.png)
 
 GitHub Actions 會自動將專案打包成網頁版本，並將遊戲發佈到網頁。
 
