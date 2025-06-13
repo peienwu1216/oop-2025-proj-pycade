@@ -46,38 +46,29 @@
 
 主程式 (`game.py`) 不需要知道 `pygame.mixer` 如何初始化、如何載入音效檔案、如何管理音軌。它只需要呼叫一個簡單的方法：
 
-```python=
+```python
 # 在 game.py 中，呼叫就是這麼簡單
 self.audio_manager.play_sound('explosion')
 ```
 所有複雜的細節都被隱藏在 `AudioManager` 內部。未來若要更換音效引擎，也只需要修改這個類別，完全不會影響到主程式的任何一行程式碼。
 
-```python=
+```python
 # core/audio_manager.py
 import pygame
-import settings # 從 settings 統一管理資源路徑
 
 class AudioManager:
     def __init__(self):
-        # 僅儲存路徑，而非預先載入所有音效，實現「隨用隨載」
-        self.sound_paths = {
-            'hover': settings.MENU_HOVER_SOUND_PATH,
-            'explosion': settings.EXPLOSION_PATH,
-            'place_bomb': settings.PLACE_BOMB_SOUND_PATH,
+        pygame.mixer.init()
+        # 預先載入少量、常用的音效
+        self.sounds = {
+            'explosion': pygame.mixer.Sound('assets/audio/explosion.wav'),
+            'place_bomb': pygame.mixer.Sound('assets/audio/place_bomb.wav')
         }
-        self.playing_sounds = {}
 
-    def play_sound(self, name, loops=0):
-        if name in self.sound_paths:
-            try:
-                # 動態載入並播放音效
-                sound = pygame.mixer.Sound(self.sound_paths[name])
-                sound.play(loops=loops)
-            except pygame.error as e:
-                print(f"無法載入音效 '{name}': {e}")	
+    def play_sound(self, name):
+        if name in self.sounds:
+            self.sounds[name].play()
 ```
-目前的版本是動態載入音訊路徑，而非在 `__init__` 中一次性載入所有音效，在記憶體管理上是更好的實踐。
-
 
 ### 2.3 繼承與策略模式 (Inheritance & Strategy Pattern)
 
@@ -124,14 +115,13 @@ class AudioManager:
     * $g(n)$ 是從起點到目前節點的實際移動成本（步數）。
     * $h(n)$ 是我們設計的**啟發函數 (Heuristic Function)**，我們採用了「**曼哈頓距離 (Manhattan Distance)**」，因為在我們這種只能上下左右移動的網格地圖中，它能非常快速且準確地估計到終點的距離。
 
-我們根據任務的不同，來決定使用哪種演算法——需要快速找到鄰近安全點時用 BFS，需要規劃長遠的攻擊或奪寶路徑時用 A\*。這種針對性的選擇，是我們在專案中對演算法效率與場景應用的權衡與實踐。
+我們根據任務的不同，來決定使用哪種演算法——需要快速找到鄰近安全點時用 BFS，需要規劃長遠的攻擊或奪寶路徑時用 A\*。這種針對性的選擇，是我們在專案中對演算法效率與場景應用的 **權衡（Trade-off）** 與實踐。
 
 為了讓玩家能更直觀地感受到 AI 的「思考」，我們在遊戲畫面的右下角即時顯示出 AI 當前的狀態。如圖所示，當 AI 玩家鎖定場上的道具後，會使用 A\* 演算法尋找一條成本最低的路徑，並且在放置炸彈清除障礙物後，使用 BFS 尋找鄰近的安全撤退位置，並切換到「**戰術性撤退**」狀態躲避並等待炸彈爆炸。
 
 
 ![image (5)](https://hackmd.io/_uploads/Sy-93dF7xx.jpg)
 
-我們根據任務的不同，來決定使用哪種演算法。這體現了演算法應用中的一個核心思想：**權衡 (Trade-off)**。當需要不計代價地快速找到鄰近安全點時，我們選擇執行速度更快的 BFS；當需要規劃長遠的攻擊或奪寶路徑時，我們則選擇雖然計算開銷稍高、但路徑品質更優的 A*。這種針對性的選擇，是我們在專案中對演算法效率與場景應用的思考與實踐。
 
 ### 3.3 AI 的多種「個性」
 
@@ -218,7 +208,7 @@ graph TD;
 
 ![image (2)](https://hackmd.io/_uploads/SkovmFF7le.png)
 
-當程式碼成功合併到 main 分支後，持續部署流程會自動觸發，如以下流程圖：
+當程式碼成功合併到 `main` 分支後，部署流程會自動觸發。其流程如下圖所示：
 
 ```mermaid
 graph TD;
@@ -247,7 +237,7 @@ GitHub Actions 會自動將專案打包成網頁版本，並將遊戲發佈到�
 為了解決這個問題，我們重構了 `change_state` 函式。以下是修改前後的程式碼對比：
 
 **修改前 (有問題的版本)**
-```python=
+```python
 # ai_controller_base.py
 # 在 change_state 函式中，無條件清空路徑
 def change_state(self, new_state):
@@ -262,7 +252,7 @@ def change_state(self, new_state):
         # ...
 ```
 **修改後 (解決方案)**
-```python=
+```python
 # ai_controller_base.py
 # 修改後的 change_state 函式
 def change_state(self, new_state):
@@ -299,7 +289,7 @@ def change_state(self, new_state):
 
 以下是 `main.py` 中主遊戲迴圈的簡化版，清晰地展示了這個流程：
 
-```python=
+```python
 # main.py
 
 async def main():
