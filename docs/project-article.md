@@ -189,37 +189,17 @@ class AudioManager:
 
 這些測試如同我們的「**安全網**」。在我們不斷新增功能或重構程式碼時，它能立刻捕捉到因修改而產生的意外錯誤 (Regression)，讓我們可以更有信心地進行開發迭代，確保了專案的長期穩定性。
 
-```mermaid
-graph TD;
-    subgraph "自動化測試流程 (run-tests.yml)";
-        A[開發者 Push 或發起 PR] --> B{CI 流程觸發};
-        B --> C["1. 執行 Flake8 <br/>程式碼風格檢查"];
-        B --> D["2. 執行 Pytest <br/>單元測試"];
-        C --> E{全部通過?};
-        D --> E;
-        E -- "否" --> F["PR 標記為失敗 ❌<br/>(需要修復)"];
-        E -- "是" --> G["PR 標記為成功 ✅<br/>(等待 Code Review)"];
-    end;
-```
+![CI Flow](/images/ci-workflow-diagram.png)
 
 ### 4.5 持續部署 (CD) - 一鍵發佈到全世界
 
 當程式碼成功合併到 `main` 分支後，持續部署流程會自動觸發。GitHub Actions 會自動將專案打包成網頁版本，並發佈到 GitHub Pages。這意味著每一次成功的合併，玩家就能在幾分鐘內玩到最新的遊戲版本，而我們完全不需要手動介入。
 
-![CD 部署流程圖](images/cd-deployment-pipeline.png)
 
 當程式碼成功合併到 `main` 分支後，部署流程會自動觸發。其流程如下圖所示：
 
-```mermaid
-graph TD;
-    subgraph "自動化部署流程 (deploy-to-web.yml)";
-        A["程式碼成功合併<br/>到 main 分支"] --> B{CD 流程觸發};
-        B --> C["使用 Pygbag<br/>將專案打包成網頁版"];
-        C --> D["將打包好的檔案<br/>上傳為 Pages Artifact"];
-        D --> E["執行部署<br/>到 GitHub Pages"];
-        E --> F["新版本上線 🎉"];
-    end;
-```
+![CD Flow](/images/cd-deployment-diagram.png)
+
 GitHub Actions 會自動將專案打包成網頁版本，並將遊戲發佈到網頁。
 
 ## 5. 技術挑戰與解決方案
