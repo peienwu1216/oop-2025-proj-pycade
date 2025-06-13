@@ -55,7 +55,7 @@
 
 為了方便開發者，我們也將這份文件的副本歸檔在專案的 `docs/` 資料夾中，並提供了詳細的系統架構圖：
 
-* **[📐 系統架構與 Class Diagram](ARCHITECTURE.md)**
+* **[📐 系統架構與 Class Diagram](docs/ARCHITECTURE.md)**
 * **[📝 文章歸檔 (於本倉庫)](docs/project-article.md)**
 ---
 
