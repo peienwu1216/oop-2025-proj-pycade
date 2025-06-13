@@ -1,0 +1,34 @@
+# Pygbag ignore file.
+# Works like .gitignore, but for the packaging process.
+# This prevents development assets from being bundled into the final web build.
+
+# Version control
+.git/
+.gitignore
+
+# GitHub-specific files
+.github/
+
+# Documentation and its assets
+README.md
+CONTRIBUTING.md
+LICENSE
+docs/
+
+# Testing framework
+test/
+.pytest_cache/
+pytest.ini
+
+# Python environment and caches
+venv/
+__pycache__/
+*.pyc
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# General configs
+.flake8
+*.log 

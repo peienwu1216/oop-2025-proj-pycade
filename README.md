@@ -6,8 +6,8 @@
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 
 
-![遊戲截圖](https://github.com/user-attachments/assets/10f3a9b8-f6e1-4fa7-b980-8f0a47edc155)
-![遊戲截圖2](https://github.com/user-attachments/assets/22ae902f-b236-4ef4-b3ba-3c1081ca4808)
+![遊戲截圖](docs/images/gameplay-screenshot-1.png)
+![遊戲截圖2](docs/images/gameplay-screenshot-2.png)
 
 
 本專案是物件導向程式設計 (OOP) 課程的期末成果，旨在使用 Python 與 Pygame 函式庫，複刻經典遊戲《瘋狂炸彈人》。我們不僅重現了核心的遊戲玩法，更將重點放在實踐優雅的軟體架構、智慧的 AI 設計，以及導入業界標準的開發流程。
