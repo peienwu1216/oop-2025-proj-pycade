@@ -58,6 +58,7 @@
 
 * **[📐 系統架構與 Class Diagram](docs/ARCHITECTURE.md)**
 * **[📝 文章歸檔 (於本倉庫)](docs/project-article.md)**
+* **[📄 課程期末簡報 (Final Presentation Slides)](docs/Pycade_Bomber_Final_Presentation_2025.pdf)**
 ---
 
 ## 📂 專案架構 (Project Structure)
